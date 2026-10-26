@@ -315,7 +315,7 @@ const GRAMMAR_LEVEL_FULL: Record<string, string> = {
   精通: "精通 / 완벽",
 };
 
-/** 題庫題批改：先自動比對所有可接受的寫法，對不上才問 AI；AI 不可用時回傳 correct: null，由使用者自評。 */
+/** 題庫題批改：先自動比對所有可接受的寫法，對不上才問 AI；AI 失敗會丟出原因，由 API route 轉成自評＋錯誤訊息。 */
 export async function gradeQuiz(id: string, answer: string, choiceKey?: string): Promise<GradeResult> {
   const p = useMock() ? null : await getPage(id);
   const item = p ? toQuiz(p) : mockReview().find((i): i is QuizItem => i.kind === "quiz" && i.id === id);
@@ -330,7 +330,6 @@ export async function gradeQuiz(id: string, answer: string, choiceKey?: string):
   if (autoGrade(answer, item.answer)) return { correct: true, method: "自動比對", feedback: "", suggestion: "" };
   if (useMock()) return { correct: false, method: "AI", feedback: "（預覽）助詞用錯了：翻訳する的對象語言要用「に」。", suggestion: item.answer };
   const ai = await gradeWithAi({ question: item.prompt, reference: item.answer, explanation: item.explanation, answer });
-  if (!ai) return { correct: null, method: "自評", feedback: "", suggestion: "" };
   return { correct: ai.correct, method: "AI", feedback: ai.feedback, suggestion: ai.suggestion };
 }
 

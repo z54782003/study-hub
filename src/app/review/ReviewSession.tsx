@@ -210,9 +210,9 @@ function QuizCard({ item, onDone }: { item: QuizItem; onDone: (p: Pending) => vo
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ id: item.id, answer, choice }),
       });
-      setResult(r.ok ? await r.json() : { correct: null, method: "自評", feedback: "", suggestion: "" });
-    } catch {
-      setResult({ correct: null, method: "自評", feedback: "", suggestion: "" });
+      setResult(r.ok ? await r.json() : { correct: null, method: "自評", feedback: "", suggestion: "", error: `批改 API 回應 ${r.status}` });
+    } catch (e) {
+      setResult({ correct: null, method: "自評", feedback: "", suggestion: "", error: e instanceof Error ? e.message : "網路錯誤" });
     } finally {
       setGrading(false);
     }
@@ -346,7 +346,12 @@ function QuizCard({ item, onDone }: { item: QuizItem; onDone: (p: Pending) => vo
             下一題
           </button>
         )}
-        {result && finalCorrect === null && <p className="mt-2 text-center text-xs text-muted">AI 批改暫時無法使用，請自己判斷</p>}
+        {result && finalCorrect === null && (
+          <p className="mt-2 text-center text-xs text-muted">
+            AI 批改暫時無法使用，請自己判斷
+            {result.error && <span className="mt-0.5 block break-all text-bad">原因：{result.error}</span>}
+          </p>
+        )}
       </div>
     </>
   );

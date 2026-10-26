@@ -69,4 +69,11 @@ export type AnswerPayload = {
   feedback?: string;
 };
 
-export type GradeResult = { correct: boolean | null; method: GradeMethod; feedback: string; suggestion: string };
+export type GradeResult = {
+  correct: boolean | null;
+  method: GradeMethod;
+  feedback: string;
+  suggestion: string;
+  /** AI 批改失敗的原因（顯示給使用者） */
+  error?: string;
+};
