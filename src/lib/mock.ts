@@ -97,7 +97,9 @@ export function mockTedTalk(): TedTalk {
   return {
     title: "How to make stress your friend",
     speaker: "Kelly McGonigal",
-    video: { type: "mp4", url: process.env.MOCK_VIDEO_URL ?? "/mock.mp4" },
+    video: process.env.MOCK_HLS_URL
+      ? { type: "hls", url: process.env.MOCK_HLS_URL, fallback: process.env.MOCK_VIDEO_URL ?? "/mock.mp4" }
+      : { type: "mp4", url: process.env.MOCK_VIDEO_URL ?? "/mock.mp4", fallback: null },
     youtube: null,
     cues: lines.map(([text, zh], i) => ({ start: i * 1.25, end: (i + 1) * 1.25, text, zh })),
     languages: ["en", "zh-tw"],

@@ -15,7 +15,8 @@ import {
 export type TedTalk = {
   title: string;
   speaker: string;
-  video: { type: "mp4" | "hls"; url: string } | null;
+  /** 影片優先用 HLS：字幕就是從同一個 HLS 串流抓的，時間軸一致（mp4 前面可能多了片頭，會整段錯開）。 */
+  video: { type: "mp4" | "hls"; url: string; fallback: string | null } | null;
   youtube: string | null;
   cues: Cue[];
   languages: string[];
@@ -70,7 +71,11 @@ export async function loadTedTalk(url: string): Promise<TedTalk> {
   return {
     title: video.title,
     speaker: video.speaker,
-    video: video.mp4 ? { type: "mp4", url: video.mp4 } : video.hls ? { type: "hls", url: video.hls } : null,
+    video: video.hls
+      ? { type: "hls", url: video.hls, fallback: video.mp4 }
+      : video.mp4
+        ? { type: "mp4", url: video.mp4, fallback: null }
+        : null,
     youtube: video.youtube,
     cues,
     languages,

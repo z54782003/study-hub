@@ -46,6 +46,7 @@ export function TedPlayer({ tedUrl, title, notionUrl }: { tedUrl: string; title:
   const [loop, setLoop] = useState(false);
   const [autoPause, setAutoPause] = useState(false);
   const [offset, setOffset] = useState(0);
+  const [videoNote, setVideoNote] = useState<string | null>(null);
   const [revealed, setRevealed] = useState<Set<number>>(new Set());
   const [sheet, setSheet] = useState<{ word: string; sentence: string } | null>(null);
 
@@ -70,19 +71,49 @@ export function TedPlayer({ tedUrl, title, notionUrl }: { tedUrl: string; title:
       .catch((e) => setError(e.message));
   }, [tedUrl]);
 
-  // 影片來源：mp4 直接播；HLS 在 Safari 原生支援，其他瀏覽器載入 hls.js
+  // 每支 talk 的字幕偏移記在這台裝置，下次打開不用重調
+  const offsetKey = `offset:${tedUrl}`;
+  useEffect(() => {
+    try {
+      const saved = parseFloat(localStorage.getItem(offsetKey) ?? "");
+      if (!Number.isNaN(saved)) setOffset(saved);
+    } catch {}
+  }, [offsetKey]);
+  const changeOffset = (delta: number) =>
+    setOffset((o) => {
+      const next = Math.round((o + delta) * 100) / 100;
+      try {
+        if (next === 0) localStorage.removeItem(offsetKey);
+        else localStorage.setItem(offsetKey, String(next));
+      } catch {}
+      return next;
+    });
+
+  // 影片來源：HLS 在 Safari（iPhone／iPad）原生支援；其他瀏覽器用 hls.js，失敗再退回 mp4
   useEffect(() => {
     const v = videoRef.current;
-    if (!v || !talk?.video) return;
-    if (talk.video.type === "mp4" || v.canPlayType("application/vnd.apple.mpegurl")) {
-      v.src = talk.video.url;
-      return;
+    const video = talk?.video;
+    if (!v || !video) return;
+    const useFallback = () => {
+      if (!video.fallback) return setError("影片無法播放");
+      v.src = video.fallback;
+      setVideoNote("改用 mp4 播放，字幕若整段錯開請用下方「字幕 ±」調整");
+    };
+    if (video.type === "mp4" || v.canPlayType("application/vnd.apple.mpegurl")) {
+      if (video.type === "hls") v.addEventListener("error", useFallback, { once: true });
+      v.src = video.url;
+      return () => v.removeEventListener("error", useFallback);
     }
     let destroy: (() => void) | undefined;
     import("hls.js").then(({ default: Hls }) => {
-      if (!Hls.isSupported()) return setError("這個瀏覽器不支援 HLS 影片");
+      if (!Hls.isSupported()) return useFallback();
       const hls = new Hls();
-      hls.loadSource(talk.video!.url);
+      hls.on(Hls.Events.ERROR, (_e, data) => {
+        if (!data.fatal) return;
+        hls.destroy();
+        useFallback();
+      });
+      hls.loadSource(video.url);
       hls.attachMedia(v);
       destroy = () => hls.destroy();
     });
@@ -200,6 +231,7 @@ export function TedPlayer({ tedUrl, title, notionUrl }: { tedUrl: string; title:
         {!talk && <div className="absolute inset-0 grid place-items-center text-sm text-white/70">讀取影片與字幕…</div>}
       </div>
 
+      {videoNote && <p className="px-4 pt-2 text-xs text-muted">{videoNote}</p>}
       {talk && !talk.cues.length && (
         <p className="px-4 pt-3 text-sm text-muted">這支 talk 沒有找到英文字幕（可用語言：{talk.languages.join(", ") || "無"}）。</p>
       )}
@@ -297,14 +329,23 @@ export function TedPlayer({ tedUrl, title, notionUrl }: { tedUrl: string; title:
               </button>
             ))}
           </div>
-          <div className="flex items-center gap-1 text-muted">
-            字幕
-            <button type="button" onClick={() => setOffset((o) => Math.round((o - 0.25) * 100) / 100)} className="px-1.5 py-1" aria-label="字幕提早">
-              −
+          <div className="flex items-center text-muted">
+            <span className="mr-0.5">字幕</span>
+            <button type="button" onClick={() => changeOffset(-1)} className="px-1.5 py-1" aria-label="字幕提早 1 秒">
+              «
             </button>
-            <span className="w-10 text-center tabular-nums">{offset > 0 ? "+" : ""}{offset.toFixed(2)}</span>
-            <button type="button" onClick={() => setOffset((o) => Math.round((o + 0.25) * 100) / 100)} className="px-1.5 py-1" aria-label="字幕延後">
-              +
+            <button type="button" onClick={() => changeOffset(-0.25)} className="px-1.5 py-1" aria-label="字幕提早 0.25 秒">
+              ‹
+            </button>
+            <span className="w-11 text-center tabular-nums">
+              {offset > 0 ? "+" : ""}
+              {offset.toFixed(2)}
+            </span>
+            <button type="button" onClick={() => changeOffset(0.25)} className="px-1.5 py-1" aria-label="字幕延後 0.25 秒">
+              ›
+            </button>
+            <button type="button" onClick={() => changeOffset(1)} className="px-1.5 py-1" aria-label="字幕延後 1 秒">
+              »
             </button>
           </div>
         </div>
