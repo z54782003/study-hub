@@ -1,7 +1,7 @@
 // 本機預覽用的假資料（MOCK=1 且沒有 NOTION_TOKEN 時才會用到）。
 import { EXAMS } from "./config";
-import { diffDays, formatJP, isWeekend } from "./dates";
-import type { ReviewItem, TodayData } from "./types";
+import { addDays, diffDays, formatJP, isWeekend } from "./dates";
+import type { ReviewItem, TodayData, VocabItem } from "./types";
 import type { TedTalk } from "./ted";
 
 export function mockToday(day: string): TodayData {
@@ -103,6 +103,59 @@ export function mockReview(): ReviewItem[] {
       status: "未學",
     },
   ];
+}
+
+export function mockVocab(): VocabItem[] {
+  return [
+    {
+      kind: "vocab",
+      id: "v1",
+      word: "目標",
+      reading: "もくひょう",
+      meaning: "目標",
+      pos: "n. 名詞",
+      usage: "目標を立てる／目標に向かって／目標を達成する",
+      examples: [
+        { ja: "今年の目標を立てました。", zh: "我訂了今年的目標。" },
+        { ja: "目標に向かって毎日勉強しています。", zh: "朝著目標每天唸書。" },
+      ],
+      lesson: "初中級 L3",
+      lang: "ja",
+      status: "學習中",
+    },
+    {
+      kind: "vocab",
+      id: "v2",
+      word: "諦める",
+      reading: "あきらめる",
+      meaning: "放棄",
+      pos: "v. 動詞",
+      usage: "夢を諦める／諦めないで",
+      examples: [{ ja: "最後まで諦めないでください。", zh: "請堅持到最後。" }],
+      lesson: "初中級 L3",
+      lang: "ja",
+      status: "未學",
+    },
+  ];
+}
+
+export function mockHistory(day: string) {
+  const out = [];
+  for (let d = 0; d < 40; d++) {
+    const n = (d * 7) % 5 === 0 ? 0 : ((d * 13) % 9) + 2;
+    for (let i = 0; i < n; i++)
+      out.push({
+        id: `${d}-${i}`,
+        day: addDays(day, -d),
+        title: i % 3 ? "新しい単語を覚えるのは大変です。" : "経験",
+        kind: i % 3 ? "題庫" : "N3 單字",
+        correct: (d + i) % 4 !== 0,
+        answer: (d + i) % 4 ? "" : "新しい単語を覚えるのが大変です。",
+        reference: "新しい単語を覚えるのは大変です。",
+        url: "#",
+      });
+  }
+  return out;
 }
 
 export async function mockAnswer(): Promise<void> {}

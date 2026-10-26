@@ -2,13 +2,14 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { gradeChoice, parseChoices } from "@/lib/grading";
-import type { GradeMethod, GradeResult, QuizItem, ReviewItem } from "@/lib/types";
+import { sourceLabel, sourceQuery } from "@/lib/reviewSource";
+import type { GradeMethod, GradeResult, QuizItem, ReviewItem, ReviewSource, VocabItem } from "@/lib/types";
 
 type Result = { item: ReviewItem; correct: boolean; answer?: string };
 type Pending = { item: ReviewItem; correct: boolean; answer?: string; method?: GradeMethod; feedback?: string };
 type Sync = { pending: number; failed: Pending[] };
 
-const KIND_LABEL: Record<ReviewItem["kind"], string> = { quiz: "題庫", n3: "N3 單字", grammar: "文型" };
+const KIND_LABEL: Record<ReviewItem["kind"], string> = { quiz: "題庫", n3: "N3 單字", grammar: "文型", vocab: "單字" };
 
 async function postAnswer(p: Pending) {
   const res = await fetch("/api/review/answer", {
@@ -19,7 +20,9 @@ async function postAnswer(p: Pending) {
   if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? res.statusText);
 }
 
-export function ReviewSession({ mode = "due" }: { mode?: "due" | "mistakes" }) {
+export function ReviewSession({ source }: { source: ReviewSource }) {
+  const mode = source.src;
+  const query = sourceQuery(source);
   const [items, setItems] = useState<ReviewItem[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [index, setIndex] = useState(0);
@@ -29,14 +32,14 @@ export function ReviewSession({ mode = "due" }: { mode?: "due" | "mistakes" }) {
   const startedAt = useRef(Date.now());
 
   useEffect(() => {
-    fetch(`/api/review${mode === "mistakes" ? "?mode=mistakes" : ""}`)
+    fetch(`/api/review?${query}`)
       .then(async (r) => {
         const data = await r.json();
         if (!r.ok) throw new Error(data.error ?? r.statusText);
         setItems(data.items);
       })
       .catch((e) => setLoadError(e.message));
-  }, [mode]);
+  }, [query]);
 
   // 每答一題就寫回 Notion：中途關掉 App 也不會遺失已作答的結果
   const send = useCallback((p: Pending) => {
@@ -79,10 +82,12 @@ export function ReviewSession({ mode = "due" }: { mode?: "due" | "mistakes" }) {
     return (
       <div className="mt-16 text-center">
         <div className="text-5xl">🎉</div>
-        <p className="mt-3 text-lg font-semibold">{mode === "mistakes" ? "錯題區是空的" : "今天沒有到期的題目"}</p>
+        <p className="mt-3 text-lg font-semibold">
+          {mode === "mistakes" ? "錯題區是空的" : mode === "due" ? "今天沒有到期的題目" : "這個條件沒有題目"}
+        </p>
         <div className="mt-6 flex justify-center gap-6">
-          <Link href="/" className="text-accent">
-            回今日清單
+          <Link href="/review" className="text-accent">
+            回複習
           </Link>
           {mode === "due" && (
             <Link href="/mistakes" className="text-accent">
@@ -109,7 +114,7 @@ export function ReviewSession({ mode = "due" }: { mode?: "due" | "mistakes" }) {
     const wrong = results.filter((r) => !r.correct);
     return (
       <div className="mt-6">
-        <h1 className="text-2xl font-bold">{mode === "mistakes" ? "錯題重測完成" : "複習完成"}</h1>
+        <h1 className="text-2xl font-bold">{sourceLabel(source)}・完成</h1>
         <p className="mt-2 text-4xl font-bold">
           {right}/{results.length}
           <span className="ml-2 text-lg font-normal text-muted">{Math.round((right / results.length) * 100)}%</span>
@@ -136,6 +141,7 @@ export function ReviewSession({ mode = "due" }: { mode?: "due" | "mistakes" }) {
                   )}
                   {item.kind === "n3" && `${item.word}（${item.reading}）${item.meaning}`}
                   {item.kind === "grammar" && `${item.pattern}：${item.meaning}`}
+                  {item.kind === "vocab" && `${item.word}（${item.reading}）${item.meaning}`}
                 </li>
               ))}
             </ul>
@@ -145,8 +151,8 @@ export function ReviewSession({ mode = "due" }: { mode?: "due" | "mistakes" }) {
           <Link href="/mistakes" className="rounded-2xl border border-line py-3 text-center font-semibold">
             錯題區
           </Link>
-          <Link href="/" className="rounded-2xl bg-accent py-3 text-center font-semibold text-white">
-            回今日清單
+          <Link href="/review" className="rounded-2xl bg-accent py-3 text-center font-semibold text-white">
+            回複習
           </Link>
         </div>
       </div>
@@ -158,10 +164,11 @@ export function ReviewSession({ mode = "due" }: { mode?: "due" | "mistakes" }) {
     <div className="mt-2 flex min-h-[calc(100dvh-9rem)] flex-col">
       <div className="flex items-center justify-between text-sm text-muted">
         <span>
-          {mode === "mistakes" && "錯題重測・"}
+          {mode !== "due" && `${sourceLabel(source)}・`}
           {KIND_LABEL[item.kind]}
           {item.kind === "quiz" && item.qtype && `・${item.qtype}`}
           {item.kind === "n3" && `・${item.source === "due" ? "到期複習" : "今日新字"}`}
+          {item.kind === "vocab" && item.lesson && `・${item.lesson}`}
         </span>
         <span>
           {index + 1} / {items.length}
@@ -357,19 +364,24 @@ function QuizCard({ item, onDone }: { item: QuizItem; onDone: (p: Pending) => vo
   );
 }
 
-// ── N3 單字／文型：翻卡自評 ─────────────────────────────
+// ── N3 單字／文型／單字庫：翻卡自評 ─────────────────────────
 
 function FlipCard({ item, onDone }: { item: Exclude<ReviewItem, QuizItem>; onDone: (p: Pending) => void }) {
   const [revealed, setRevealed] = useState(false);
   return (
     <>
       <article className="mt-2 flex-1 rounded-3xl border border-line bg-card p-5">
-        <p className={`py-6 text-center font-bold ${item.kind === "n3" ? "text-5xl" : "text-3xl"}`} lang="ja">
-          {item.kind === "n3" ? item.word : item.pattern}
+        <p
+          className={`py-6 text-center font-bold ${item.kind === "grammar" ? "text-3xl" : "text-5xl"}`}
+          lang={item.kind === "vocab" && item.lang === "en" ? "en" : "ja"}
+        >
+          {item.kind === "grammar" ? item.pattern : item.word}
         </p>
         {revealed && (
           <div className="mt-2 border-t border-line pt-4">
-            {item.kind === "n3" ? (
+            {item.kind === "vocab" ? (
+              <VocabDetail item={item} />
+            ) : item.kind === "n3" ? (
               <div className="space-y-2 text-center">
                 <p className="text-2xl" lang="ja">
                   {item.reading}
@@ -417,5 +429,34 @@ function FlipCard({ item, onDone }: { item: Exclude<ReviewItem, QuizItem>; onDon
         )}
       </div>
     </>
+  );
+}
+
+function VocabDetail({ item }: { item: VocabItem }) {
+  const lang = item.lang === "en" ? "en" : "ja";
+  return (
+    <div className="space-y-3">
+      <div className="text-center">
+        {item.reading && (
+          <p className="text-2xl" lang={lang}>
+            {item.reading}
+          </p>
+        )}
+        <p className="text-xl font-semibold">{item.meaning || "（中文翻譯還沒補）"}</p>
+        <p className="text-sm text-muted">{[item.pos, item.lesson, item.status].filter(Boolean).join("・")}</p>
+      </div>
+      {item.usage && (
+        <p className="rounded-xl bg-bg p-3 text-sm whitespace-pre-wrap" lang={lang}>
+          <span className="mr-1 text-xs text-muted">搭配</span>
+          {item.usage}
+        </p>
+      )}
+      {item.examples.map((e, i) => (
+        <div key={i} className="text-sm">
+          <p lang={lang}>{e.ja}</p>
+          {e.zh && <p className="text-muted">{e.zh}</p>}
+        </div>
+      ))}
+    </div>
   );
 }

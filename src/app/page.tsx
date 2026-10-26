@@ -162,7 +162,7 @@ export default async function TodayPage() {
           icon="🔁"
           title={reviewTotal ? `今晚複習 ${reviewTotal} 張` : "今晚複習：全部完成"}
           detail={reviewTotal ? `題庫 ${t.review.quiz}・N3 單字 ${t.review.n3}・文型 ${t.review.grammar}` : undefined}
-          href="/review"
+          href="/review/due"
           autoDone={reviewTotal === 0}
         />
         <TaskItem

@@ -1,10 +1,11 @@
 import "server-only";
+import { unstable_cache } from "next/cache";
 import { isFullBlock } from "@notionhq/client";
 import { DS, EXAMS, GRAMMAR_ORDER, N3_BATCH_SAMPLE, N3_DUE_LIMIT, QUIZ_DAILY_LIMIT, TZ, W3_PARENT_PAGE } from "./config";
 import { addDays, diffDays, formatJP, isWeekend, todayISO } from "./dates";
 import { gradeWithAi } from "./ai";
 import { autoGrade, gradeChoice, parseChoices } from "./grading";
-import { mockAnswer, mockJournal, mockReview, mockToday } from "./mock";
+import { mockAnswer, mockHistory, mockJournal, mockReview, mockToday, mockVocab } from "./mock";
 import { eventsOnDay, type CalendarEvent } from "./calendar";
 import { pickPreviewPage, summarizePreview, type ChildPage, type SimpleBlock } from "./preview";
 import { date, getPage, hasNotion, notion, num, queryAll, relationIds, select, text, updatePage, w, type Page } from "./notion";
@@ -18,7 +19,18 @@ import {
   vocabUpdate,
   weekGrammarIndices,
 } from "./srs";
-import type { AnswerPayload, GradeResult, GrammarItem, N3WordItem, QuizItem, ReviewItem, TodayData } from "./types";
+import type {
+  AnswerPayload,
+  Link,
+  GradeResult,
+  GrammarItem,
+  N3WordItem,
+  QuizItem,
+  ReviewItem,
+  ReviewSource,
+  TodayData,
+  VocabItem,
+} from "./types";
 
 const useMock = () => !hasNotion() && process.env.MOCK === "1";
 
@@ -174,6 +186,130 @@ export async function getN3Batch(): Promise<{ words: N3WordItem[]; grammar: Gram
     words: batch.map((p) => toN3(p, "batch")),
     grammar: grammarAll.filter((p) => names.some((n) => matchGrammar(n, text(p, "文型 / 문형")))).map(toGrammar),
   };
+}
+
+// ── 題庫練習／單字測驗（複習頁的篩選入口）──────────────────
+
+const shuffle = <T,>(xs: T[]): T[] => {
+  const a = [...xs];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+};
+
+/** 課堂筆記的「課次」是「L3」「L12 ST1/ST2」「L14残り・L15 ST1」這種文字，取開頭的課號 */
+const noteLesson = (s: string): number | null => {
+  const m = s.match(/^L(\d+)/);
+  return m ? Number(m[1]) : null;
+};
+
+async function lessonNoteIds(level: string | null, lessons: number[]): Promise<string[]> {
+  const notes = await queryAll(DS.isiNotes, level ? { property: "レベル", select: { equals: level } } : undefined);
+  return notes.filter((p) => lessons.includes(noteLesson(text(p, "課次")) ?? -1)).map((p) => p.id);
+}
+
+async function bankQuiz(s: Extract<ReviewSource, { src: "bank" }>): Promise<QuizItem[]> {
+  const and: object[] = [];
+  if (s.lessons.length) {
+    const ids = await lessonNoteIds(s.level, s.lessons);
+    if (!ids.length) return [];
+    and.push({ or: ids.map((id) => ({ property: "來源課堂", relation: { contains: id } })) });
+  } else if (s.level) and.push({ property: "レベル", select: { equals: s.level } });
+  if (s.qtype) and.push({ property: "題型", select: { equals: s.qtype } });
+  if (s.scope === "weak")
+    and.push({
+      or: [
+        { property: "上次結果", select: { does_not_equal: "✅ 對" } },
+        { property: "上次結果", select: { is_empty: true } },
+      ],
+    });
+  const pages = await queryAll(DS.quiz, and.length ? ({ and } as never) : undefined, undefined, 400);
+  // 錯過的優先，其餘隨機
+  const items = shuffle(pages.map(toQuiz));
+  const rank = (q: QuizItem) => (q.lastResult === "❌ 錯" ? 0 : q.lastResult === "✅ 對" ? 2 : 1);
+  return items.sort((a, b) => rank(a) - rank(b)).slice(0, s.count);
+}
+
+const toVocab = (p: Page): VocabItem => ({
+  kind: "vocab",
+  id: p.id,
+  word: text(p, "單字"),
+  reading: text(p, "音標/假名"),
+  meaning: text(p, "中文翻譯"),
+  pos: select(p, "詞性"),
+  usage: text(p, "搭配・用法"),
+  examples: [
+    { ja: text(p, "例句"), zh: text(p, "例句翻譯") },
+    { ja: text(p, "例句2"), zh: text(p, "例句2翻譯") },
+  ].filter((e) => e.ja),
+  lesson: select(p, "課次"),
+  lang: select(p, "語言") === "🇬🇧 英文" ? "en" : "ja",
+  status: select(p, "熟悉度"),
+});
+
+const VOCAB_RANK: Record<string, number> = { 忘記: 0, 學習中: 1, 未學: 2, 熟悉: 3, 精通: 4 };
+
+async function vocabQuiz(s: Extract<ReviewSource, { src: "vocab" }>): Promise<VocabItem[]> {
+  const and: object[] = [{ property: "語言", select: { equals: s.lang === "en" ? "🇬🇧 英文" : "🇯🇵 日文" } }];
+  if (s.lang === "ja" && s.level) {
+    const lessons = s.lessons.length ? s.lessons : Array.from({ length: 15 }, (_, i) => i + 1);
+    and.push({ or: lessons.map((n) => ({ property: "課次", select: { equals: `${s.level} L${n}` } })) });
+  }
+  if (s.lang === "en") and.push({ property: "熟悉度", status: { does_not_equal: "精通" } });
+  const pages = await queryAll(DS.vocab, { and } as never, undefined, 600);
+  // 忘記 → 學習中 → 未學 → 熟悉 → 精通，同一級隨機
+  return shuffle(pages.map(toVocab))
+    .sort((a, b) => (VOCAB_RANK[a.status ?? "未學"] ?? 2) - (VOCAB_RANK[b.status ?? "未學"] ?? 2))
+    .slice(0, s.count);
+}
+
+/** /api/review：依出題來源取題 */
+export async function getReviewItems(s: ReviewSource): Promise<ReviewItem[]> {
+  if (s.src === "due") return getReviewQueue();
+  if (s.src === "mistakes") return (await getMistakes()).slice(0, 30);
+  if (useMock()) return s.src === "vocab" ? mockVocab() : mockReview().filter((i) => i.kind === "quiz");
+  return s.src === "bank" ? bankQuiz(s) : vocabQuiz(s);
+}
+
+/** 單字測驗選課畫面：每課有幾個字 */
+// 要讀上千筆，快取一小時
+const cachedVocabLessonCounts = unstable_cache(
+  async () => {
+    const pages = await queryAll(
+      DS.vocab,
+      { and: [{ property: "課次", select: { is_not_empty: true } }, { property: "課次", select: { does_not_equal: "未分類" } }] } as never,
+      undefined,
+      5000,
+    );
+    const counts: Record<string, number> = {};
+    for (const p of pages) {
+      const l = select(p, "課次");
+      if (l) counts[l] = (counts[l] ?? 0) + 1;
+    }
+    return counts;
+  },
+  ["vocab-lesson-counts"],
+  { revalidate: 3600 },
+);
+
+export async function vocabLessonCounts(): Promise<Record<string, number>> {
+  if (useMock()) return { "初級 L1": 31, "初級 L2": 77, "初中級 L1": 33, "初中級 L2": 55, "初中級 L3": 58 };
+  return cachedVocabLessonCounts();
+}
+
+/** 題庫練習選課畫面：課堂筆記有哪些課（題目都掛在課堂筆記上） */
+export async function noteLessons(): Promise<Record<string, number[]>> {
+  if (useMock()) return { 初級: Array.from({ length: 15 }, (_, i) => i + 1), 初中級: [1, 2, 3] };
+  const notes = await queryAll(DS.isiNotes);
+  const out: Record<string, Set<number>> = {};
+  for (const p of notes) {
+    const level = select(p, "レベル");
+    const n = noteLesson(text(p, "課次"));
+    if (level && n) (out[level] ??= new Set()).add(n);
+  }
+  return Object.fromEntries(Object.entries(out).map(([k, v]) => [k, [...v].sort((a, b) => a - b)]));
 }
 
 async function findPreviewPage(day: string) {
@@ -333,14 +469,23 @@ export async function gradeQuiz(id: string, answer: string, choiceKey?: string):
   return { correct: ai.correct, method: "AI", feedback: ai.feedback, suggestion: ai.suggestion };
 }
 
-const KIND_LABEL = { quiz: "題庫", n3: "N3 單字", grammar: "N3 文型" } as const;
+const KIND_LABEL = { quiz: "題庫", n3: "N3 單字", grammar: "N3 文型", vocab: "單字庫" } as const;
 
 /** 每答一題在「📝 作答紀錄」寫一筆，供紀錄頁與錯題分析使用 */
 async function logAttempt(page: Page, payload: AnswerPayload, day: string) {
-  const title =
-    payload.kind === "quiz" ? text(page, "題目") : payload.kind === "n3" ? text(page, "單字 / 단어") : text(page, "文型 / 문형");
-  const reference =
-    payload.kind === "quiz" ? text(page, "正確答案") : payload.kind === "n3" ? `${text(page, "讀音 / 요미가나")} ${text(page, "中文")}` : text(page, "中文説明 / 중국어 뜻");
+  const title = {
+    quiz: () => text(page, "題目"),
+    n3: () => text(page, "單字 / 단어"),
+    grammar: () => text(page, "文型 / 문형"),
+    vocab: () => text(page, "單字"),
+  }[payload.kind]();
+  const reference = {
+    quiz: () => text(page, "正確答案"),
+    n3: () => `${text(page, "讀音 / 요미가나")} ${text(page, "中文")}`,
+    grammar: () => text(page, "中文説明 / 중국어 뜻"),
+    vocab: () => `${text(page, "音標/假名")} ${text(page, "中文翻譯")}`,
+  }[payload.kind]();
+  const english = payload.kind === "vocab" && select(page, "語言") === "🇬🇧 英文";
   const rich = (s: string) => ({ rich_text: s ? [{ text: { content: s.slice(0, 1900) } }] : [] });
   const qtype = payload.kind === "quiz" ? select(page, "題型") : null;
   await notion().pages.create({
@@ -350,7 +495,7 @@ async function logAttempt(page: Page, payload: AnswerPayload, day: string) {
       日期: w.date(day),
       類型: w.select(KIND_LABEL[payload.kind]),
       ...(qtype ? { 題型: w.select(qtype) } : {}),
-      語言: w.select("🇯🇵 日文"),
+      語言: w.select(english ? "🇬🇧 英文" : "🇯🇵 日文"),
       結果: w.select(payload.correct ? "✅ 對" : "❌ 錯"),
       批改方式: w.select(payload.method ?? "自評"),
       我的答案: rich(payload.answer ?? ""),
@@ -389,6 +534,14 @@ export async function submitAnswer(payload: AnswerPayload): Promise<void> {
         上次測驗: w.date(day),
       });
     }
+  } else if (kind === "vocab") {
+    const vu = vocabUpdate(select(page, "熟悉度"), num(page, "答對次數"), num(page, "答錯次數"), correct);
+    await updatePage(id, {
+      熟悉度: w.status(vu.status),
+      答對次數: w.number(vu.rightCount),
+      答錯次數: w.number(vu.wrongCount),
+      上次測驗: w.date(day),
+    });
   } else if (kind === "n3") {
     await updatePage(id, {
       熟悉度_K: w.status(n3NextLevel(select(page, "熟悉度_K"), correct)),
@@ -463,4 +616,92 @@ export async function addVocab(word: string, sentence: string, lang: "en" | "ja"
     } as never,
   });
   return { created: true, url: "url" in page ? page.url : "#" };
+}
+
+// ── 紀錄頁／日文・英文分頁 ────────────────────────────────
+
+export type Attempt = { id: string; day: string; title: string; kind: string; correct: boolean; answer: string; reference: string; url: string };
+
+/** 📝 作答紀錄：最近 days 天（含今天） */
+export async function getHistory(days: number): Promise<{ today: string; attempts: Attempt[] }> {
+  const day = today();
+  if (useMock()) return { today: day, attempts: mockHistory(day) };
+  const pages = await queryAll(
+    DS.attempts,
+    { property: "日期", date: { on_or_after: addDays(day, -(days - 1)) } },
+    [{ property: "日期", direction: "descending" }],
+    5000,
+  );
+  return {
+    today: day,
+    attempts: pages.map((p) => ({
+      id: p.id,
+      day: date(p, "日期") ?? day,
+      title: text(p, "題目"),
+      kind: select(p, "類型") ?? "",
+      correct: select(p, "結果") === "✅ 對",
+      answer: text(p, "我的答案"),
+      reference: text(p, "正確答案"),
+      url: text(p, "來源頁面") || p.url,
+    })),
+  };
+}
+
+export type ClassNoteLink = { id: string; title: string; lesson: string; level: string | null; date: string | null; url: string };
+
+export async function recentClassNotes(n: number): Promise<ClassNoteLink[]> {
+  if (useMock())
+    return [{ id: "c1", title: "10/23 L3 ST2", lesson: "L3", level: "初中級", date: "2026-10-23", url: "#" }];
+  const pages = await queryAll(DS.isiNotes, undefined, [{ property: "日期", direction: "descending" }], n);
+  return pages.map((p) => ({
+    id: p.id,
+    title: text(p, "課堂標題"),
+    lesson: text(p, "課次"),
+    level: select(p, "レベル"),
+    date: date(p, "日期"),
+    url: p.url,
+  }));
+}
+
+export type TedLink = { id: string; title: string; progress: string | null };
+
+export async function getEnglishHub(): Promise<{ ted: TedLink[]; books: (Link & { type: string | null })[]; vocabCount: number; errors: string[] }> {
+  if (useMock())
+    return {
+      ted: [{ id: "mock", title: "How to make stress your friend", progress: "今天做" }],
+      books: [{ title: "Atomic Habits", url: "#", type: "Book" }],
+      vocabCount: 12,
+      errors: [],
+    };
+  const errors: string[] = [];
+  const safe = async <T,>(label: string, fn: () => Promise<T>, fallback: T): Promise<T> =>
+    fn().catch((e) => {
+      errors.push(`${label}：${e instanceof Error ? e.message : String(e)}`);
+      return fallback;
+    });
+  const [ted, books, vocab] = await Promise.all([
+    safe("TED Log", () => queryAll(DS.tedLog, undefined, [{ timestamp: "created_time", direction: "descending" }], 40), [] as Page[]),
+    safe("Books", () => queryAll(DS.books, { property: "Status", select: { equals: "Reading" } }), [] as Page[]),
+    safe(
+      "英文單字",
+      () =>
+        queryAll(
+          DS.vocab,
+          { and: [{ property: "語言", select: { equals: "🇬🇧 英文" } }, { property: "熟悉度", status: { does_not_equal: "精通" } }] } as never,
+          undefined,
+          1000,
+        ),
+      [] as Page[],
+    ),
+  ]);
+  const order: Record<string, number> = { 今天做: 0, 進行中: 1, 待做: 2 };
+  return {
+    ted: ted
+      .filter((p) => !text(p, "Talk").includes("模板"))
+      .map((p) => ({ id: p.id, title: text(p, "Talk"), progress: select(p, "進度") }))
+      .sort((a, b) => (order[a.progress ?? ""] ?? 9) - (order[b.progress ?? ""] ?? 9)),
+    books: books.map((p) => ({ title: text(p, "Name"), url: p.url, type: select(p, "Type") })),
+    vocabCount: vocab.length,
+    errors,
+  };
 }

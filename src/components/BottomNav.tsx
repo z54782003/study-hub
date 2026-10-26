@@ -2,11 +2,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+// 語言優先：日文／英文各自一頁，複習和紀錄跨語言
 const TABS = [
-  { href: "/", label: "今日", icon: "☀️" },
-  { href: "/review", label: "複習", icon: "🔁" },
-  { href: "/mistakes", label: "錯題", icon: "📌" },
-  { href: "/n3", label: "N3 單字", icon: "🈁" },
+  { href: "/", label: "今日", icon: "☀️", also: [] },
+  { href: "/ja", label: "日文", icon: "🇯🇵", also: ["/n3"] },
+  { href: "/en", label: "英文", icon: "🇬🇧", also: [] },
+  { href: "/review", label: "複習", icon: "🔁", also: ["/mistakes"] },
+  { href: "/history", label: "紀錄", icon: "📊", also: [] },
 ];
 
 export function BottomNav() {
@@ -16,7 +18,7 @@ export function BottomNav() {
     <nav className="fixed inset-x-0 bottom-0 border-t border-line bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur">
       <ul className="mx-auto flex max-w-xl md:max-w-2xl">
         {TABS.map((t) => {
-          const active = t.href === "/" ? path === "/" : path.startsWith(t.href);
+          const active = t.href === "/" ? path === "/" : [t.href, ...t.also].some((h) => path.startsWith(h));
           return (
             <li key={t.href} className="flex-1">
               <Link

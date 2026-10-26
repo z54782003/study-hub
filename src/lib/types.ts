@@ -55,7 +55,29 @@ export type GrammarItem = {
   status: string | null;
 };
 
-export type ReviewItem = QuizItem | N3WordItem | GrammarItem;
+/** 📖 單字庫的字（日文依課次、英文依熟悉度） */
+export type VocabItem = {
+  kind: "vocab";
+  id: string;
+  word: string;
+  reading: string;
+  meaning: string;
+  pos: string | null;
+  usage: string;
+  examples: { ja: string; zh: string }[];
+  lesson: string | null;
+  lang: "ja" | "en";
+  status: string | null;
+};
+
+export type ReviewItem = QuizItem | N3WordItem | GrammarItem | VocabItem;
+
+/** 複習頁的出題來源（對應 /api/review 的 query string） */
+export type ReviewSource =
+  | { src: "due" }
+  | { src: "mistakes" }
+  | { src: "bank"; level: string | null; lessons: number[]; qtype: string | null; scope: "weak" | "all"; count: number }
+  | { src: "vocab"; lang: "ja" | "en"; level: string | null; lessons: number[]; count: number };
 
 export type GradeMethod = "自動比對" | "AI" | "自評";
 
