@@ -39,13 +39,12 @@ export async function gradeWithAi(input: {
 }): Promise<AiGrade | null> {
   if (!hasAi()) return null;
   client ??= new Anthropic();
-  const response = await client.beta.messages.create({
-    model: "claude-opus-5-5",
+  // 使用者選的模型：Claude Haiku 5.5（便宜、夠用來批改短句）；Haiku 沒有伺服器端 fallback，拒答時改成自評
+  const response = await client.messages.create({
+    model: "claude-haiku-5-5",
     max_tokens: 2000,
     system: SYSTEM,
     output_config: { effort: "low", format: { type: "json_schema", schema: SCHEMA } },
-    betas: ["server-side-fallback-2026-07-01"],
-    fallbacks: "default",
     messages: [
       {
         role: "user",

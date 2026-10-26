@@ -59,6 +59,17 @@ export function mockReview(): ReviewItem[] {
       lastTested: null,
     },
     {
+      kind: "quiz",
+      id: "q3",
+      prompt: "顔色が（　）ですね。大丈夫ですか。 ①いい ②悪い ③高い（心配するとき）",
+      qtype: "A 單字選擇",
+      answer: "② 悪い（顔色が悪い＝臉色不好）",
+      explanation: "顔色（かおいろ）與「悪い／いい」搭配，表示氣色。",
+      lastResult: "❌ 錯",
+      myAnswer: "① いい",
+      lastTested: "2026-10-25",
+    },
+    {
       kind: "n3",
       id: "n1",
       word: "経験",

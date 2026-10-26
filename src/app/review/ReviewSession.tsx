@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { gradeChoice, parseChoices } from "@/lib/grading";
 import type { GradeMethod, GradeResult, QuizItem, ReviewItem } from "@/lib/types";
 
 type Result = { item: ReviewItem; correct: boolean; answer?: string };
@@ -182,14 +183,32 @@ function QuizCard({ item, onDone }: { item: QuizItem; onDone: (p: Pending) => vo
   const [grading, setGrading] = useState(false);
   const [result, setResult] = useState<GradeResult | null>(null);
   const [override, setOverride] = useState<boolean | null>(null);
+  const [picked, setPicked] = useState<string | null>(null);
+  const choices = parseChoices(item.prompt);
+  // 哪些選項是正確的（正確答案對不到任何選項時為 null，交給伺服器／AI）
+  const correctKeys = choices
+    ? choices.options.every((o) => gradeChoice(o, choices.options, item.answer) !== null)
+      ? choices.options.filter((o) => gradeChoice(o, choices.options, item.answer)).map((o) => o.key)
+      : null
+    : null;
 
-  const grade = async () => {
+  const pick = (key: string) => {
+    const o = choices!.options.find((x) => x.key === key)!;
+    setPicked(key);
+    setDraft(`${o.key} ${o.text}`);
+    if (correctKeys) {
+      // 選擇題能直接判定就不用打 API
+      setResult({ correct: correctKeys.includes(key), method: "自動比對", feedback: "", suggestion: "" });
+    } else void grade(`${o.key} ${o.text}`, key);
+  };
+
+  const grade = async (answer = draft, choice?: string) => {
     setGrading(true);
     try {
       const r = await fetch("/api/review/grade", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ id: item.id, answer: draft }),
+        body: JSON.stringify({ id: item.id, answer, choice }),
       });
       setResult(r.ok ? await r.json() : { correct: null, method: "自評", feedback: "", suggestion: "" });
     } catch {
@@ -215,15 +234,41 @@ function QuizCard({ item, onDone }: { item: QuizItem; onDone: (p: Pending) => vo
     <>
       <article className="mt-2 flex-1 rounded-3xl border border-line bg-card p-5">
         <p className="text-xl leading-relaxed whitespace-pre-wrap" lang="ja">
-          {item.prompt}
+          {choices ? choices.stem : item.prompt}
         </p>
+        {choices?.hint && <p className="mt-1 text-sm text-muted" lang="ja">（{choices.hint}）</p>}
+        {choices && (
+          <div className="mt-4 grid gap-2">
+            {choices.options.map((o) => {
+              const isCorrect = result && correctKeys?.includes(o.key);
+              const isWrongPick = result && picked === o.key && !isCorrect;
+              return (
+                <button
+                  key={o.key}
+                  type="button"
+                  disabled={Boolean(result) || grading}
+                  onClick={() => pick(o.key)}
+                  className={`flex items-center gap-3 rounded-2xl border-2 px-4 py-3 text-left text-lg ${
+                    isCorrect ? "border-ok bg-ok/10" : isWrongPick ? "border-bad bg-bad/10" : picked === o.key ? "border-accent" : "border-line"
+                  }`}
+                  lang="ja"
+                >
+                  <span className="text-muted">{o.key}</span>
+                  <span className="flex-1">{o.text}</span>
+                  {isCorrect && <span className="text-ok">✓</span>}
+                  {isWrongPick && <span className="text-bad">✗</span>}
+                </button>
+              );
+            })}
+          </div>
+        )}
         {item.myAnswer && !result && (
           <p className="mt-3 text-xs text-muted" lang="ja">
             上次寫錯：{item.myAnswer}
           </p>
         )}
 
-        {!result ? (
+        {choices ? null : !result ? (
           <textarea
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
@@ -233,7 +278,8 @@ function QuizCard({ item, onDone }: { item: QuizItem; onDone: (p: Pending) => vo
             autoFocus
             className="mt-4 w-full rounded-xl border border-line bg-bg p-3 text-base outline-none focus:border-accent"
           />
-        ) : (
+        ) : null}
+        {result && (
           <div className="mt-5 space-y-3 border-t border-line pt-4">
             {finalCorrect !== null && (
               <p className={`text-lg font-bold ${finalCorrect ? "text-ok" : "text-bad"}`}>
@@ -243,7 +289,7 @@ function QuizCard({ item, onDone }: { item: QuizItem; onDone: (p: Pending) => vo
                 </span>
               </p>
             )}
-            {draft.trim() && (
+            {draft.trim() && !choices && (
               <p className="text-muted">
                 你的答案：<span lang="ja">{draft}</span>
               </p>
@@ -268,14 +314,18 @@ function QuizCard({ item, onDone }: { item: QuizItem; onDone: (p: Pending) => vo
       </article>
 
       <div className="sticky bottom-24 mt-4">
-        {!result ? (
+        {!result && choices ? (
+          <button type="button" onClick={giveUp} className="w-full rounded-2xl border border-line py-4 font-semibold text-muted">
+            {grading ? "批改中…" : "不會"}
+          </button>
+        ) : !result ? (
           <div className="grid grid-cols-[1fr_2fr] gap-3">
             <button type="button" onClick={giveUp} className="rounded-2xl border border-line py-4 font-semibold text-muted">
               不會
             </button>
             <button
               type="button"
-              onClick={grade}
+              onClick={() => grade()}
               disabled={!draft.trim() || grading}
               className="rounded-2xl bg-ink py-4 text-lg font-semibold text-bg disabled:opacity-40"
             >

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { acceptableAnswers, autoGrade, normalizeAnswer } from "./grading";
+import { acceptableAnswers, autoGrade, gradeChoice, normalizeAnswer, parseChoices } from "./grading";
 
 // 正確答案都取自 2026-10-26 日文題庫的實際資料
 describe("autoGrade", () => {
@@ -46,5 +46,43 @@ describe("helpers", () => {
   });
   it("lists alternatives without duplicates", () => {
     expect(acceptableAnswers("に")).toEqual(["に"]);
+  });
+});
+
+
+describe("parseChoices", () => {
+  it("splits circled options and moves the trailing hint back to the stem", () => {
+    expect(parseChoices("顔色が（　）ですね。大丈夫ですか。 ①いい ②悪い ③高い（心配するとき）")).toEqual({
+      stem: "顔色が（　）ですね。大丈夫ですか。",
+      hint: "心配するとき",
+      options: [
+        { key: "①", text: "いい" },
+        { key: "②", text: "悪い" },
+        { key: "③", text: "高い" },
+      ],
+    });
+  });
+  it("keeps questions without options as typed answers", () => {
+    expect(parseChoices("「三つ目の質問」の読み方は？")).toBeNull();
+    expect(parseChoices("答えは①です")).toBeNull();
+  });
+  it("handles options with no hint", () => {
+    expect(parseChoices("「今日中」の読み方は？ ①きょうなか ②きょうじゅう ③こんにちちゅう")?.options.map((o) => o.text)).toEqual([
+      "きょうなか",
+      "きょうじゅう",
+      "こんにちちゅう",
+    ]);
+  });
+});
+
+describe("gradeChoice", () => {
+  const q = parseChoices("「今日中」の読み方は？ ①きょうなか ②きょうじゅう ③こんにちちゅう")!;
+  it("grades by option number or option text in the reference", () => {
+    expect(gradeChoice(q.options[1], q.options, "② きょうじゅう")).toBe(true);
+    expect(gradeChoice(q.options[0], q.options, "② きょうじゅう")).toBe(false);
+    expect(gradeChoice(q.options[1], q.options, "きょうじゅう")).toBe(true);
+  });
+  it("returns null when the reference matches no option", () => {
+    expect(gradeChoice(q.options[0], q.options, "今天之內")).toBeNull();
   });
 });

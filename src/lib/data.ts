@@ -3,7 +3,7 @@ import { isFullBlock } from "@notionhq/client";
 import { DS, EXAMS, GRAMMAR_ORDER, N3_BATCH_SAMPLE, N3_DUE_LIMIT, QUIZ_DAILY_LIMIT, TZ, W3_PARENT_PAGE } from "./config";
 import { addDays, diffDays, formatJP, isWeekend, todayISO } from "./dates";
 import { gradeWithAi } from "./ai";
-import { autoGrade } from "./grading";
+import { autoGrade, gradeChoice, parseChoices } from "./grading";
 import { mockAnswer, mockJournal, mockReview, mockToday } from "./mock";
 import { eventsOnDay, type CalendarEvent } from "./calendar";
 import { pickPreviewPage, summarizePreview, type ChildPage, type SimpleBlock } from "./preview";
@@ -316,10 +316,17 @@ const GRAMMAR_LEVEL_FULL: Record<string, string> = {
 };
 
 /** 題庫題批改：先自動比對所有可接受的寫法，對不上才問 AI；AI 不可用時回傳 correct: null，由使用者自評。 */
-export async function gradeQuiz(id: string, answer: string): Promise<GradeResult> {
+export async function gradeQuiz(id: string, answer: string, choiceKey?: string): Promise<GradeResult> {
   const p = useMock() ? null : await getPage(id);
   const item = p ? toQuiz(p) : mockReview().find((i): i is QuizItem => i.kind === "quiz" && i.id === id);
   if (!item) throw new Error("找不到題目");
+  // 選擇題：正確答案對得到選項就直接判定
+  const choices = choiceKey ? parseChoices(item.prompt) : null;
+  const picked = choices?.options.find((o) => o.key === choiceKey);
+  if (choices && picked) {
+    const r = gradeChoice(picked, choices.options, item.answer);
+    if (r !== null) return { correct: r, method: "自動比對", feedback: "", suggestion: "" };
+  }
   if (autoGrade(answer, item.answer)) return { correct: true, method: "自動比對", feedback: "", suggestion: "" };
   if (useMock()) return { correct: false, method: "AI", feedback: "（預覽）助詞用錯了：翻訳する的對象語言要用「に」。", suggestion: item.answer };
   const ai = await gradeWithAi({ question: item.prompt, reference: item.answer, explanation: item.explanation, answer });
