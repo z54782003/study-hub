@@ -9,6 +9,9 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         type="password"
         name="password"
         autoComplete="current-password"
+        autoCapitalize="none"
+        autoCorrect="off"
+        spellCheck={false}
         placeholder="密碼"
         required
         className="w-full rounded-2xl border border-line bg-card px-4 py-3 text-base outline-none focus:border-accent"
