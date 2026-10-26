@@ -2,6 +2,8 @@ import "server-only";
 import { isFullBlock } from "@notionhq/client";
 import { DS, EXAMS, GRAMMAR_ORDER, N3_BATCH_SAMPLE, N3_DUE_LIMIT, QUIZ_DAILY_LIMIT, TZ, W3_PARENT_PAGE } from "./config";
 import { addDays, diffDays, formatJP, isWeekend, todayISO } from "./dates";
+import { gradeWithAi } from "./ai";
+import { autoGrade } from "./grading";
 import { mockAnswer, mockJournal, mockReview, mockToday } from "./mock";
 import { eventsOnDay, type CalendarEvent } from "./calendar";
 import { pickPreviewPage, summarizePreview, type ChildPage, type SimpleBlock } from "./preview";
@@ -16,7 +18,7 @@ import {
   vocabUpdate,
   weekGrammarIndices,
 } from "./srs";
-import type { AnswerPayload, GrammarItem, N3WordItem, QuizItem, ReviewItem, TodayData } from "./types";
+import type { AnswerPayload, GradeResult, GrammarItem, N3WordItem, QuizItem, ReviewItem, TodayData } from "./types";
 
 const useMock = () => !hasNotion() && process.env.MOCK === "1";
 
@@ -114,6 +116,8 @@ const toQuiz = (p: Page): QuizItem => ({
   answer: text(p, "正確答案"),
   explanation: text(p, "解析"),
   lastResult: select(p, "上次結果"),
+  myAnswer: text(p, "我的答案"),
+  lastTested: date(p, "上次測驗"),
 });
 
 const toN3 = (p: Page, source: "batch" | "due"): N3WordItem => ({
@@ -311,10 +315,53 @@ const GRAMMAR_LEVEL_FULL: Record<string, string> = {
   精通: "精通 / 완벽",
 };
 
-export async function submitAnswer({ kind, id, correct }: AnswerPayload): Promise<void> {
+/** 題庫題批改：先自動比對所有可接受的寫法，對不上才問 AI；AI 不可用時回傳 correct: null，由使用者自評。 */
+export async function gradeQuiz(id: string, answer: string): Promise<GradeResult> {
+  const p = useMock() ? null : await getPage(id);
+  const item = p ? toQuiz(p) : mockReview().find((i): i is QuizItem => i.kind === "quiz" && i.id === id);
+  if (!item) throw new Error("找不到題目");
+  if (autoGrade(answer, item.answer)) return { correct: true, method: "自動比對", feedback: "", suggestion: "" };
+  if (useMock()) return { correct: false, method: "AI", feedback: "（預覽）助詞用錯了：翻訳する的對象語言要用「に」。", suggestion: item.answer };
+  const ai = await gradeWithAi({ question: item.prompt, reference: item.answer, explanation: item.explanation, answer });
+  if (!ai) return { correct: null, method: "自評", feedback: "", suggestion: "" };
+  return { correct: ai.correct, method: "AI", feedback: ai.feedback, suggestion: ai.suggestion };
+}
+
+const KIND_LABEL = { quiz: "題庫", n3: "N3 單字", grammar: "N3 文型" } as const;
+
+/** 每答一題在「📝 作答紀錄」寫一筆，供紀錄頁與錯題分析使用 */
+async function logAttempt(page: Page, payload: AnswerPayload, day: string) {
+  const title =
+    payload.kind === "quiz" ? text(page, "題目") : payload.kind === "n3" ? text(page, "單字 / 단어") : text(page, "文型 / 문형");
+  const reference =
+    payload.kind === "quiz" ? text(page, "正確答案") : payload.kind === "n3" ? `${text(page, "讀音 / 요미가나")} ${text(page, "中文")}` : text(page, "中文説明 / 중국어 뜻");
+  const rich = (s: string) => ({ rich_text: s ? [{ text: { content: s.slice(0, 1900) } }] : [] });
+  const qtype = payload.kind === "quiz" ? select(page, "題型") : null;
+  await notion().pages.create({
+    parent: { type: "data_source_id", data_source_id: DS.attempts },
+    properties: {
+      題目: w.title(title.slice(0, 200) || "（無題目）"),
+      日期: w.date(day),
+      類型: w.select(KIND_LABEL[payload.kind]),
+      ...(qtype ? { 題型: w.select(qtype) } : {}),
+      語言: w.select("🇯🇵 日文"),
+      結果: w.select(payload.correct ? "✅ 對" : "❌ 錯"),
+      批改方式: w.select(payload.method ?? "自評"),
+      我的答案: rich(payload.answer ?? ""),
+      正確答案: rich(reference),
+      "AI 評語": rich(payload.feedback ?? ""),
+      來源頁面: { url: page.url },
+    } as never,
+  });
+}
+
+export async function submitAnswer(payload: AnswerPayload): Promise<void> {
+  const { kind, id, correct } = payload;
   const day = today();
   if (useMock()) return mockAnswer();
   const page = await getPage(id);
+  // 作答紀錄失敗（例如資料庫還沒分享）不影響 SRS 寫回
+  const logged = logAttempt(page, payload, day).catch((e) => console.error("作答紀錄寫入失敗", e));
 
   if (kind === "quiz") {
     const u = quizUpdate(day, date(page, "上次測驗"), date(page, "下次複習"), correct);
@@ -322,6 +369,8 @@ export async function submitAnswer({ kind, id, correct }: AnswerPayload): Promis
       上次測驗: w.date(u.lastTested),
       上次結果: w.select(u.result),
       下次複習: w.date(u.nextReview),
+      // 答錯時記下自己寫了什麼，錯題區可以對照；答對就清掉
+      ...(correct ? { 我的答案: { rich_text: [] } } : payload.answer ? { 我的答案: { rich_text: [{ text: { content: payload.answer.slice(0, 1900) } }] } } : {}),
     });
     // 關聯單字的熟悉度跟著題目對錯更新
     for (const vid of relationIds(page, "關聯單字")) {
@@ -334,22 +383,31 @@ export async function submitAnswer({ kind, id, correct }: AnswerPayload): Promis
         上次測驗: w.date(day),
       });
     }
-    return;
-  }
-
-  if (kind === "n3") {
+  } else if (kind === "n3") {
     await updatePage(id, {
       熟悉度_K: w.status(n3NextLevel(select(page, "熟悉度_K"), correct)),
       上次複習_K: w.date(day),
     });
-    return;
+  } else {
+    const next = n3NextLevel(grammarBase(select(page, "熟悉度 / 숙련도")), correct);
+    await updatePage(id, {
+      "熟悉度 / 숙련도": w.status(GRAMMAR_LEVEL_FULL[next]),
+      "上次複習 / 지난 복습": w.date(day),
+    });
   }
+  await logged;
+}
 
-  const next = n3NextLevel(grammarBase(select(page, "熟悉度 / 숙련도")), correct);
-  await updatePage(id, {
-    "熟悉度 / 숙련도": w.status(GRAMMAR_LEVEL_FULL[next]),
-    "上次複習 / 지난 복습": w.date(day),
-  });
+/** 錯題區：題庫裡上次答錯的題目，最近答錯的在前 */
+export async function getMistakes(): Promise<QuizItem[]> {
+  if (useMock()) return mockReview().filter((i): i is QuizItem => i.kind === "quiz" && i.lastResult === "❌ 錯");
+  const pages = await queryAll(
+    DS.quiz,
+    { property: "上次結果", select: { equals: "❌ 錯" } },
+    [{ property: "上次測驗", direction: "descending" }],
+    200,
+  );
+  return pages.map(toQuiz);
 }
 
 /** 複習結束：勾今天 Journal 的 🇯🇵 Class Review，並把時數加進 Study hours。 */

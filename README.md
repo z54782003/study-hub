@@ -11,6 +11,8 @@
   - N3 單字：到期字最多 10 個＋今日批次抽 10 個（同一天抽樣固定）；只更新 `熟悉度_K`、`上次複習_K`，下次複習交給 Notion 公式。
   - 文型：今日文型（週末＝本週 5 個）＋所有「忘記」的文型。
   - 每答一題就寫回 Notion；結束時勾 Journal 的「🇯🇵 Class Review」並累加 Study hours。
+- **批改**（題庫題）：先把「正確答案」展開成所有可接受的寫法（選項編號／圈號、漢字或讀音、括號裡的另一種寫法；括號裡含「＝」的說明不算），比對到就直接判對；對不上才用 Claude（`claude-opus-5-5`、effort low、JSON 結構化輸出）判斷並給中文評語。沒有 `ANTHROPIC_API_KEY` 或 AI 失敗時改成自評。批改結果可以手動改判。答錯時把答案寫進題庫的「我的答案」，每一題（含 N3 單字、文型）都寫一筆到「📝 作答紀錄」。
+- **錯題區** `/mistakes`：題庫裡上次答錯的題目（我的答案 vs 正確答案、依題型篩選），可一次重測最多 30 題。
 - **N3 單字** `/n3`：Morning brief 的批次，唯讀翻卡。
 
 ## P2：TED 精聽播放器
@@ -26,7 +28,7 @@
 
 1. 建一個 Notion integration（https://www.notion.so/profile/integrations），複製 token。
 2. 把下列資料庫分享給它（資料庫右上角 ⋯ → Connections）：日文題庫、Vocabulary／單字庫、JLPT テスト 単語、N3 文法補強、ISI 課堂筆記＆錄音、TED Log、Books、Journal，以及「每日預習（W3）」頁。
-3. 環境變數（見 `.env.example`）：`NOTION_TOKEN`、`APP_PASSWORD`、`APP_TZ`（預設 Asia/Tokyo）、`ICAL_URLS`（選填，行事曆）。
+3. 環境變數（見 `.env.example`）：`NOTION_TOKEN`、`APP_PASSWORD`、`APP_TZ`（預設 Asia/Tokyo）、`ICAL_URLS`（選填，行事曆）、`ANTHROPIC_API_KEY`（選填，AI 批改）。另外把「📝 作答紀錄（Study Hub）」資料庫也分享給 integration。
 
 ## 開發
 

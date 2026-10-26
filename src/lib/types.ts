@@ -27,6 +27,9 @@ export type QuizItem = {
   answer: string;
   explanation: string;
   lastResult: string | null;
+  /** 最近一次答錯時寫的答案 */
+  myAnswer: string;
+  lastTested: string | null;
 };
 
 export type N3WordItem = {
@@ -54,4 +57,16 @@ export type GrammarItem = {
 
 export type ReviewItem = QuizItem | N3WordItem | GrammarItem;
 
-export type AnswerPayload = { kind: ReviewItem["kind"]; id: string; correct: boolean };
+export type GradeMethod = "自動比對" | "AI" | "自評";
+
+export type AnswerPayload = {
+  kind: ReviewItem["kind"];
+  id: string;
+  correct: boolean;
+  /** 題庫題：使用者寫的答案、批改方式與 AI 評語（寫進作答紀錄） */
+  answer?: string;
+  method?: GradeMethod;
+  feedback?: string;
+};
+
+export type GradeResult = { correct: boolean | null; method: GradeMethod; feedback: string; suggestion: string };

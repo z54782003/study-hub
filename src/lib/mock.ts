@@ -44,6 +44,8 @@ export function mockReview(): ReviewItem[] {
       answer: "新しい単語を覚えるのは大変です。",
       explanation: "「〜のは大変です」：把動作名詞化後評價。覚える（おぼえる）＝記住。",
       lastResult: "❌ 錯",
+      myAnswer: "新しい単語を覚えるのが大変です。",
+      lastTested: "2026-10-26",
     },
     {
       kind: "quiz",
@@ -53,6 +55,8 @@ export function mockReview(): ReviewItem[] {
       answer: "降り",
       explanation: "動詞ます形去ます＋そうです＝看起來快要…",
       lastResult: "— 未作答",
+      myAnswer: "",
+      lastTested: null,
     },
     {
       kind: "n3",

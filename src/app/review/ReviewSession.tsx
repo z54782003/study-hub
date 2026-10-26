@@ -1,65 +1,60 @@
 "use client";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { ReviewItem } from "@/lib/types";
+import type { GradeMethod, GradeResult, QuizItem, ReviewItem } from "@/lib/types";
 
-type Result = { item: ReviewItem; correct: boolean };
-type Sync = { pending: number; failed: { item: ReviewItem; correct: boolean }[] };
+type Result = { item: ReviewItem; correct: boolean; answer?: string };
+type Pending = { item: ReviewItem; correct: boolean; answer?: string; method?: GradeMethod; feedback?: string };
+type Sync = { pending: number; failed: Pending[] };
 
 const KIND_LABEL: Record<ReviewItem["kind"], string> = { quiz: "題庫", n3: "N3 單字", grammar: "文型" };
 
-async function postAnswer(item: ReviewItem, correct: boolean) {
+async function postAnswer(p: Pending) {
   const res = await fetch("/api/review/answer", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ kind: item.kind, id: item.id, correct }),
+    body: JSON.stringify({ kind: p.item.kind, id: p.item.id, correct: p.correct, answer: p.answer, method: p.method, feedback: p.feedback }),
   });
   if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? res.statusText);
 }
 
-export function ReviewSession() {
+export function ReviewSession({ mode = "due" }: { mode?: "due" | "mistakes" }) {
   const [items, setItems] = useState<ReviewItem[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [index, setIndex] = useState(0);
-  const [revealed, setRevealed] = useState(false);
-  const [draft, setDraft] = useState("");
   const [results, setResults] = useState<Result[]>([]);
   const [sync, setSync] = useState<Sync>({ pending: 0, failed: [] });
   const [journal, setJournal] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const startedAt = useRef(Date.now());
 
   useEffect(() => {
-    fetch("/api/review")
+    fetch(`/api/review${mode === "mistakes" ? "?mode=mistakes" : ""}`)
       .then(async (r) => {
         const data = await r.json();
         if (!r.ok) throw new Error(data.error ?? r.statusText);
         setItems(data.items);
       })
       .catch((e) => setLoadError(e.message));
-  }, []);
+  }, [mode]);
 
   // 每答一題就寫回 Notion：中途關掉 App 也不會遺失已作答的結果
-  const send = useCallback((item: ReviewItem, correct: boolean) => {
+  const send = useCallback((p: Pending) => {
     setSync((s) => ({ ...s, pending: s.pending + 1 }));
-    postAnswer(item, correct)
+    postAnswer(p)
       .then(() => setSync((s) => ({ ...s, pending: s.pending - 1 })))
-      .catch(() => setSync((s) => ({ pending: s.pending - 1, failed: [...s.failed, { item, correct }] })));
+      .catch(() => setSync((s) => ({ pending: s.pending - 1, failed: [...s.failed, p] })));
   }, []);
 
   const retryFailed = () => {
     const failed = sync.failed;
     setSync((s) => ({ ...s, failed: [] }));
-    failed.forEach((f) => send(f.item, f.correct));
+    failed.forEach(send);
   };
 
-  const answer = (correct: boolean) => {
-    if (!items) return;
-    const item = items[index];
-    setResults((r) => [...r, { item, correct }]);
-    send(item, correct);
+  const next = (p: Pending) => {
+    setResults((r) => [...r, { item: p.item, correct: p.correct, answer: p.answer }]);
+    send(p);
     setIndex((i) => i + 1);
-    setRevealed(false);
-    setDraft("");
   };
 
   const finished = items !== null && index >= items.length;
@@ -78,15 +73,22 @@ export function ReviewSession() {
   }, [finished, journal, results.length, sync.pending]);
 
   if (loadError) return <p className="mt-10 text-bad">讀取失敗：{loadError}</p>;
-  if (!items) return <p className="mt-10 text-center text-muted">讀取到期題目中…</p>;
+  if (!items) return <p className="mt-10 text-center text-muted">讀取題目中…</p>;
   if (items.length === 0)
     return (
       <div className="mt-16 text-center">
         <div className="text-5xl">🎉</div>
-        <p className="mt-3 text-lg font-semibold">今天沒有到期的題目</p>
-        <Link href="/" className="mt-6 inline-block text-accent">
-          回今日清單
-        </Link>
+        <p className="mt-3 text-lg font-semibold">{mode === "mistakes" ? "錯題區是空的" : "今天沒有到期的題目"}</p>
+        <div className="mt-6 flex justify-center gap-6">
+          <Link href="/" className="text-accent">
+            回今日清單
+          </Link>
+          {mode === "due" && (
+            <Link href="/mistakes" className="text-accent">
+              看錯題區
+            </Link>
+          )}
+        </div>
       </div>
     );
 
@@ -106,7 +108,7 @@ export function ReviewSession() {
     const wrong = results.filter((r) => !r.correct);
     return (
       <div className="mt-6">
-        <h1 className="text-2xl font-bold">複習完成</h1>
+        <h1 className="text-2xl font-bold">{mode === "mistakes" ? "錯題重測完成" : "複習完成"}</h1>
         <p className="mt-2 text-4xl font-bold">
           {right}/{results.length}
           <span className="ml-2 text-lg font-normal text-muted">{Math.round((right / results.length) * 100)}%</span>
@@ -119,12 +121,18 @@ export function ReviewSession() {
         </p>
         {wrong.length > 0 && (
           <section className="mt-6">
-            <h2 className="font-semibold">答錯的 {wrong.length} 題</h2>
+            <h2 className="font-semibold">答錯的 {wrong.length} 題（已放進錯題區）</h2>
             <ul className="mt-2 space-y-2">
-              {wrong.map(({ item }) => (
+              {wrong.map(({ item, answer }) => (
                 <li key={item.id} className="rounded-xl border border-line bg-card px-3 py-2 text-sm">
                   <span className="mr-2 text-xs text-muted">{KIND_LABEL[item.kind]}</span>
-                  {item.kind === "quiz" && `${item.prompt} → ${item.answer}`}
+                  {item.kind === "quiz" && (
+                    <>
+                      <span lang="ja">{item.prompt}</span>
+                      {answer && <span className="block text-bad" lang="ja">✗ {answer}</span>}
+                      <span className="block text-ok" lang="ja">✓ {item.answer}</span>
+                    </>
+                  )}
                   {item.kind === "n3" && `${item.word}（${item.reading}）${item.meaning}`}
                   {item.kind === "grammar" && `${item.pattern}：${item.meaning}`}
                 </li>
@@ -132,9 +140,14 @@ export function ReviewSession() {
             </ul>
           </section>
         )}
-        <Link href="/" className="mt-8 block rounded-2xl bg-accent py-3 text-center font-semibold text-white">
-          回今日清單
-        </Link>
+        <div className="mt-8 grid grid-cols-2 gap-3">
+          <Link href="/mistakes" className="rounded-2xl border border-line py-3 text-center font-semibold">
+            錯題區
+          </Link>
+          <Link href="/" className="rounded-2xl bg-accent py-3 text-center font-semibold text-white">
+            回今日清單
+          </Link>
+        </div>
       </div>
     );
   }
@@ -144,6 +157,7 @@ export function ReviewSession() {
     <div className="mt-2 flex min-h-[calc(100dvh-9rem)] flex-col">
       <div className="flex items-center justify-between text-sm text-muted">
         <span>
+          {mode === "mistakes" && "錯題重測・"}
           {KIND_LABEL[item.kind]}
           {item.kind === "quiz" && item.qtype && `・${item.qtype}`}
           {item.kind === "n3" && `・${item.source === "due" ? "到期複習" : "今日新字"}`}
@@ -156,33 +170,188 @@ export function ReviewSession() {
         <div className="h-full bg-accent transition-all" style={{ width: `${(index / items.length) * 100}%` }} />
       </div>
       {syncBar}
+      {item.kind === "quiz" ? <QuizCard key={item.id} item={item} onDone={next} /> : <FlipCard key={item.id} item={item} onDone={next} />}
+    </div>
+  );
+}
 
+// ── 題庫題：寫答案 → 自動比對／AI 批改 → 看結果（可改判）────────────────
+
+function QuizCard({ item, onDone }: { item: QuizItem; onDone: (p: Pending) => void }) {
+  const [draft, setDraft] = useState("");
+  const [grading, setGrading] = useState(false);
+  const [result, setResult] = useState<GradeResult | null>(null);
+  const [override, setOverride] = useState<boolean | null>(null);
+
+  const grade = async () => {
+    setGrading(true);
+    try {
+      const r = await fetch("/api/review/grade", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ id: item.id, answer: draft }),
+      });
+      setResult(r.ok ? await r.json() : { correct: null, method: "自評", feedback: "", suggestion: "" });
+    } catch {
+      setResult({ correct: null, method: "自評", feedback: "", suggestion: "" });
+    } finally {
+      setGrading(false);
+    }
+  };
+
+  const giveUp = () => setResult({ correct: false, method: "自評", feedback: "", suggestion: "" });
+
+  const finalCorrect = override ?? result?.correct ?? null;
+  const finish = (correct: boolean) =>
+    onDone({
+      item,
+      correct,
+      answer: draft.trim() || undefined,
+      method: override !== null ? "自評" : (result?.method ?? "自評"),
+      feedback: result?.feedback || undefined,
+    });
+
+  return (
+    <>
       <article className="mt-2 flex-1 rounded-3xl border border-line bg-card p-5">
-        <Front item={item} />
-        {item.kind === "quiz" && !revealed && (
+        <p className="text-xl leading-relaxed whitespace-pre-wrap" lang="ja">
+          {item.prompt}
+        </p>
+        {item.myAnswer && !result && (
+          <p className="mt-3 text-xs text-muted" lang="ja">
+            上次寫錯：{item.myAnswer}
+          </p>
+        )}
+
+        {!result ? (
           <textarea
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            placeholder="先寫下你的答案（可略過）"
+            placeholder="寫下你的答案"
             rows={3}
             lang="ja"
+            autoFocus
             className="mt-4 w-full rounded-xl border border-line bg-bg p-3 text-base outline-none focus:border-accent"
           />
-        )}
-        {revealed && (
-          <div className="mt-5 border-t border-line pt-4">
-            <Back item={item} draft={draft} />
+        ) : (
+          <div className="mt-5 space-y-3 border-t border-line pt-4">
+            {finalCorrect !== null && (
+              <p className={`text-lg font-bold ${finalCorrect ? "text-ok" : "text-bad"}`}>
+                {finalCorrect ? "✓ 正確" : "✗ 錯誤"}
+                <span className="ml-2 rounded-full bg-bg px-2 py-0.5 text-xs font-normal text-muted">
+                  {override !== null ? "已改判" : result.method === "AI" ? "AI 批改" : result.method}
+                </span>
+              </p>
+            )}
+            {draft.trim() && (
+              <p className="text-muted">
+                你的答案：<span lang="ja">{draft}</span>
+              </p>
+            )}
+            {result.feedback && <p className="rounded-xl bg-bg p-3 text-sm leading-relaxed">{result.feedback}</p>}
+            {result.suggestion && !finalCorrect && (
+              <p className="text-sm">
+                改正：<span lang="ja">{result.suggestion}</span>
+              </p>
+            )}
+            <p className="text-xl font-semibold text-ok" lang="ja">
+              {item.answer}
+            </p>
+            {item.explanation && <p className="text-sm leading-relaxed whitespace-pre-wrap text-muted">{item.explanation}</p>}
+            {result.correct !== null && (
+              <button type="button" onClick={() => setOverride(!(override ?? result.correct))} className="text-xs text-muted underline">
+                批改有誤？改判為{(override ?? result.correct) ? "錯" : "對"}
+              </button>
+            )}
           </div>
         )}
       </article>
 
       <div className="sticky bottom-24 mt-4">
+        {!result ? (
+          <div className="grid grid-cols-[1fr_2fr] gap-3">
+            <button type="button" onClick={giveUp} className="rounded-2xl border border-line py-4 font-semibold text-muted">
+              不會
+            </button>
+            <button
+              type="button"
+              onClick={grade}
+              disabled={!draft.trim() || grading}
+              className="rounded-2xl bg-ink py-4 text-lg font-semibold text-bg disabled:opacity-40"
+            >
+              {grading ? "批改中…" : "送出批改"}
+            </button>
+          </div>
+        ) : finalCorrect === null ? (
+          <div className="grid grid-cols-2 gap-3">
+            <button type="button" onClick={() => finish(false)} className="rounded-2xl bg-bad py-4 text-lg font-semibold text-white">
+              ✗ 錯了
+            </button>
+            <button type="button" onClick={() => finish(true)} className="rounded-2xl bg-ok py-4 text-lg font-semibold text-white">
+              ✓ 對了
+            </button>
+          </div>
+        ) : (
+          <button type="button" onClick={() => finish(finalCorrect)} className="w-full rounded-2xl bg-accent py-4 text-lg font-semibold text-white">
+            下一題
+          </button>
+        )}
+        {result && finalCorrect === null && <p className="mt-2 text-center text-xs text-muted">AI 批改暫時無法使用，請自己判斷</p>}
+      </div>
+    </>
+  );
+}
+
+// ── N3 單字／文型：翻卡自評 ─────────────────────────────
+
+function FlipCard({ item, onDone }: { item: Exclude<ReviewItem, QuizItem>; onDone: (p: Pending) => void }) {
+  const [revealed, setRevealed] = useState(false);
+  return (
+    <>
+      <article className="mt-2 flex-1 rounded-3xl border border-line bg-card p-5">
+        <p className={`py-6 text-center font-bold ${item.kind === "n3" ? "text-5xl" : "text-3xl"}`} lang="ja">
+          {item.kind === "n3" ? item.word : item.pattern}
+        </p>
+        {revealed && (
+          <div className="mt-2 border-t border-line pt-4">
+            {item.kind === "n3" ? (
+              <div className="space-y-2 text-center">
+                <p className="text-2xl" lang="ja">
+                  {item.reading}
+                </p>
+                <p className="text-xl font-semibold">{item.meaning}</p>
+                <p className="text-sm text-muted">{[item.pos, item.level, item.status].filter(Boolean).join("・")}</p>
+                {item.note && (
+                  <p className="text-sm whitespace-pre-wrap text-muted" lang="ja">
+                    {item.note}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-lg font-semibold">{item.meaning}</p>
+                {item.connection && (
+                  <p className="text-sm text-muted">
+                    接續：<span lang="ja">{item.connection}</span>
+                  </p>
+                )}
+                {item.confusable && (
+                  <p className="text-sm text-muted">
+                    易混淆：<span lang="ja">{item.confusable}</span>
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </article>
+      <div className="sticky bottom-24 mt-4">
         {revealed ? (
           <div className="grid grid-cols-2 gap-3">
-            <button type="button" onClick={() => answer(false)} className="rounded-2xl bg-bad py-4 text-lg font-semibold text-white">
+            <button type="button" onClick={() => onDone({ item, correct: false, method: "自評" })} className="rounded-2xl bg-bad py-4 text-lg font-semibold text-white">
               ✗ 不會
             </button>
-            <button type="button" onClick={() => answer(true)} className="rounded-2xl bg-ok py-4 text-lg font-semibold text-white">
+            <button type="button" onClick={() => onDone({ item, correct: true, method: "自評" })} className="rounded-2xl bg-ok py-4 text-lg font-semibold text-white">
               ✓ 會
             </button>
           </div>
@@ -192,62 +361,6 @@ export function ReviewSession() {
           </button>
         )}
       </div>
-    </div>
-  );
-}
-
-function Front({ item }: { item: ReviewItem }) {
-  if (item.kind === "quiz") return <p className="text-xl leading-relaxed whitespace-pre-wrap" lang="ja">{item.prompt}</p>;
-  if (item.kind === "n3")
-    return (
-      <p className="py-6 text-center text-5xl font-bold" lang="ja">
-        {item.word}
-      </p>
-    );
-  return (
-    <p className="py-6 text-center text-3xl font-bold" lang="ja">
-      {item.pattern}
-    </p>
-  );
-}
-
-function Back({ item, draft }: { item: ReviewItem; draft: string }) {
-  if (item.kind === "quiz")
-    return (
-      <div className="space-y-3">
-        {draft.trim() && (
-          <p className="text-muted">
-            你的答案：<span lang="ja">{draft}</span>
-          </p>
-        )}
-        <p className="text-xl font-semibold text-ok" lang="ja">
-          {item.answer}
-        </p>
-        {item.explanation && <p className="text-sm leading-relaxed whitespace-pre-wrap text-muted">{item.explanation}</p>}
-      </div>
-    );
-  if (item.kind === "n3")
-    return (
-      <div className="space-y-2 text-center">
-        <p className="text-2xl" lang="ja">
-          {item.reading}
-        </p>
-        <p className="text-xl font-semibold">{item.meaning}</p>
-        <p className="text-sm text-muted">
-          {[item.pos, item.level, item.status].filter(Boolean).join("・")}
-        </p>
-        {item.note && (
-          <p className="text-sm whitespace-pre-wrap text-muted" lang="ja">
-            {item.note}
-          </p>
-        )}
-      </div>
-    );
-  return (
-    <div className="space-y-2">
-      <p className="text-lg font-semibold">{item.meaning}</p>
-      {item.connection && <p className="text-sm text-muted">接續：<span lang="ja">{item.connection}</span></p>}
-      {item.confusable && <p className="text-sm text-muted">易混淆：<span lang="ja">{item.confusable}</span></p>}
-    </div>
+    </>
   );
 }
