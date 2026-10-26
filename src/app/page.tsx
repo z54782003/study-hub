@@ -1,3 +1,4 @@
+import { ClassCard } from "@/components/ClassCard";
 import { TaskItem } from "@/components/TaskItem";
 import { NHK_EASY_URL } from "@/lib/config";
 import { getToday } from "@/lib/data";
@@ -84,32 +85,7 @@ export default async function TodayPage() {
 
       {!t.weekend && (
         <Section title="🏫 今天的課" href={t.classNote?.url ?? t.preview?.url}>
-          {t.classNote?.summary ? (
-            <>
-              <p className="text-xs text-muted">{t.classNote.title}</p>
-              <p className="mt-1.5 text-sm leading-relaxed whitespace-pre-line" lang="ja">
-                {t.classNote.summary}
-              </p>
-              {t.classNote.homework && <p className="mt-2 text-sm">📝 {t.classNote.homework}</p>}
-            </>
-          ) : t.preview ? (
-            <>
-              {t.preview.lesson && <p className="text-sm leading-relaxed" lang="ja">{t.preview.lesson}</p>}
-              {t.preview.grammar.length > 0 && (
-                <ul className="mt-2 space-y-1">
-                  {t.preview.grammar.map((g) => (
-                    <li key={g} className="text-sm font-medium" lang="ja">
-                      {g}
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {!t.preview.lesson && !t.preview.grammar.length && <p className="text-sm">{t.preview.title}</p>}
-              <p className="mt-2 text-xs text-muted">下課後整理好筆記，這裡會換成課堂摘要和作業</p>
-            </>
-          ) : (
-            <p className="text-sm text-muted">今天的預習頁和課堂筆記都還沒產生</p>
-          )}
+          <ClassCard classNote={t.classNote} preview={t.preview} />
         </Section>
       )}
 

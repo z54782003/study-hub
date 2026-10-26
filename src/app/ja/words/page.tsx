@@ -10,7 +10,7 @@ export default async function LessonWordsPage({ searchParams }: { searchParams: 
   const level = LEVELS.find((l) => l === q.level) ?? "初中級";
   const lesson = Math.max(1, Math.min(15, Number(q.lesson) || 1));
   const words = await getLessonVocab(level, lesson);
-  const practice = `/review/practice?${new URLSearchParams({ type: "vocab", level, lessons: String(lesson) })}`;
+  const practice = `/review/words?${new URLSearchParams({ level, lessons: String(lesson) })}`;
   return (
     <>
       <Link href="/ja" className="text-sm text-muted">

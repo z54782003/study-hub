@@ -21,13 +21,14 @@ export default async function ReviewHub() {
           detail="題庫到期題＋N3 單字＋今日文型"
           badge={queue === null ? "?" : queue.length || "✓"}
         />
+        <EntryCard href="/review/words" icon="🈁" title="單字・漢字" detail="日文依課・英文・漢字依章｜翻卡自評" />
+        <EntryCard href="/review/questions" icon="📝" title="題目練習" detail="題庫依冊・課・題型、動詞の形｜寫答案批改" />
         <EntryCard
           href="/review/exam"
           icon="🎯"
           title="考試複習"
           detail={nextExam ? `下一場：${nextExam.date.slice(5).replace("-", "/")} ${nextExam.name}（${nextExam.scope}）` : "依考試範圍出題"}
         />
-        <EntryCard href="/review/practice" icon="📝" title="自選練習" detail="題庫・單字（日文／英文）・漢字・動詞の形" />
       </div>
       <h2 className="mt-6 mb-2 text-sm font-semibold text-muted">錯題</h2>
       <EntryCard

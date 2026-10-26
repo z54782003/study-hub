@@ -4,14 +4,15 @@ import { useState } from "react";
 import { Chips, Field } from "@/components/Chips";
 import { LESSON_COUNT, LEVELS, QTYPES, sourceQuery } from "@/lib/reviewSource";
 
-const TYPES = ["題庫", "單字", "漢字", "動詞の形"] as const;
-type PracticeType = (typeof TYPES)[number];
+// 依作答方式分兩格：單字・漢字（翻卡自評）／題目練習（寫答案、批改）
+const TYPES = { words: ["日文", "英文", "漢字"], questions: ["題庫", "動詞の形"] } as const;
+type PracticeType = (typeof TYPES)[keyof typeof TYPES][number];
 const SOON: Partial<Record<PracticeType, string>> = {
   漢字: "漢字庫（HSJⅡ）整理好後開放",
   動詞の形: "準備中：會依單字庫的活用分類自動出題",
 };
 
-export type PracticePreset = { type: "bank" | "vocab"; lang: "ja" | "en"; level: string; lessons: number[] };
+export type PracticePreset = { mode: "words" | "questions"; lang: "ja" | "en"; level: string; lessons: number[] };
 
 export function PracticeForm({
   noteLessons,
@@ -24,8 +25,9 @@ export function PracticeForm({
   englishCount: number;
   preset: PracticePreset;
 }) {
-  const [type, setType] = useState<PracticeType>(preset.type === "vocab" ? "單字" : "題庫");
-  const [lang, setLang] = useState<"ja" | "en">(preset.lang);
+  const types = TYPES[preset.mode];
+  const [type, setType] = useState<PracticeType>(preset.mode === "words" ? (preset.lang === "en" ? "英文" : "日文") : "題庫");
+  const lang = type === "英文" ? "en" : "ja";
   const [level, setLevel] = useState<string>(preset.level);
   const [picked, setPicked] = useState<number[]>(preset.lessons);
   const [qtype, setQtype] = useState<string | null>(null);
@@ -60,8 +62,8 @@ export function PracticeForm({
 
   return (
     <>
-      <div role="tablist" className="mb-5 grid grid-cols-4 gap-1 rounded-2xl bg-line/60 p-1">
-        {TYPES.map((t) => (
+      <div role="tablist" className={`mb-5 grid gap-1 rounded-2xl bg-line/60 p-1 ${types.length === 3 ? "grid-cols-3" : "grid-cols-2"}`}>
+        {types.map((t) => (
           <button
             key={t}
             type="button"
@@ -103,9 +105,6 @@ export function PracticeForm({
         </>
       ) : (
         <>
-          <Field title="語言">
-            <Chips options={["ja", "en"] as const} value={[lang]} onToggle={setLang} label={(l) => (l === "ja" ? "日文" : "英文")} />
-          </Field>
           {lang === "ja" ? (
             <>
               {levelField}
