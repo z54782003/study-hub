@@ -8,9 +8,7 @@ import { GROUPS, LESSON_COUNT, LEVELS, QTYPES, sourceQuery } from "@/lib/reviewS
 // 依作答方式分兩格：單字・漢字（翻卡自評）／題目練習（寫答案、批改）
 const TYPES = { words: ["日文", "英文", "漢字"], questions: ["題庫", "動詞の形"] } as const;
 type PracticeType = (typeof TYPES)[keyof typeof TYPES][number];
-const SOON: Partial<Record<PracticeType, string>> = {
-  漢字: "漢字庫（HSJⅡ）整理好後開放",
-};
+const SOON: Partial<Record<PracticeType, string>> = {};
 
 export type PracticePreset = {
   mode: "words" | "questions";
@@ -19,23 +17,39 @@ export type PracticePreset = {
   lessons: number[];
   /** 從動詞變化表「練習這個形」過來 */
   verbForms: string[];
+  /** 從漢字表「練習這章」過來；沒有就預設下一場漢字テスト的範圍 */
+  kanjiChapters: string[];
+  kanji: boolean;
 };
 
 export function PracticeForm({
   noteLessons,
   vocabCounts,
   englishCount,
+  kanjiCounts,
   preset,
 }: {
   noteLessons: Record<string, number[]>;
   vocabCounts: Record<string, number>;
   englishCount: number;
+  kanjiCounts: Record<string, number>;
   preset: PracticePreset;
 }) {
   const types = TYPES[preset.mode];
   const [type, setType] = useState<PracticeType>(
-    preset.mode === "words" ? (preset.lang === "en" ? "英文" : "日文") : preset.verbForms.length ? "動詞の形" : "題庫",
+    preset.mode === "words"
+      ? preset.kanji
+        ? "漢字"
+        : preset.lang === "en"
+          ? "英文"
+          : "日文"
+      : preset.verbForms.length
+        ? "動詞の形"
+        : "題庫",
   );
+  const [chapters, setChapters] = useState<string[]>(preset.kanjiChapters);
+  const kanjiChapters = Object.keys(kanjiCounts);
+  const kanjiTotal = (chapters.length ? chapters : kanjiChapters).reduce((s, c) => s + (kanjiCounts[c] ?? 0), 0);
   const [verbForms, setVerbForms] = useState<string[]>(preset.verbForms.length ? preset.verbForms : ["意向"]);
   const [groups, setGroups] = useState<string[]>([]);
   const [judge, setJudge] = useState(true);
@@ -57,7 +71,9 @@ export function PracticeForm({
   const bankLessons = noteLessons[level] ?? [];
 
   const href =
-    type === "動詞の形"
+    type === "漢字"
+      ? `/review/session?${sourceQuery({ src: "kanji", chapters, count })}`
+      : type === "動詞の形"
       ? `/review/session?${sourceQuery({ src: "verb", forms: verbForms, groups, judge, count })}`
       : type === "題庫"
       ? `/review/session?${sourceQuery({ src: "bank", level, lessons: picked, qtype, scope, count })}`
@@ -93,6 +109,23 @@ export function PracticeForm({
 
       {soon ? (
         <p className="rounded-2xl border border-line bg-card p-4 text-sm text-muted">{soon}</p>
+      ) : type === "漢字" ? (
+        <>
+          <Field title="章" hint={`共 ${kanjiTotal} 字${chapters.length ? "" : "（不選＝全部）"}`}>
+            {kanjiChapters.length ? (
+              <Chips
+                options={kanjiChapters}
+                value={chapters}
+                onToggle={(c) => setChapters((xs) => (xs.includes(c) ? xs.filter((x) => x !== c) : [...xs, c]))}
+                label={(c) => `${c.replace("HSJ", "")}・${kanjiCounts[c]}`}
+              />
+            ) : (
+              <p className="text-sm text-muted">漢字庫還沒有資料</p>
+            )}
+          </Field>
+          {countField([10, 20, 30, 50], "字")}
+          <p className="mb-24 text-xs text-muted">看漢字 → 想音読み、訓読み和意思 → 翻卡自評。忘記的先出；結果寫回漢字庫的熟悉度和下次複習日。</p>
+        </>
       ) : type === "動詞の形" ? (
         <>
           <Field title="形" hint="可以複選">

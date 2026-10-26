@@ -1,4 +1,5 @@
 // 複習頁出題來源 ⇄ URL query string（伺服器和瀏覽器共用）
+import { KANJI_CHAPTERS } from "./config";
 import { FORMS, FORM_LABEL } from "./conjugate";
 import type { ReviewSource } from "./types";
 
@@ -42,6 +43,10 @@ export function parseSource(q: URLSearchParams): ReviewSource {
     const groups = list("groups").filter((g) => (GROUPS as readonly string[]).includes(g));
     return { src: "verb", forms: forms.length ? forms : ["意向"], groups, judge: q.get("judge") === "1", count };
   }
+  if (src === "kanji") {
+    const chapters = (q.get("chapters") ?? "").split(",").filter((c) => KANJI_CHAPTERS.includes(c));
+    return { src: "kanji", chapters, count };
+  }
   return { src: "due" };
 }
 
@@ -63,12 +68,17 @@ export function sourceQuery(s: ReviewSource): string {
     if (s.judge) q.set("judge", "1");
     q.set("count", String(s.count));
   }
+  if (s.src === "kanji") {
+    if (s.chapters.length) q.set("chapters", s.chapters.join(","));
+    q.set("count", String(s.count));
+  }
   return q.toString();
 }
 
 export function sourceLabel(s: ReviewSource): string {
   if (s.src === "due") return "今日到期";
   if (s.src === "mistakes") return "錯題重測";
+  if (s.src === "kanji") return `漢字・${s.chapters.length ? s.chapters.join("、") : "全部"}`;
   if (s.src === "verb") return `動詞の形・${s.forms.map((f) => FORM_LABEL[f as keyof typeof FORM_LABEL] ?? f).join("・")}`;
   const lessons = s.lessons.length ? `L${s.lessons.join("・")}` : "全部課";
   if (s.src === "vocab") return s.lang === "en" ? "英文單字" : `單字測驗・${s.level ?? ""} ${lessons}`;
@@ -82,4 +92,15 @@ export function examLessons(scope: string): number[] {
   if (m) return parseLessons(`${m[1]}-${m[2]}`);
   const single = scope.match(/^(\d+(?:・\d+)*)課/);
   return single ? parseLessons(single[1].split("・").join(",")) : [];
+}
+
+/** 「HSJⅡ 1・2章」「HSJⅠ 8・9章」→ 漢字庫的章名 */
+export function examChapters(scope: string): string[] {
+  const m = scope.match(/HSJ\s*([ⅠⅡ])\s*([\d・、,]+)章/);
+  if (!m) return [];
+  return m[2]
+    .split(/[・、,]/)
+    .filter(Boolean)
+    .map((n) => `HSJ${m[1]} ${Number(n)}章`)
+    .filter((c) => KANJI_CHAPTERS.includes(c));
 }

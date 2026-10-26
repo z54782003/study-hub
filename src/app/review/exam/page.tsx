@@ -3,7 +3,7 @@ import { EntryCard } from "@/components/EntryCard";
 import { EXAMS } from "@/lib/config";
 import { today } from "@/lib/data";
 import { diffDays } from "@/lib/dates";
-import { examLessons, sourceQuery } from "@/lib/reviewSource";
+import { examChapters, examLessons, sourceQuery } from "@/lib/reviewSource";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "考試複習・Study Hub" };
@@ -23,7 +23,12 @@ const VERB_EXAM_FORMS: [string, string[]][] = [
 const LEVEL = "初中級";
 
 function examEntry(name: string, scope: string) {
-  if (name.includes("漢字テスト")) return { href: "", detail: `${scope}・漢字庫建好後開放`, disabled: true };
+  if (name.includes("漢字テスト")) {
+    const chapters = examChapters(scope);
+    return chapters.length
+      ? { href: `/review/session?${sourceQuery({ src: "kanji", chapters, count: 50 })}`, detail: `${scope}・漢字卡`, disabled: false }
+      : { href: "", detail: `${scope}・沒有對應的章`, disabled: true };
+  }
   if (name.includes("作文")) return { href: "", detail: `${scope}・寫好給老師改`, disabled: true };
   if (name.includes("動詞の形")) {
     const forms = VERB_EXAM_FORMS.filter(([k]) => scope.includes(k)).flatMap(([, f]) => f);

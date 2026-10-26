@@ -9,6 +9,7 @@ export const DS = {
   books: process.env.DS_BOOKS ?? "a73097c5-7668-8295-ab2c-8735d209f19f", // 📕 Books
   journal: process.env.DS_JOURNAL ?? "9f8acad0-843a-443d-bc22-8050e151eae9", // 📔 Journal
   attempts: process.env.DS_ATTEMPTS ?? "0f5829ab-0ceb-4322-823e-71058525a2d4", // 📝 作答紀錄（Study Hub）
+  kanji: process.env.DS_KANJI ?? "a05cd8c3-2228-4aca-af1f-d7d6d95f3980", // 🈴 漢字庫（HSJ）
 };
 
 // 「每日預習（W3）」父頁，底下一天一頁，標題「MM/DD（曜）預習｜L〇 ST〇」
@@ -65,3 +66,9 @@ export const GRAMMAR_ORDER = [
 ];
 
 export const NHK_EASY_URL = "https://www3.nhk.or.jp/news/easy/";
+
+// 漢字庫「章」的選項（HSJⅠ 0–9章、HSJⅡ 1–8章）
+export const KANJI_CHAPTERS = [
+  ...Array.from({ length: 10 }, (_, i) => `HSJⅠ ${i}章`),
+  ...Array.from({ length: 8 }, (_, i) => `HSJⅡ ${i + 1}章`),
+];

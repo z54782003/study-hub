@@ -30,6 +30,7 @@ import type {
   ReviewItem,
   ReviewSource,
   TodayData,
+  KanjiItem,
   VerbItem,
   VocabItem,
 } from "./types";
@@ -275,8 +276,88 @@ export async function getReviewItems(s: ReviewSource): Promise<ReviewItem[]> {
   if (s.src === "due") return getReviewQueue();
   if (s.src === "mistakes") return (await getMistakes()).slice(0, 30);
   if (s.src === "verb") return verbQuiz(s);
+  if (s.src === "kanji") return kanjiQuiz(s);
   if (useMock()) return s.src === "vocab" ? mockVocab() : mockReview().filter((i) => i.kind === "quiz");
   return s.src === "bank" ? bankQuiz(s) : vocabQuiz(s);
+}
+
+// ── 漢字 ────────────────────────────────────────────
+
+const toKanji = (p: Page): KanjiItem => ({
+  kind: "kanji",
+  id: p.id,
+  kanji: text(p, "漢字"),
+  on: text(p, "音読み"),
+  kun: text(p, "訓読み"),
+  meaning: text(p, "中文意思"),
+  examples: text(p, "例詞")
+    .split("\n")
+    .map((l) => l.split("｜").map((x) => x.trim()))
+    .filter((x) => x[0] && x.length >= 2)
+    .map(([word, reading, zh = ""]) => ({ word, reading, zh })),
+  hint: text(p, "字形提示"),
+  confusable: text(p, "易混淆"),
+  chapter: select(p, "章"),
+  status: select(p, "熟悉度"),
+});
+
+const MOCK_KANJI: KanjiItem[] = [
+  {
+    kind: "kanji",
+    id: "k1",
+    kanji: "体",
+    on: "タイ",
+    kun: "からだ",
+    meaning: "身體",
+    examples: [
+      { word: "体", reading: "からだ", zh: "身體" },
+      { word: "体重", reading: "たいじゅう", zh: "體重" },
+    ],
+    hint: "字形和「休」很像",
+    confusable: "体⇄休",
+    chapter: "HSJⅡ 1章",
+    status: "未學",
+  },
+  {
+    kind: "kanji",
+    id: "k2",
+    kanji: "歌",
+    on: "カ",
+    kun: "うた・うた.う",
+    meaning: "歌；唱",
+    examples: [{ word: "歌手", reading: "かしゅ", zh: "歌手" }],
+    hint: "",
+    confusable: "",
+    chapter: "HSJⅡ 2章",
+    status: "學習中",
+  },
+];
+
+/** 某幾章的漢字（依建立順序＝課本順序） */
+export async function getKanji(chapters: string[]): Promise<KanjiItem[]> {
+  if (useMock()) return MOCK_KANJI.filter((k) => !chapters.length || chapters.includes(k.chapter ?? ""));
+  const pages = await queryAll(
+    DS.kanji,
+    chapters.length ? ({ or: chapters.map((c) => ({ property: "章", select: { equals: c } })) } as never) : undefined,
+    [{ timestamp: "created_time", direction: "ascending" }],
+    2000,
+  );
+  return pages.map(toKanji);
+}
+
+/** 漢字表與選章畫面：每章幾個字 */
+export async function kanjiChapterCounts(): Promise<Record<string, number>> {
+  if (useMock()) return { "HSJⅡ 1章": 12, "HSJⅡ 2章": 12, "HSJⅠ 9章": 8 };
+  const counts: Record<string, number> = {};
+  for (const k of await getKanji([])) if (k.chapter) counts[k.chapter] = (counts[k.chapter] ?? 0) + 1;
+  return counts;
+}
+
+async function kanjiQuiz(s: Extract<ReviewSource, { src: "kanji" }>): Promise<KanjiItem[]> {
+  const all = await getKanji(s.chapters);
+  return shuffle(all)
+    .sort((a, b) => (VOCAB_RANK[a.status ?? "未學"] ?? 2) - (VOCAB_RANK[b.status ?? "未學"] ?? 2))
+    .slice(0, s.count);
 }
 
 // ── 動詞の形 ───────────────────────────────────────────
@@ -554,7 +635,10 @@ export async function gradeQuiz(id: string, answer: string, choiceKey?: string):
   return { correct: ai.correct, method: "AI", feedback: ai.feedback, suggestion: ai.suggestion };
 }
 
-const KIND_LABEL = { quiz: "題庫", n3: "N3 單字", grammar: "N3 文型", vocab: "單字庫", verb: "動詞の形" } as const;
+// 漢字庫沒有公式欄位，下次複習由 App 依熟悉度算
+const KANJI_INTERVAL: Record<string, number> = { 忘記: 1, 學習中: 3, 熟悉: 7, 精通: 30 };
+
+const KIND_LABEL = { quiz: "題庫", n3: "N3 單字", grammar: "N3 文型", vocab: "單字庫", verb: "動詞の形", kanji: "漢字" } as const;
 
 const rich = (s: string) => ({ rich_text: s ? [{ text: { content: s.slice(0, 1900) } }] : [] });
 
@@ -585,6 +669,7 @@ async function logAttempt(page: Page, payload: AnswerPayload, day: string) {
     grammar: () => text(page, "文型 / 문형"),
     vocab: () => text(page, "單字"),
     verb: () => payload.prompt ?? "",
+    kanji: () => text(page, "漢字"),
   }[payload.kind]();
   const reference = {
     quiz: () => text(page, "正確答案"),
@@ -592,6 +677,7 @@ async function logAttempt(page: Page, payload: AnswerPayload, day: string) {
     grammar: () => text(page, "中文説明 / 중국어 뜻"),
     vocab: () => `${text(page, "音標/假名")} ${text(page, "中文翻譯")}`,
     verb: () => payload.reference ?? "",
+    kanji: () => [text(page, "音読み"), text(page, "訓読み"), text(page, "中文意思")].filter(Boolean).join("／"),
   }[payload.kind]();
   const english = payload.kind === "vocab" && select(page, "語言") === "🇬🇧 英文";
   const qtype = payload.kind === "quiz" ? select(page, "題型") : null;
@@ -642,6 +728,15 @@ export async function submitAnswer(payload: AnswerPayload): Promise<void> {
         上次測驗: w.date(day),
       });
     }
+  } else if (kind === "kanji") {
+    const vu = vocabUpdate(select(page, "熟悉度"), num(page, "答對次數"), num(page, "答錯次數"), correct);
+    await updatePage(id, {
+      熟悉度: w.status(vu.status),
+      答對次數: w.number(vu.rightCount),
+      答錯次數: w.number(vu.wrongCount),
+      上次複習: w.date(day),
+      下次複習: w.date(addDays(day, KANJI_INTERVAL[vu.status] ?? 1)),
+    });
   } else if (kind === "vocab") {
     const vu = vocabUpdate(select(page, "熟悉度"), num(page, "答對次數"), num(page, "答錯次數"), correct);
     await updatePage(id, {

@@ -1,8 +1,20 @@
 import Link from "next/link";
 import { PracticeForm, type PracticePreset } from "./PracticeForm";
-import { englishVocabCount, noteLessons, vocabLessonCounts } from "@/lib/data";
 import { FORMS } from "@/lib/conjugate";
-import { LEVELS, parseLessons } from "@/lib/reviewSource";
+import { EXAMS, KANJI_CHAPTERS } from "@/lib/config";
+import { englishVocabCount, kanjiChapterCounts, noteLessons, today, vocabLessonCounts } from "@/lib/data";
+import { examChapters, LEVELS, parseLessons } from "@/lib/reviewSource";
+
+/** 下一場漢字テスト的章（例：HSJⅡ 1章、2章） */
+function nextKanjiExamChapters(): string[] {
+  const day = today();
+  for (const e of EXAMS) {
+    if (e.date < day) continue;
+    const i = e.name.split("／").findIndex((n) => n.includes("漢字"));
+    if (i >= 0) return examChapters(e.scope.split("／")[i] ?? e.scope);
+  }
+  return [];
+}
 
 type Query = Record<string, string | undefined>;
 
@@ -14,15 +26,22 @@ export async function PracticePage({ mode, query }: { mode: PracticePreset["mode
     level: LEVELS.find((l) => l === query.level) ?? "初中級",
     lessons: parseLessons(query.lessons ?? null),
     verbForms: (query.forms ?? "").split(",").filter((f) => (FORMS as readonly string[]).includes(f)),
+    kanjiChapters: query.chapters ? query.chapters.split(",").filter((c) => KANJI_CHAPTERS.includes(c)) : nextKanjiExamChapters(),
+    kanji: query.type === "kanji" || Boolean(query.chapters),
   };
-  const [lessons, counts, english] = await Promise.all([noteLessons(), vocabLessonCounts(), englishVocabCount().catch(() => 0)]);
+  const [lessons, counts, english, kanjiCounts] = await Promise.all([
+    noteLessons(),
+    vocabLessonCounts(),
+    englishVocabCount().catch(() => 0),
+    kanjiChapterCounts().catch(() => ({}) as Record<string, number>),
+  ]);
   return (
     <>
       <Link href="/review" className="text-sm text-muted">
         ‹ 複習
       </Link>
       <h1 className="mt-1 mb-4 text-2xl font-bold">{mode === "words" ? "單字・漢字" : "題目練習"}</h1>
-      <PracticeForm noteLessons={lessons} vocabCounts={counts} englishCount={english} preset={preset} />
+      <PracticeForm noteLessons={lessons} vocabCounts={counts} englishCount={english} kanjiCounts={kanjiCounts} preset={preset} />
     </>
   );
 }

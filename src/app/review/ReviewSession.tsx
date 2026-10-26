@@ -4,13 +4,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { gradeChoice, parseChoices } from "@/lib/grading";
 import { sourceLabel, sourceQuery } from "@/lib/reviewSource";
 import { FORM_LABEL, FORM_RULE, GROUP_OF, checkConjugation, type VerbForm } from "@/lib/conjugate";
-import type { GradeMethod, GradeResult, QuizItem, ReviewItem, ReviewSource, VerbItem, VocabItem } from "@/lib/types";
+import type { GradeMethod, GradeResult, KanjiItem, QuizItem, ReviewItem, ReviewSource, VerbItem, VocabItem } from "@/lib/types";
 
 type Result = { item: ReviewItem; correct: boolean; answer?: string };
 type Pending = { item: ReviewItem; correct: boolean; answer?: string; method?: GradeMethod; feedback?: string };
 type Sync = { pending: number; failed: Pending[] };
 
-const KIND_LABEL: Record<ReviewItem["kind"], string> = { quiz: "題庫", n3: "N3 單字", grammar: "文型", vocab: "單字", verb: "動詞の形" };
+const KIND_LABEL: Record<ReviewItem["kind"], string> = { quiz: "題庫", n3: "N3 單字", grammar: "文型", vocab: "單字", verb: "動詞の形", kanji: "漢字" };
 
 /** 動詞題的題目與正確答案（寫進作答紀錄用） */
 const verbPrompt = (v: VerbItem) =>
@@ -157,6 +157,7 @@ export function ReviewSession({ source }: { source: ReviewSource }) {
                   {item.kind === "n3" && `${item.word}（${item.reading}）${item.meaning}`}
                   {item.kind === "grammar" && `${item.pattern}：${item.meaning}`}
                   {item.kind === "vocab" && `${item.word}（${item.reading}）${item.meaning}`}
+                  {item.kind === "kanji" && `${item.kanji}　${[item.on, item.kun].filter(Boolean).join("／")}　${item.meaning}`}
                   {item.kind === "verb" && (
                     <>
                       <span lang="ja">{verbPrompt(item)}</span>
@@ -403,11 +404,13 @@ function FlipCard({ item, onDone }: { item: Exclude<ReviewItem, QuizItem | VerbI
           className={`py-6 text-center font-bold ${item.kind === "grammar" ? "text-3xl" : "text-5xl"}`}
           lang={item.kind === "vocab" && item.lang === "en" ? "en" : "ja"}
         >
-          {item.kind === "grammar" ? item.pattern : item.word}
+          {item.kind === "grammar" ? item.pattern : item.kind === "kanji" ? item.kanji : item.word}
         </p>
         {revealed && (
           <div className="mt-2 border-t border-line pt-4">
-            {item.kind === "vocab" ? (
+            {item.kind === "kanji" ? (
+              <KanjiDetail item={item} />
+            ) : item.kind === "vocab" ? (
               <VocabDetail item={item} />
             ) : item.kind === "n3" ? (
               <div className="space-y-2 text-center">
@@ -457,6 +460,42 @@ function FlipCard({ item, onDone }: { item: Exclude<ReviewItem, QuizItem | VerbI
         )}
       </div>
     </>
+  );
+}
+
+export function KanjiDetail({ item }: { item: KanjiItem }) {
+  return (
+    <div className="space-y-3" lang="ja">
+      <div className="grid grid-cols-[3.5rem_1fr] gap-y-1 text-sm">
+        <span className="text-muted">音読み</span>
+        <span className="text-base">{item.on || "—"}</span>
+        <span className="text-muted">訓読み</span>
+        <span className="text-base">{item.kun || "—"}</span>
+        <span className="text-muted">意思</span>
+        <span className="text-base" lang="zh-Hant">
+          {item.meaning}
+        </span>
+      </div>
+      {item.examples.length > 0 && (
+        <ul className="divide-y divide-line rounded-xl bg-bg px-3 text-sm">
+          {item.examples.map((e, i) => (
+            <li key={i} className="flex items-baseline gap-2 py-1.5">
+              <span className="font-semibold">{e.word}</span>
+              <span className="text-muted">{e.reading}</span>
+              <span className="ml-auto text-right" lang="zh-Hant">
+                {e.zh}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {(item.hint || item.confusable) && (
+        <p className="text-xs text-muted" lang="zh-Hant">
+          {[item.hint, item.confusable && `易混淆：${item.confusable}`].filter(Boolean).join("　")}
+        </p>
+      )}
+      <p className="text-xs text-muted">{[item.chapter, item.status].filter(Boolean).join("・")}</p>
+    </div>
   );
 }
 

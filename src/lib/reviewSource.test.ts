@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { examLessons, parseLessons, parseSource, sourceQuery } from "./reviewSource";
+import { examChapters, examLessons, parseLessons, parseSource, sourceQuery } from "./reviewSource";
 import type { ReviewSource } from "./types";
 
 describe("parseLessons", () => {
@@ -26,5 +26,13 @@ describe("examLessons", () => {
     expect(examLessons("ビジネス 2・7課")).toEqual([]);
     expect(examLessons("「私の失敗」（5課）")).toEqual([]);
     expect(examLessons("HSJⅡ 1・2章")).toEqual([]);
+  });
+});
+
+describe("examChapters", () => {
+  it("maps kanji test scopes to chapters", () => {
+    expect(examChapters("HSJⅡ 1・2章")).toEqual(["HSJⅡ 1章", "HSJⅡ 2章"]);
+    expect(examChapters("口頭表現／HSJⅡ 7・8章".split("／")[1])).toEqual(["HSJⅡ 7章", "HSJⅡ 8章"]);
+    expect(examChapters("1〜3課 語彙・文法")).toEqual([]);
   });
 });

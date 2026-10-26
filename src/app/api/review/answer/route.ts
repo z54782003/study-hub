@@ -4,7 +4,7 @@ import type { AnswerPayload } from "@/lib/types";
 
 export const maxDuration = 60;
 
-const KINDS = new Set(["quiz", "n3", "grammar", "vocab", "verb"]);
+const KINDS = new Set(["quiz", "n3", "grammar", "vocab", "verb", "kanji"]);
 
 export async function POST(req: Request) {
   const body = (await req.json().catch(() => null)) as AnswerPayload | null;
