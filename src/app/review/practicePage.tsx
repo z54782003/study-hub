@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { PracticeForm, type PracticePreset } from "./PracticeForm";
 import { englishVocabCount, noteLessons, vocabLessonCounts } from "@/lib/data";
+import { FORMS } from "@/lib/conjugate";
 import { LEVELS, parseLessons } from "@/lib/reviewSource";
 
 type Query = Record<string, string | undefined>;
@@ -12,6 +13,7 @@ export async function PracticePage({ mode, query }: { mode: PracticePreset["mode
     lang: query.lang === "en" ? "en" : "ja",
     level: LEVELS.find((l) => l === query.level) ?? "初中級",
     lessons: parseLessons(query.lessons ?? null),
+    verbForms: (query.forms ?? "").split(",").filter((f) => (FORMS as readonly string[]).includes(f)),
   };
   const [lessons, counts, english] = await Promise.all([noteLessons(), vocabLessonCounts(), englishVocabCount().catch(() => 0)]);
   return (

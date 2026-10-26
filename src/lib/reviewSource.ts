@@ -1,5 +1,8 @@
 // 複習頁出題來源 ⇄ URL query string（伺服器和瀏覽器共用）
+import { FORMS, FORM_LABEL } from "./conjugate";
 import type { ReviewSource } from "./types";
+
+export const GROUPS = ["G1", "G2", "G3"] as const;
 
 export const LEVELS = ["初級", "初中級"] as const;
 export const QTYPES = ["A 單字選擇", "B 文法填空", "C 翻譯", "D 聽寫"] as const;
@@ -33,6 +36,12 @@ export function parseSource(q: URLSearchParams): ReviewSource {
     return { src: "bank", level, lessons, qtype, scope: q.get("scope") === "all" ? "all" : "weak", count };
   }
   if (src === "vocab") return { src: "vocab", lang: q.get("lang") === "en" ? "en" : "ja", level, lessons, count };
+  if (src === "verb") {
+    const list = (k: string) => (q.get(k) ?? "").split(",").filter(Boolean);
+    const forms = list("forms").filter((f) => (FORMS as readonly string[]).includes(f));
+    const groups = list("groups").filter((g) => (GROUPS as readonly string[]).includes(g));
+    return { src: "verb", forms: forms.length ? forms : ["意向"], groups, judge: q.get("judge") === "1", count };
+  }
   return { src: "due" };
 }
 
@@ -48,12 +57,19 @@ export function sourceQuery(s: ReviewSource): string {
     q.set("scope", s.scope);
   }
   if (s.src === "vocab") q.set("lang", s.lang);
+  if (s.src === "verb") {
+    q.set("forms", s.forms.join(","));
+    if (s.groups.length) q.set("groups", s.groups.join(","));
+    if (s.judge) q.set("judge", "1");
+    q.set("count", String(s.count));
+  }
   return q.toString();
 }
 
 export function sourceLabel(s: ReviewSource): string {
   if (s.src === "due") return "今日到期";
   if (s.src === "mistakes") return "錯題重測";
+  if (s.src === "verb") return `動詞の形・${s.forms.map((f) => FORM_LABEL[f as keyof typeof FORM_LABEL] ?? f).join("・")}`;
   const lessons = s.lessons.length ? `L${s.lessons.join("・")}` : "全部課";
   if (s.src === "vocab") return s.lang === "en" ? "英文單字" : `單字測驗・${s.level ?? ""} ${lessons}`;
   return `題庫・${s.level ?? "全部"} ${lessons}${s.qtype ? `・${s.qtype}` : ""}`;

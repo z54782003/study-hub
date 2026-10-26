@@ -8,13 +8,29 @@ import { examLessons, sourceQuery } from "@/lib/reviewSource";
 export const dynamic = "force-dynamic";
 export const metadata = { title: "考試複習・Study Hub" };
 
+// 動詞の形テストの範圍 → 練習的形
+const VERB_EXAM_FORMS: [string, string[]][] = [
+  ["可能", ["可能"]],
+  ["意向", ["意向"]],
+  ["尊敬", ["尊敬"]],
+  ["条件", ["條件"]],
+  ["受身", ["受身"]],
+  ["命令", ["命令"]],
+  ["禁止", ["禁止"]],
+];
+
 // 現在的課程是初中級；考試範圍「1〜3課」= 初中級 L1–L3
 const LEVEL = "初中級";
 
 function examEntry(name: string, scope: string) {
   if (name.includes("漢字テスト")) return { href: "", detail: `${scope}・漢字庫建好後開放`, disabled: true };
   if (name.includes("作文")) return { href: "", detail: `${scope}・寫好給老師改`, disabled: true };
-  if (name.includes("動詞の形")) return { href: "", detail: `${scope}・準備中（依單字庫活用自動出題）`, disabled: true };
+  if (name.includes("動詞の形")) {
+    const forms = VERB_EXAM_FORMS.filter(([k]) => scope.includes(k)).flatMap(([, f]) => f);
+    return forms.length
+      ? { href: `/review/session?${sourceQuery({ src: "verb", forms, groups: [], judge: true, count: 30 })}`, detail: `${scope}・動詞の形 30 題`, disabled: false }
+      : { href: "", detail: `${scope}・沒有對應的形`, disabled: true };
+  }
   const lessons = examLessons(scope);
   if (!lessons.length) return { href: "", detail: `${scope}・沒有對應的課`, disabled: true };
   const vocab = /語彙/.test(scope);

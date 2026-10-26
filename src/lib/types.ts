@@ -70,14 +70,28 @@ export type VocabItem = {
   status: string | null;
 };
 
-export type ReviewItem = QuizItem | N3WordItem | GrammarItem | VocabItem;
+/** 動詞の形：conj＝寫出某一形，group＝判斷是 G1／G2／G3 */
+export type VerbItem = {
+  kind: "verb";
+  id: string;
+  dict: string;
+  reading: string;
+  meaning: string;
+  cls: "五段" | "一段" | "サ変" | "カ変";
+  mode: "conj" | "group";
+  form: string;
+  answer: { word: string; reading: string };
+};
+
+export type ReviewItem = QuizItem | N3WordItem | GrammarItem | VocabItem | VerbItem;
 
 /** 複習頁的出題來源（對應 /api/review 的 query string） */
 export type ReviewSource =
   | { src: "due" }
   | { src: "mistakes" }
   | { src: "bank"; level: string | null; lessons: number[]; qtype: string | null; scope: "weak" | "all"; count: number }
-  | { src: "vocab"; lang: "ja" | "en"; level: string | null; lessons: number[]; count: number };
+  | { src: "vocab"; lang: "ja" | "en"; level: string | null; lessons: number[]; count: number }
+  | { src: "verb"; forms: string[]; groups: string[]; judge: boolean; count: number };
 
 export type GradeMethod = "自動比對" | "AI" | "自評";
 
@@ -89,6 +103,9 @@ export type AnswerPayload = {
   answer?: string;
   method?: GradeMethod;
   feedback?: string;
+  /** 動詞の形：題目與正確答案由前端產生，直接寫進作答紀錄 */
+  prompt?: string;
+  reference?: string;
 };
 
 export type GradeResult = {

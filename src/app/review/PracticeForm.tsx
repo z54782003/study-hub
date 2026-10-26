@@ -2,17 +2,24 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Chips, Field } from "@/components/Chips";
-import { LESSON_COUNT, LEVELS, QTYPES, sourceQuery } from "@/lib/reviewSource";
+import { FORMS, FORM_LABEL } from "@/lib/conjugate";
+import { GROUPS, LESSON_COUNT, LEVELS, QTYPES, sourceQuery } from "@/lib/reviewSource";
 
 // 依作答方式分兩格：單字・漢字（翻卡自評）／題目練習（寫答案、批改）
 const TYPES = { words: ["日文", "英文", "漢字"], questions: ["題庫", "動詞の形"] } as const;
 type PracticeType = (typeof TYPES)[keyof typeof TYPES][number];
 const SOON: Partial<Record<PracticeType, string>> = {
   漢字: "漢字庫（HSJⅡ）整理好後開放",
-  動詞の形: "準備中：會依單字庫的活用分類自動出題",
 };
 
-export type PracticePreset = { mode: "words" | "questions"; lang: "ja" | "en"; level: string; lessons: number[] };
+export type PracticePreset = {
+  mode: "words" | "questions";
+  lang: "ja" | "en";
+  level: string;
+  lessons: number[];
+  /** 從動詞變化表「練習這個形」過來 */
+  verbForms: string[];
+};
 
 export function PracticeForm({
   noteLessons,
@@ -26,7 +33,12 @@ export function PracticeForm({
   preset: PracticePreset;
 }) {
   const types = TYPES[preset.mode];
-  const [type, setType] = useState<PracticeType>(preset.mode === "words" ? (preset.lang === "en" ? "英文" : "日文") : "題庫");
+  const [type, setType] = useState<PracticeType>(
+    preset.mode === "words" ? (preset.lang === "en" ? "英文" : "日文") : preset.verbForms.length ? "動詞の形" : "題庫",
+  );
+  const [verbForms, setVerbForms] = useState<string[]>(preset.verbForms.length ? preset.verbForms : ["意向"]);
+  const [groups, setGroups] = useState<string[]>([]);
+  const [judge, setJudge] = useState(true);
   const lang = type === "英文" ? "en" : "ja";
   const [level, setLevel] = useState<string>(preset.level);
   const [picked, setPicked] = useState<number[]>(preset.lessons);
@@ -45,7 +57,9 @@ export function PracticeForm({
   const bankLessons = noteLessons[level] ?? [];
 
   const href =
-    type === "題庫"
+    type === "動詞の形"
+      ? `/review/session?${sourceQuery({ src: "verb", forms: verbForms, groups, judge, count })}`
+      : type === "題庫"
       ? `/review/session?${sourceQuery({ src: "bank", level, lessons: picked, qtype, scope, count })}`
       : `/review/session?${sourceQuery({ src: "vocab", lang, level: lang === "ja" ? level : null, lessons: lang === "ja" ? picked : [], count })}`;
   const soon = SOON[type];
@@ -79,6 +93,25 @@ export function PracticeForm({
 
       {soon ? (
         <p className="rounded-2xl border border-line bg-card p-4 text-sm text-muted">{soon}</p>
+      ) : type === "動詞の形" ? (
+        <>
+          <Field title="形" hint="可以複選">
+            <Chips
+              options={FORMS}
+              value={verbForms as (typeof FORMS)[number][]}
+              onToggle={(f) => setVerbForms((xs) => (xs.includes(f) ? (xs.length > 1 ? xs.filter((x) => x !== f) : xs) : [...xs, f]))}
+              label={(f) => FORM_LABEL[f].replace(/（.*）/, "")}
+            />
+          </Field>
+          <Field title="動詞類別" hint="不選＝全部">
+            <Chips options={GROUPS} value={groups as (typeof GROUPS)[number][]} onToggle={(g) => setGroups((xs) => (xs.includes(g) ? xs.filter((x) => x !== g) : [...xs, g]))} />
+          </Field>
+          <Field title="判斷類別題">
+            <Chips options={["on", "off"] as const} value={[judge ? "on" : "off"]} onToggle={(v) => setJudge(v === "on")} label={(v) => (v === "on" ? "穿插（約每 4 題 1 題）" : "不要")} />
+          </Field>
+          {countField([10, 20, 30], "題")}
+          <p className="mb-24 text-xs text-muted">動詞來自單字庫（日文活用＝五段／一段／サ変／カ変）。漢字或平假名都算對；結果寫進作答紀錄。</p>
+        </>
       ) : type === "題庫" ? (
         <>
           {levelField}

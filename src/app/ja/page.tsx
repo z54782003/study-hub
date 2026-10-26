@@ -19,7 +19,7 @@ export default async function JapanesePage() {
         <EntryCard href="/n3" icon="🈁" title="N3 單字・今日文型" detail="今天這批的單字卡" />
         <EntryCard href={NHK_EASY_URL} icon="📰" title="NHK Easy" detail="聽讀 5 分" external />
         <EntryCard href="#" icon="🈴" title="漢字表" detail="HSJⅡ 漢字庫整理好後開放" disabled />
-        <EntryCard href="#" icon="🔤" title="動詞變化表" detail="準備中" disabled />
+        <EntryCard href="/ja/verbs" icon="🔤" title="動詞變化表" detail="ます・ない・て・可能・意向・條件・受身・命令・尊敬" />
       </div>
 
       {LEVELS.map((level) => {

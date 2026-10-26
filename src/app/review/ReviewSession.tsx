@@ -3,19 +3,34 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { gradeChoice, parseChoices } from "@/lib/grading";
 import { sourceLabel, sourceQuery } from "@/lib/reviewSource";
-import type { GradeMethod, GradeResult, QuizItem, ReviewItem, ReviewSource, VocabItem } from "@/lib/types";
+import { FORM_LABEL, FORM_RULE, GROUP_OF, checkConjugation, type VerbForm } from "@/lib/conjugate";
+import type { GradeMethod, GradeResult, QuizItem, ReviewItem, ReviewSource, VerbItem, VocabItem } from "@/lib/types";
 
 type Result = { item: ReviewItem; correct: boolean; answer?: string };
 type Pending = { item: ReviewItem; correct: boolean; answer?: string; method?: GradeMethod; feedback?: string };
 type Sync = { pending: number; failed: Pending[] };
 
-const KIND_LABEL: Record<ReviewItem["kind"], string> = { quiz: "題庫", n3: "N3 單字", grammar: "文型", vocab: "單字" };
+const KIND_LABEL: Record<ReviewItem["kind"], string> = { quiz: "題庫", n3: "N3 單字", grammar: "文型", vocab: "單字", verb: "動詞の形" };
+
+/** 動詞題的題目與正確答案（寫進作答紀錄用） */
+const verbPrompt = (v: VerbItem) =>
+  v.mode === "group" ? `${v.dict}（${v.reading}）是第幾類？` : `${v.dict}（${v.reading}）→ ${FORM_LABEL[v.form as VerbForm] ?? v.form}`;
+const verbAnswer = (v: VerbItem) =>
+  v.mode === "group" ? GROUP_OF[v.cls] : v.answer.word === v.answer.reading ? v.answer.word : `${v.answer.word}（${v.answer.reading}）`;
 
 async function postAnswer(p: Pending) {
   const res = await fetch("/api/review/answer", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ kind: p.item.kind, id: p.item.id, correct: p.correct, answer: p.answer, method: p.method, feedback: p.feedback }),
+    body: JSON.stringify({
+      kind: p.item.kind,
+      id: p.item.id,
+      correct: p.correct,
+      answer: p.answer,
+      method: p.method,
+      feedback: p.feedback,
+      ...(p.item.kind === "verb" ? { prompt: verbPrompt(p.item), reference: verbAnswer(p.item) } : {}),
+    }),
   });
   if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? res.statusText);
 }
@@ -142,6 +157,13 @@ export function ReviewSession({ source }: { source: ReviewSource }) {
                   {item.kind === "n3" && `${item.word}（${item.reading}）${item.meaning}`}
                   {item.kind === "grammar" && `${item.pattern}：${item.meaning}`}
                   {item.kind === "vocab" && `${item.word}（${item.reading}）${item.meaning}`}
+                  {item.kind === "verb" && (
+                    <>
+                      <span lang="ja">{verbPrompt(item)}</span>
+                      {answer && <span className="block text-bad" lang="ja">✗ {answer}</span>}
+                      <span className="block text-ok" lang="ja">✓ {verbAnswer(item)}</span>
+                    </>
+                  )}
                 </li>
               ))}
             </ul>
@@ -164,8 +186,8 @@ export function ReviewSession({ source }: { source: ReviewSource }) {
     <div className="mt-2 flex min-h-[calc(100dvh-9rem)] flex-col">
       <div className="flex items-center justify-between text-sm text-muted">
         <span>
-          {mode !== "due" && `${sourceLabel(source)}・`}
-          {KIND_LABEL[item.kind]}
+          {mode !== "due" && sourceLabel(source)}
+          {mode === "due" && KIND_LABEL[item.kind]}
           {item.kind === "quiz" && item.qtype && `・${item.qtype}`}
           {item.kind === "n3" && `・${item.source === "due" ? "到期複習" : "今日新字"}`}
           {item.kind === "vocab" && item.lesson && `・${item.lesson}`}
@@ -178,7 +200,13 @@ export function ReviewSession({ source }: { source: ReviewSource }) {
         <div className="h-full bg-accent transition-all" style={{ width: `${(index / items.length) * 100}%` }} />
       </div>
       {syncBar}
-      {item.kind === "quiz" ? <QuizCard key={item.id} item={item} onDone={next} /> : <FlipCard key={item.id} item={item} onDone={next} />}
+      {item.kind === "quiz" ? (
+        <QuizCard key={item.id} item={item} onDone={next} />
+      ) : item.kind === "verb" ? (
+        <VerbCard key={item.id} item={item} onDone={next} />
+      ) : (
+        <FlipCard key={item.id} item={item} onDone={next} />
+      )}
     </div>
   );
 }
@@ -366,7 +394,7 @@ function QuizCard({ item, onDone }: { item: QuizItem; onDone: (p: Pending) => vo
 
 // ── N3 單字／文型／單字庫：翻卡自評 ─────────────────────────
 
-function FlipCard({ item, onDone }: { item: Exclude<ReviewItem, QuizItem>; onDone: (p: Pending) => void }) {
+function FlipCard({ item, onDone }: { item: Exclude<ReviewItem, QuizItem | VerbItem>; onDone: (p: Pending) => void }) {
   const [revealed, setRevealed] = useState(false);
   return (
     <>
@@ -458,5 +486,118 @@ function VocabDetail({ item }: { item: VocabItem }) {
         </div>
       ))}
     </div>
+  );
+}
+
+// ── 動詞の形：寫出指定的形（或判斷類別），在手機上直接批改 ─────────────
+
+function VerbCard({ item, onDone }: { item: VerbItem; onDone: (p: Pending) => void }) {
+  const [draft, setDraft] = useState("");
+  const [result, setResult] = useState<boolean | null>(null);
+  const [picked, setPicked] = useState<string | null>(null);
+  const right = GROUP_OF[item.cls];
+
+  const check = () => setResult(checkConjugation(draft, item.answer));
+  const pickGroup = (g: string) => {
+    setPicked(g);
+    setResult(g === right);
+  };
+  const finish = () =>
+    onDone({ item, correct: result === true, answer: item.mode === "group" ? (picked ?? "") : draft.trim() || undefined, method: "自動比對" });
+
+  return (
+    <>
+      <article className="mt-2 flex-1 rounded-3xl border border-line bg-card p-5">
+        <p className="text-center text-sm text-muted">
+          {item.mode === "group" ? "是第幾類動詞？" : FORM_LABEL[item.form as VerbForm]}
+        </p>
+        <p className="py-4 text-center text-4xl font-bold" lang="ja">
+          {item.dict}
+        </p>
+        <p className="text-center text-muted" lang="ja">
+          {item.reading}
+          {item.meaning && <span className="ml-2">{item.meaning}</span>}
+        </p>
+
+        {item.mode === "group" ? (
+          <div className="mt-6 grid grid-cols-3 gap-2">
+            {(["G1", "G2", "G3"] as const).map((g) => {
+              const isRight = result !== null && g === right;
+              const isWrongPick = result === false && g === picked;
+              return (
+                <button
+                  key={g}
+                  type="button"
+                  disabled={result !== null}
+                  onClick={() => pickGroup(g)}
+                  className={`rounded-2xl border-2 py-4 text-lg font-semibold ${
+                    isRight ? "border-ok bg-ok/10" : isWrongPick ? "border-bad bg-bad/10" : "border-line"
+                  }`}
+                >
+                  {g}
+                </button>
+              );
+            })}
+          </div>
+        ) : result === null ? (
+          <input
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && draft.trim() && check()}
+            placeholder="寫出這個形（漢字或平假名都可以）"
+            lang="ja"
+            autoFocus
+            autoComplete="off"
+            className="mt-6 w-full rounded-xl border-2 border-accent bg-bg p-3 text-center text-2xl outline-none"
+          />
+        ) : null}
+
+        {result !== null && (
+          <div className="mt-5 space-y-2 border-t border-line pt-4 text-center">
+            <p className={`text-lg font-bold ${result ? "text-ok" : "text-bad"}`}>{result ? "✓ 正確" : "✗ 錯誤"}</p>
+            {item.mode === "conj" && !result && draft.trim() && (
+              <p className="text-muted" lang="ja">
+                你寫的：{draft}
+              </p>
+            )}
+            <p className="text-2xl font-semibold text-ok" lang="ja">
+              {item.mode === "group" ? `${right}（${item.cls}）` : item.answer.word}
+            </p>
+            {item.mode === "conj" && item.answer.word !== item.answer.reading && (
+              <p className="text-muted" lang="ja">
+                {item.answer.reading}
+              </p>
+            )}
+            <p className="text-left text-xs leading-relaxed text-muted" lang="ja">
+              {item.mode === "group" ? "G1＝五段、G2＝一段（い段／え段＋る）、G3＝する・来る。〜る 結尾的 G1（帰る・入る・知る・走る・切る）要特別記。" : FORM_RULE[item.form as VerbForm]}
+            </p>
+          </div>
+        )}
+      </article>
+
+      <div className="sticky bottom-24 mt-4">
+        {result === null ? (
+          item.mode === "conj" ? (
+            <div className="grid grid-cols-[1fr_2fr] gap-3">
+              <button type="button" onClick={() => setResult(false)} className="rounded-2xl border border-line py-4 font-semibold text-muted">
+                不會
+              </button>
+              <button
+                type="button"
+                onClick={check}
+                disabled={!draft.trim()}
+                className="rounded-2xl bg-ink py-4 text-lg font-semibold text-bg disabled:opacity-40"
+              >
+                批改
+              </button>
+            </div>
+          ) : null
+        ) : (
+          <button type="button" onClick={finish} className="w-full rounded-2xl bg-accent py-4 text-lg font-semibold text-white">
+            下一題
+          </button>
+        )}
+      </div>
+    </>
   );
 }

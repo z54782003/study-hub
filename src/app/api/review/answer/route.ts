@@ -4,7 +4,7 @@ import type { AnswerPayload } from "@/lib/types";
 
 export const maxDuration = 60;
 
-const KINDS = new Set(["quiz", "n3", "grammar", "vocab"]);
+const KINDS = new Set(["quiz", "n3", "grammar", "vocab", "verb"]);
 
 export async function POST(req: Request) {
   const body = (await req.json().catch(() => null)) as AnswerPayload | null;
@@ -20,6 +20,8 @@ export async function POST(req: Request) {
       method,
       answer: typeof body.answer === "string" ? body.answer.slice(0, 500) : undefined,
       feedback: typeof body.feedback === "string" ? body.feedback.slice(0, 1000) : undefined,
+      prompt: typeof body.prompt === "string" ? body.prompt.slice(0, 200) : undefined,
+      reference: typeof body.reference === "string" ? body.reference.slice(0, 200) : undefined,
     });
     return NextResponse.json({ ok: true });
   } catch (e) {

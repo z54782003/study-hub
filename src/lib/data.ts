@@ -7,6 +7,7 @@ import { gradeWithAi } from "./ai";
 import { autoGrade, gradeChoice, parseChoices } from "./grading";
 import { mockAnswer, mockHistory, mockJournal, mockReview, mockToday, mockVocab } from "./mock";
 import { eventsOnDay, type CalendarEvent } from "./calendar";
+import { GROUP_OF, VERB_CLASSES, conjugate, formsFor, parseVerb, type Verb, type VerbClass, type VerbForm } from "./conjugate";
 import { pickPreviewPage, summarizePreview, type ChildPage, type SimpleBlock } from "./preview";
 import { date, getPage, hasNotion, notion, num, queryAll, relationIds, select, text, updatePage, w, type Page } from "./notion";
 import {
@@ -29,6 +30,7 @@ import type {
   ReviewItem,
   ReviewSource,
   TodayData,
+  VerbItem,
   VocabItem,
 } from "./types";
 
@@ -272,8 +274,71 @@ async function vocabQuiz(s: Extract<ReviewSource, { src: "vocab" }>): Promise<Vo
 export async function getReviewItems(s: ReviewSource): Promise<ReviewItem[]> {
   if (s.src === "due") return getReviewQueue();
   if (s.src === "mistakes") return (await getMistakes()).slice(0, 30);
+  if (s.src === "verb") return verbQuiz(s);
   if (useMock()) return s.src === "vocab" ? mockVocab() : mockReview().filter((i) => i.kind === "quiz");
   return s.src === "bank" ? bankQuiz(s) : vocabQuiz(s);
+}
+
+// ── 動詞の形 ───────────────────────────────────────────
+
+/** 單字庫裡的動詞（同一個辭書形只留一筆）；只讀四個欄位，快取一小時 */
+const cachedVerbs = unstable_cache(
+  async (): Promise<Verb[]> => {
+    const pages = await queryAll(
+      DS.vocab,
+      { or: VERB_CLASSES.map((c) => ({ property: "日文活用", select: { equals: c } })) } as never,
+      undefined,
+      2000,
+    );
+    const seen = new Map<string, Verb>();
+    for (const p of pages) {
+      const parsed = parseVerb(text(p, "單字"), text(p, "音標/假名"), select(p, "日文活用") as VerbClass);
+      if (!parsed) continue;
+      // 同一個辭書形只留一筆（有中文翻譯的優先）
+      const key = parsed.reading + parsed.cls;
+      const prev = seen.get(key);
+      const meaning = text(p, "中文翻譯");
+      if (!prev || (!prev.meaning && meaning)) seen.set(key, { id: p.id, ...parsed, meaning });
+    }
+    return [...seen.values()];
+  },
+  ["verbs"],
+  { revalidate: 3600 },
+);
+
+export async function getVerbs(): Promise<Verb[]> {
+  if (useMock())
+    return [
+      { id: "v-kaku", dict: "書く", reading: "かく", cls: "五段", meaning: "寫" },
+      { id: "v-kaeru", dict: "帰る", reading: "かえる", cls: "五段", meaning: "回去" },
+      { id: "v-iku", dict: "行く", reading: "いく", cls: "五段", meaning: "去" },
+      { id: "v-taberu", dict: "食べる", reading: "たべる", cls: "一段", meaning: "吃" },
+      { id: "v-miru", dict: "見る", reading: "みる", cls: "一段", meaning: "看" },
+      { id: "v-benkyou", dict: "勉強する", reading: "べんきょうする", cls: "サ変", meaning: "唸書" },
+      { id: "v-kuru", dict: "来る", reading: "くる", cls: "カ変", meaning: "來" },
+    ];
+  return cachedVerbs();
+}
+
+async function verbQuiz(s: Extract<ReviewSource, { src: "verb" }>): Promise<VerbItem[]> {
+  const verbs = (await getVerbs()).filter((v) => !s.groups.length || s.groups.includes(GROUP_OF[v.cls]));
+  const forms = s.forms as VerbForm[];
+  const items: VerbItem[] = [];
+  for (const v of shuffle(verbs)) {
+    if (items.length >= s.count) break;
+    // 開了「判斷類別」時，大約每 4 題出 1 題判斷
+    if (s.judge && items.length % 4 === 3) {
+      items.push({ kind: "verb", id: `${v.id}:group`, dict: v.dict, reading: v.reading, meaning: v.meaning, cls: v.cls, mode: "group", form: "group", answer: { word: GROUP_OF[v.cls], reading: GROUP_OF[v.cls] } });
+      continue;
+    }
+    const usable = formsFor(v, forms);
+    if (!usable.length) continue;
+    const form = usable[Math.floor(Math.random() * usable.length)];
+    const answer = conjugate(v, form);
+    if (!answer) continue;
+    items.push({ kind: "verb", id: `${v.id}:${form}`, dict: v.dict, reading: v.reading, meaning: v.meaning, cls: v.cls, mode: "conj", form, answer });
+  }
+  return items;
 }
 
 /** 單字測驗選課畫面：每課有幾個字 */
@@ -489,7 +554,28 @@ export async function gradeQuiz(id: string, answer: string, choiceKey?: string):
   return { correct: ai.correct, method: "AI", feedback: ai.feedback, suggestion: ai.suggestion };
 }
 
-const KIND_LABEL = { quiz: "題庫", n3: "N3 單字", grammar: "N3 文型", vocab: "單字庫" } as const;
+const KIND_LABEL = { quiz: "題庫", n3: "N3 單字", grammar: "N3 文型", vocab: "單字庫", verb: "動詞の形" } as const;
+
+const rich = (s: string) => ({ rich_text: s ? [{ text: { content: s.slice(0, 1900) } }] : [] });
+
+/** 動詞の形：題目和正確答案由前端送來，不用讀頁面 */
+async function logVerbAttempt(payload: AnswerPayload, day: string) {
+  const pageId = payload.id.split(":")[0];
+  await notion().pages.create({
+    parent: { type: "data_source_id", data_source_id: DS.attempts },
+    properties: {
+      題目: w.title((payload.prompt ?? "動詞の形").slice(0, 200)),
+      日期: w.date(day),
+      類型: w.select(KIND_LABEL.verb),
+      語言: w.select("🇯🇵 日文"),
+      結果: w.select(payload.correct ? "✅ 對" : "❌ 錯"),
+      批改方式: w.select("自動比對"),
+      我的答案: rich(payload.answer ?? ""),
+      正確答案: rich(payload.reference ?? ""),
+      來源頁面: { url: `https://www.notion.so/${pageId.replace(/-/g, "")}` },
+    } as never,
+  });
+}
 
 /** 每答一題在「📝 作答紀錄」寫一筆，供紀錄頁與錯題分析使用 */
 async function logAttempt(page: Page, payload: AnswerPayload, day: string) {
@@ -498,15 +584,16 @@ async function logAttempt(page: Page, payload: AnswerPayload, day: string) {
     n3: () => text(page, "單字 / 단어"),
     grammar: () => text(page, "文型 / 문형"),
     vocab: () => text(page, "單字"),
+    verb: () => payload.prompt ?? "",
   }[payload.kind]();
   const reference = {
     quiz: () => text(page, "正確答案"),
     n3: () => `${text(page, "讀音 / 요미가나")} ${text(page, "中文")}`,
     grammar: () => text(page, "中文説明 / 중국어 뜻"),
     vocab: () => `${text(page, "音標/假名")} ${text(page, "中文翻譯")}`,
+    verb: () => payload.reference ?? "",
   }[payload.kind]();
   const english = payload.kind === "vocab" && select(page, "語言") === "🇬🇧 英文";
-  const rich = (s: string) => ({ rich_text: s ? [{ text: { content: s.slice(0, 1900) } }] : [] });
   const qtype = payload.kind === "quiz" ? select(page, "題型") : null;
   await notion().pages.create({
     parent: { type: "data_source_id", data_source_id: DS.attempts },
@@ -530,6 +617,7 @@ export async function submitAnswer(payload: AnswerPayload): Promise<void> {
   const { kind, id, correct } = payload;
   const day = today();
   if (useMock()) return mockAnswer();
+  if (kind === "verb") return logVerbAttempt(payload, day);
   const page = await getPage(id);
   // 作答紀錄失敗（例如資料庫還沒分享）不影響 SRS 寫回
   const logged = logAttempt(page, payload, day).catch((e) => console.error("作答紀錄寫入失敗", e));
