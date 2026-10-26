@@ -3,6 +3,7 @@ import { isFullBlock } from "@notionhq/client";
 import { DS, EXAMS, GRAMMAR_ORDER, N3_BATCH_SAMPLE, N3_DUE_LIMIT, QUIZ_DAILY_LIMIT, TZ, W3_PARENT_PAGE } from "./config";
 import { diffDays, formatJP, isWeekend, todayISO } from "./dates";
 import { mockAnswer, mockJournal, mockReview, mockToday } from "./mock";
+import { pickPreviewPage, type ChildPage } from "./preview";
 import { date, getPage, hasNotion, notion, num, queryAll, relationIds, select, text, updatePage, w, type Page } from "./notion";
 import {
   dailySample,
@@ -171,19 +172,17 @@ export async function getN3Batch(): Promise<{ words: N3WordItem[]; grammar: Gram
 }
 
 async function findPreviewPage(day: string) {
-  const [, m, d] = day.split("-");
-  const prefixes = [`${Number(m)}/${Number(d)}`, `${m}/${d}`];
+  const pages: ChildPage[] = [];
   let cursor: string | undefined;
   do {
     const res = await notion().blocks.children.list({ block_id: W3_PARENT_PAGE, start_cursor: cursor, page_size: 100 });
     for (const b of res.results) {
-      if (isFullBlock(b) && b.type === "child_page" && prefixes.some((p) => b.child_page.title.startsWith(p))) {
-        return { title: b.child_page.title, url: `https://www.notion.so/${b.id.replace(/-/g, "")}` };
-      }
+      if (isFullBlock(b) && b.type === "child_page") pages.push({ id: b.id, title: b.child_page.title, createdTime: b.created_time });
     }
     cursor = res.has_more ? (res.next_cursor ?? undefined) : undefined;
   } while (cursor);
-  return null;
+  const hit = pickPreviewPage(pages, day, TZ);
+  return hit ? { title: hit.title, url: `https://www.notion.so/${hit.id.replace(/-/g, "")}` } : null;
 }
 
 export async function getToday(): Promise<TodayData> {
