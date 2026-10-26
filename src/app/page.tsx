@@ -117,7 +117,9 @@ export default async function TodayPage() {
               <li key={e}>{e}</li>
             ))}
           </ul>
-          <p className="mt-2 text-muted">通常是該資料庫還沒分享給 Notion integration。</p>
+          {t.errors.some((e) => /Could not find|shared|unauthorized|restricted/i.test(e)) && (
+            <p className="mt-2 text-muted">看起來是該資料庫還沒分享給 Notion integration（資料庫右上角 ⋯ → Connections）。</p>
+          )}
         </details>
       )}
     </>

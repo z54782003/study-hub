@@ -211,9 +211,9 @@ export async function getToday(): Promise<TodayData> {
     safe(
       "TED Log",
       async () => {
-        const doing = await queryAll(DS.tedLog, { property: "進度", select: { equals: "今天做" } });
+        const doing = await queryAll(DS.tedLog, { property: "進度", status: { equals: "今天做" } });
         if (doing.length) return doing;
-        return queryAll(DS.tedLog, { property: "進度", select: { equals: "待做" } }, [
+        return queryAll(DS.tedLog, { property: "進度", status: { equals: "待做" } }, [
           { timestamp: "created_time", direction: "ascending" },
         ]);
       },
