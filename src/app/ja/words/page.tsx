@@ -1,3 +1,5 @@
+import { Speak } from "@/components/Speak";
+import { speakableJa } from "@/lib/speech";
 import Link from "next/link";
 import { getLessonVocab } from "@/lib/data";
 import { LEVELS } from "@/lib/reviewSource";
@@ -34,6 +36,7 @@ export default async function LessonWordsPage({ searchParams }: { searchParams: 
                   <span className="text-sm text-muted" lang="ja">
                     {w.reading}
                   </span>
+                  <Speak text={speakableJa(w.reading, w.word)} className="self-center" />
                   <span className="min-w-0 flex-1 truncate text-right text-sm">{w.meaning}</span>
                 </summary>
                 <div className="mt-2 space-y-2 text-sm">
@@ -46,7 +49,10 @@ export default async function LessonWordsPage({ searchParams }: { searchParams: 
                   )}
                   {w.examples.map((e, i) => (
                     <div key={i}>
-                      <p lang="ja">{e.ja}</p>
+                      <p className="flex items-start gap-1" lang="ja">
+                        <span className="flex-1">{e.ja}</span>
+                        <Speak text={e.ja} label="念例句" />
+                      </p>
                       {e.zh && <p className="text-muted">{e.zh}</p>}
                     </div>
                   ))}

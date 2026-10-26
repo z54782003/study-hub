@@ -1,3 +1,5 @@
+import { Speak } from "@/components/Speak";
+import { speakableJa } from "@/lib/speech";
 import Link from "next/link";
 import { KANJI_CHAPTERS } from "@/lib/config";
 import { getKanji, kanjiChapterCounts } from "@/lib/data";
@@ -57,9 +59,10 @@ export default async function KanjiTablePage({ searchParams }: { searchParams: P
             {k.examples.length > 0 && (
               <ul className="mt-2 space-y-0.5 border-t border-line pt-2 text-sm">
                 {k.examples.map((e, i) => (
-                  <li key={i} className="flex gap-2">
+                  <li key={i} className="flex items-center gap-2">
                     <span className="font-medium">{e.word}</span>
                     <span className="text-muted">{e.reading}</span>
+                    <Speak text={speakableJa(e.reading, e.word)} />
                     <span className="ml-auto text-right" lang="zh-Hant">
                       {e.zh}
                     </span>

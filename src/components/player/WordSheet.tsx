@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { Speak } from "@/components/Speak";
 
 type Entry = { phonetic?: string; audio?: string; meanings: { pos: string; def: string }[] };
 
@@ -64,10 +65,12 @@ export function WordSheet({ word: raw, sentence, onClose }: { word: string; sent
             {word}
           </h2>
           {entry && entry !== "loading" && entry.phonetic && <span className="text-muted">{entry.phonetic}</span>}
-          {entry && entry !== "loading" && entry.audio && (
+          {entry && entry !== "loading" && entry.audio ? (
             <button type="button" onClick={() => void new Audio(entry.audio!).play()} className="text-xl" aria-label="發音">
               🔊
             </button>
+          ) : (
+            <Speak text={word} lang="en" />
           )}
         </div>
 

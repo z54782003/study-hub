@@ -3,6 +3,8 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { gradeChoice, parseChoices } from "@/lib/grading";
 import { sourceLabel, sourceQuery } from "@/lib/reviewSource";
+import { Speak } from "@/components/Speak";
+import { speakableJa } from "@/lib/speech";
 import { FORM_LABEL, FORM_RULE, GROUP_OF, checkConjugation, type VerbForm } from "@/lib/conjugate";
 import type { GradeMethod, GradeResult, KanjiItem, QuizItem, ReviewItem, ReviewSource, VerbItem, VocabItem } from "@/lib/types";
 
@@ -191,7 +193,7 @@ export function ReviewSession({ source }: { source: ReviewSource }) {
           {mode === "due" && KIND_LABEL[item.kind]}
           {item.kind === "quiz" && item.qtype && `・${item.qtype}`}
           {item.kind === "n3" && `・${item.source === "due" ? "到期複習" : "今日新字"}`}
-          {item.kind === "vocab" && item.lesson && `・${item.lesson}`}
+          {mode === "due" && item.kind === "vocab" && item.lesson && `・${item.lesson}`}
         </span>
         <span>
           {index + 1} / {items.length}
@@ -414,8 +416,9 @@ function FlipCard({ item, onDone }: { item: Exclude<ReviewItem, QuizItem | VerbI
               <VocabDetail item={item} />
             ) : item.kind === "n3" ? (
               <div className="space-y-2 text-center">
-                <p className="text-2xl" lang="ja">
+                <p className="flex items-center justify-center gap-1 text-2xl" lang="ja">
                   {item.reading}
+                  <Speak text={speakableJa(item.reading, item.word)} />
                 </p>
                 <p className="text-xl font-semibold">{item.meaning}</p>
                 <p className="text-sm text-muted">{[item.pos, item.level, item.status].filter(Boolean).join("・")}</p>
@@ -479,9 +482,10 @@ export function KanjiDetail({ item }: { item: KanjiItem }) {
       {item.examples.length > 0 && (
         <ul className="divide-y divide-line rounded-xl bg-bg px-3 text-sm">
           {item.examples.map((e, i) => (
-            <li key={i} className="flex items-baseline gap-2 py-1.5">
+            <li key={i} className="flex items-center gap-2 py-1">
               <span className="font-semibold">{e.word}</span>
               <span className="text-muted">{e.reading}</span>
+              <Speak text={speakableJa(e.reading, e.word)} />
               <span className="ml-auto text-right" lang="zh-Hant">
                 {e.zh}
               </span>
@@ -504,11 +508,10 @@ function VocabDetail({ item }: { item: VocabItem }) {
   return (
     <div className="space-y-3">
       <div className="text-center">
-        {item.reading && (
-          <p className="text-2xl" lang={lang}>
-            {item.reading}
-          </p>
-        )}
+        <p className="flex items-center justify-center gap-1 text-2xl" lang={lang}>
+          {item.reading}
+          <Speak text={lang === "ja" ? speakableJa(item.reading, item.word) : item.word} lang={lang} />
+        </p>
         <p className="text-xl font-semibold">{item.meaning || "（中文翻譯還沒補）"}</p>
         <p className="text-sm text-muted">{[item.pos, item.lesson, item.status].filter(Boolean).join("・")}</p>
       </div>
@@ -520,7 +523,10 @@ function VocabDetail({ item }: { item: VocabItem }) {
       )}
       {item.examples.map((e, i) => (
         <div key={i} className="text-sm">
-          <p lang={lang}>{e.ja}</p>
+          <p className="flex items-start gap-1" lang={lang}>
+            <span className="flex-1">{e.ja}</span>
+            <Speak text={e.ja} lang={lang} label="念例句" />
+          </p>
           {e.zh && <p className="text-muted">{e.zh}</p>}
         </div>
       ))}
@@ -553,9 +559,10 @@ function VerbCard({ item, onDone }: { item: VerbItem; onDone: (p: Pending) => vo
         <p className="py-4 text-center text-4xl font-bold" lang="ja">
           {item.dict}
         </p>
-        <p className="text-center text-muted" lang="ja">
+        <p className="flex items-center justify-center gap-1 text-muted" lang="ja">
           {item.reading}
-          {item.meaning && <span className="ml-2">{item.meaning}</span>}
+          {item.meaning && <span className="ml-1">{item.meaning}</span>}
+          <Speak text={item.reading} />
         </p>
 
         {item.mode === "group" ? (
@@ -599,8 +606,9 @@ function VerbCard({ item, onDone }: { item: VerbItem; onDone: (p: Pending) => vo
                 你寫的：{draft}
               </p>
             )}
-            <p className="text-2xl font-semibold text-ok" lang="ja">
+            <p className="flex items-center justify-center gap-1 text-2xl font-semibold text-ok" lang="ja">
               {item.mode === "group" ? `${right}（${item.cls}）` : item.answer.word}
+              {item.mode === "conj" && <Speak text={item.answer.reading} />}
             </p>
             {item.mode === "conj" && item.answer.word !== item.answer.reading && (
               <p className="text-muted" lang="ja">

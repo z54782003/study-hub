@@ -1,3 +1,4 @@
+import { Speak } from "@/components/Speak";
 import Link from "next/link";
 import { FORMS, FORM_LABEL, FORM_RULE, GROUP_OF, conjugate, type VerbForm } from "@/lib/conjugate";
 import { getVerbs } from "@/lib/data";
@@ -63,6 +64,9 @@ export default async function VerbTablePage({ searchParams }: { searchParams: Pr
                       <td className="py-2 font-semibold">
                         {c.word}
                         {c.word !== c.reading && <span className="block text-xs font-normal text-muted">{c.reading}</span>}
+                      </td>
+                      <td className="w-8 py-2">
+                        <Speak text={c.reading} />
                       </td>
                       <td className="py-2 pr-4 text-right text-xs text-muted">{v.meaning}</td>
                     </tr>
