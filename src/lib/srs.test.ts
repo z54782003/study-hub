@@ -1,0 +1,97 @@
+import { describe, expect, it } from "vitest";
+import { addDays, diffDays, formatJP, todayISO } from "./dates";
+import {
+  dailySample,
+  grammarIndexForDate,
+  matchGrammar,
+  n3BatchRange,
+  n3NextLevel,
+  quizNextInterval,
+  quizUpdate,
+  vocabUpdate,
+  weekGrammarIndices,
+} from "./srs";
+import { GRAMMAR_ORDER } from "./config";
+
+describe("dates", () => {
+  it("handles month boundaries", () => {
+    expect(addDays("2026-10-30", 3)).toBe("2026-11-02");
+    expect(diffDays("2026-10-08", "2026-12-18")).toBe(71);
+  });
+  it("formats in Japanese", () => {
+    expect(formatJP("2026-10-27")).toBe("10/27（火）");
+  });
+  it("uses the given timezone", () => {
+    // 2026-10-26 23:30 UTC = 10/27 08:30 in Tokyo
+    expect(todayISO("Asia/Tokyo", new Date("2026-10-26T23:30:00Z"))).toBe("2026-10-27");
+  });
+});
+
+describe("quiz bank SRS", () => {
+  it("never-tested question goes from D+1 to D+3 when correct", () => {
+    expect(quizNextInterval(null, "2026-10-10", true)).toBe(3);
+  });
+  it("climbs the ladder from the previous interval", () => {
+    expect(quizNextInterval("2026-10-01", "2026-10-04", true)).toBe(7);
+    expect(quizNextInterval("2026-10-01", "2026-10-08", true)).toBe(14);
+    expect(quizNextInterval("2026-10-01", "2026-10-15", true)).toBe(30);
+    expect(quizNextInterval("2026-09-01", "2026-10-01", true)).toBe(30);
+  });
+  it("resets to D+1 when wrong", () => {
+    expect(quizNextInterval("2026-09-01", "2026-10-01", false)).toBe(1);
+  });
+  it("schedules from today, not from the old due date", () => {
+    expect(quizUpdate("2026-10-27", null, "2026-09-07", true)).toEqual({
+      lastTested: "2026-10-27",
+      result: "✅ 對",
+      nextReview: "2026-10-30",
+    });
+  });
+});
+
+describe("vocab familiarity", () => {
+  it("wrong answer marks 忘記 and counts", () => {
+    expect(vocabUpdate("熟悉", 5, 1, false)).toEqual({ status: "忘記", rightCount: 5, wrongCount: 2 });
+  });
+  it("忘記 recovers to 學習中, 學習中 needs 3 correct to become 熟悉", () => {
+    expect(vocabUpdate("忘記", 0, 2, true).status).toBe("學習中");
+    expect(vocabUpdate("學習中", 1, 0, true).status).toBe("學習中");
+    expect(vocabUpdate("學習中", 2, 0, true).status).toBe("熟悉");
+  });
+});
+
+describe("N3", () => {
+  it("level transitions", () => {
+    expect(n3NextLevel("未學", true)).toBe("學習中");
+    expect(n3NextLevel("學習中", true)).toBe("熟悉");
+    expect(n3NextLevel("熟悉", true)).toBe("精通");
+    expect(n3NextLevel("精通", false)).toBe("忘記");
+  });
+  it("batch ranges follow the 10/12 revision", () => {
+    expect(n3BatchRange("2026-10-08")).toEqual({ lo: 0, hi: 41 });
+    expect(n3BatchRange("2026-10-12")).toEqual({ lo: 164, hi: 205 });
+    expect(n3BatchRange("2026-10-13")).toEqual({ lo: 205, hi: 247 });
+    expect(n3BatchRange("2026-12-18")).toEqual({ lo: 2977, hi: 3019 });
+    expect(n3BatchRange("2026-12-19")).toBeNull();
+  });
+  it("grammar of the day counts weekdays from 10/8", () => {
+    expect(grammarIndexForDate("2026-10-08")).toBe(0);
+    expect(grammarIndexForDate("2026-10-09")).toBe(1);
+    expect(grammarIndexForDate("2026-10-10")).toBeNull(); // 土
+    expect(grammarIndexForDate("2026-10-12")).toBe(2);
+    expect(GRAMMAR_ORDER[grammarIndexForDate("2026-10-27")!]).toBe("〜たばかり");
+  });
+  it("weekend reviews this week's grammar", () => {
+    expect(weekGrammarIndices("2026-10-31")).toEqual([12, 13, 14, 15, 16]);
+  });
+  it("matches grammar titles loosely", () => {
+    expect(matchGrammar("〜うちに", "〜うちに")).toBe(true);
+    expect(matchGrammar("〜わけだ系", "〜わけだ／わけではない")).toBe(true);
+    expect(matchGrammar("〜うちに", "〜がち")).toBe(false);
+  });
+  it("daily sample is stable for the same seed", () => {
+    const items = Array.from({ length: 30 }, (_, i) => ({ id: String(i) }));
+    expect(dailySample(items, 10, "2026-10-27")).toEqual(dailySample(items, 10, "2026-10-27"));
+    expect(dailySample(items, 10, "2026-10-27")).toHaveLength(10);
+  });
+});
