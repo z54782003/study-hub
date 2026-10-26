@@ -24,11 +24,6 @@ export function quizUpdate(today: string, lastTested: string | null, nextReview:
   };
 }
 
-// 題目排序：先「❌ 錯」與「— 未作答」，再依下次複習由舊到新（操作手冊 W2 積壓處理）
-export function quizPriority(lastResult: string | null): number {
-  return lastResult === "✅ 對" ? 1 : 0;
-}
-
 // ── 📖 單字庫（W2 第 4 步／W2-B 第 4 步）────────────────────
 // 錯→熟悉度=忘記、答錯次數+1；對→答對次數+1（忘記→學習中；學習中且答對累計 ≧3 → 熟悉）
 export function vocabUpdate(status: string | null, rightCount: number, wrongCount: number, correct: boolean) {
@@ -87,15 +82,22 @@ export function weekGrammarIndices(today: string): number[] {
   return out;
 }
 
-/** 文型名稱比對：去掉〜、空白、「系」後互相包含即算同一個。 */
+/**
+ * 文型名稱比對：資料庫標題常比清單長（「〜に対して／〜に関して／〜について」、「尊敬語動詞表」），
+ * 所以去掉〜、空白、括號內容與「系」後，只比「／」前的第一個文型。
+ */
 export function normalizeGrammar(s: string): string {
-  return s.replace(/[〜~\s　]/g, "").replace(/系$/, "");
+  return s
+    .replace(/（[^）]*）|\([^)]*\)/g, "")
+    .replace(/[〜~\s　]/g, "")
+    .split("／")[0]
+    .replace(/系$/, "");
 }
 
 export function matchGrammar(configName: string, title: string): boolean {
   const a = normalizeGrammar(configName);
   const b = normalizeGrammar(title);
-  return a.length > 0 && b.length > 0 && (a === b || b.includes(a) || a.includes(b));
+  return a.length > 0 && (a === b || b.startsWith(a));
 }
 
 /** 每天固定的抽樣（同一天重新整理不會換題）。 */

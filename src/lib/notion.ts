@@ -27,7 +27,7 @@ export async function queryAll(dataSourceId: string, filter?: Filter, sorts?: So
       filter,
       sorts,
       start_cursor: cursor,
-      page_size: 100,
+      page_size: Math.min(100, max),
     });
     for (const r of res.results) if (isFullPage(r)) pages.push(r);
     cursor = res.has_more ? (res.next_cursor ?? undefined) : undefined;

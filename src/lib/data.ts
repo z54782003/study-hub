@@ -10,7 +10,6 @@ import {
   matchGrammar,
   n3BatchRange,
   n3NextLevel,
-  quizPriority,
   quizUpdate,
   vocabUpdate,
   weekGrammarIndices,
@@ -25,17 +24,30 @@ export function today(): string {
 
 // ── 讀取 ──────────────────────────────────────────
 
+// 題庫積壓可能上百題（2026-10-26 有 777 題到期），所以先只拿 ❌／未作答，不夠 20 題才補 ✅ 對過的。
 async function quizDue(day: string): Promise<Page[]> {
-  const pages = await queryAll(
-    DS.quiz,
-    { property: "下次複習", date: { on_or_before: day } },
-    [{ property: "下次複習", direction: "ascending" }],
-    1000,
+  const due = { property: "下次複習", date: { on_or_before: day } };
+  const sorts = [{ property: "下次複習", direction: "ascending" as const }];
+  const pick = (pages: Page[]) => pages.filter((p) => date(p, "上次測驗") !== day);
+
+  const urgent = pick(
+    await queryAll(DS.quiz, {
+        and: [
+          due,
+          {
+            or: [
+              { property: "上次結果", select: { does_not_equal: "✅ 對" } },
+              { property: "上次結果", select: { is_empty: true } },
+            ],
+          },
+        ],
+      }, sorts, QUIZ_DAILY_LIMIT),
   );
-  return pages
-    .filter((p) => date(p, "上次測驗") !== day)
-    .sort((a, b) => quizPriority(select(a, "上次結果")) - quizPriority(select(b, "上次結果")))
-    .slice(0, QUIZ_DAILY_LIMIT);
+  if (urgent.length >= QUIZ_DAILY_LIMIT) return urgent.slice(0, QUIZ_DAILY_LIMIT);
+  const rest = pick(
+    await queryAll(DS.quiz, { and: [due, { property: "上次結果", select: { equals: "✅ 對" } }] }, sorts, QUIZ_DAILY_LIMIT),
+  );
+  return [...urgent, ...rest].slice(0, QUIZ_DAILY_LIMIT);
 }
 
 const N3_LEVEL_FILTER = {
