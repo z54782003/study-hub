@@ -4,7 +4,8 @@
 
 ## P1 功能
 
-- **今日清單** `/`：考試倒數、W3 預習頁、N3 單字批次＋今日文型、NHK Easy、ISI 課堂筆記、今晚複習、TED、閱讀。手動打勾只存在這台裝置。
+- **今日** `/`：考試倒數＋7 天內到期的作業（ISI 課堂筆記的「作業截止」）、📅 今天的行程（iCalendar，`ICAL_URLS`）、🏫 今天的課（上課前取自 W3 預習頁的課次／文法點；下課後換成課堂筆記的摘要與作業）。
+- **今日清單**：考試倒數、W3 預習頁、N3 單字批次＋今日文型、NHK Easy、ISI 課堂筆記、今晚複習、TED、閱讀。手動打勾只存在這台裝置。
 - **今晚複習** `/review`：合併 W2（日文題庫）與 N3 night quiz。
   - 題庫：`下次複習 ≤ 今天`，❌／未作答優先，每天最多 20 題；對 → D+1→3→7→14→30 下一階，錯 → D+1。關聯單字的熟悉度／答對答錯次數一起更新。
   - N3 單字：到期字最多 10 個＋今日批次抽 10 個（同一天抽樣固定）；只更新 `熟悉度_K`、`上次複習_K`，下次複習交給 Notion 公式。
@@ -25,7 +26,7 @@
 
 1. 建一個 Notion integration（https://www.notion.so/profile/integrations），複製 token。
 2. 把下列資料庫分享給它（資料庫右上角 ⋯ → Connections）：日文題庫、Vocabulary／單字庫、JLPT テスト 単語、N3 文法補強、ISI 課堂筆記＆錄音、TED Log、Books、Journal，以及「每日預習（W3）」頁。
-3. 環境變數（見 `.env.example`）：`NOTION_TOKEN`、`APP_PASSWORD`、`APP_TZ`（預設 Asia/Tokyo）。
+3. 環境變數（見 `.env.example`）：`NOTION_TOKEN`、`APP_PASSWORD`、`APP_TZ`（預設 Asia/Tokyo）、`ICAL_URLS`（選填，行事曆）。
 
 ## 開發
 

@@ -10,9 +10,20 @@ export function mockToday(day: string): TodayData {
     dateLabel: formatJP(day),
     weekend: isWeekend(day),
     exams: EXAMS.map((e) => ({ ...e, daysLeft: diffDays(day, e.date) })).filter((e) => e.daysLeft >= 0 && e.daysLeft <= 7),
-    preview: { title: "10/27（火）預習｜L3 ST2", url: "#" },
+    homework: [{ text: "文法ノート 練習8–10（p.19–22）", due: "2026-10-28", url: "#", daysLeft: 1 }],
+    calendar: [
+      { title: "ISI 上課", allDay: false, start: "13:00", end: "16:10", location: "ISI 307", sortKey: 2 },
+      { title: "牙醫", allDay: false, start: "09:30", end: "10:30", location: "新宿", sortKey: 1 },
+    ].sort((a, b) => a.sortKey - b.sortKey),
+    preview: {
+      title: "10/27（火）預習｜L3 ST2",
+      url: "#",
+      lesson: "できる日本語 初中級 第3課「私の目標」，今天預期進入 ST3-2「夢に向かって」（本冊 p.48–51）。",
+      exam: "10/27（二）動詞の形テスト：意向形。",
+      grammar: ["① Nのために／V辞書形ために、〜", "② 〜んですか／〜んです", "③ 〜なければなりません"],
+    },
     n3: { count: 38, grammar: [{ name: "〜たばかり", url: "#" }] },
-    classNote: { title: "10/27（火）できる L3｜〜ようと思います", url: "#", status: "未整理" },
+    classNote: null,
     review: { quiz: 20, n3: 20, grammar: 2 },
     ted: { title: "How to make stress your friend", url: "/ted/mock", progress: "今天做" },
     books: [

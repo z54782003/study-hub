@@ -1,3 +1,5 @@
+import type { CalendarEvent } from "./calendar";
+
 export type Link = { title: string; url: string };
 
 export type TodayData = {
@@ -5,9 +7,12 @@ export type TodayData = {
   dateLabel: string;
   weekend: boolean;
   exams: { date: string; name: string; scope: string; daysLeft: number }[];
-  preview: Link | null;
+  homework: { text: string; due: string; url: string; daysLeft: number }[];
+  /** null = 沒有設定 ICAL_URLS */
+  calendar: CalendarEvent[] | null;
+  preview: (Link & { lesson: string | null; exam: string | null; grammar: string[] }) | null;
   n3: { count: number; grammar: { name: string; url: string | null }[] } | null;
-  classNote: (Link & { status: string | null }) | null;
+  classNote: (Link & { status: string | null; summary: string; homework: string }) | null;
   review: { quiz: number; n3: number; grammar: number };
   ted: (Link & { progress: string | null }) | null;
   books: (Link & { type: string | null })[];

@@ -13,6 +13,7 @@
   "dependencies": {
     "@notionhq/client": "^5.28.0",
     "hls.js": "^1.6.13",
+    "ical.js": "^2.2.1",
     "next": "^15.5.28",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",

@@ -1,9 +1,10 @@
 import "server-only";
 import { isFullBlock } from "@notionhq/client";
 import { DS, EXAMS, GRAMMAR_ORDER, N3_BATCH_SAMPLE, N3_DUE_LIMIT, QUIZ_DAILY_LIMIT, TZ, W3_PARENT_PAGE } from "./config";
-import { diffDays, formatJP, isWeekend, todayISO } from "./dates";
+import { addDays, diffDays, formatJP, isWeekend, todayISO } from "./dates";
 import { mockAnswer, mockJournal, mockReview, mockToday } from "./mock";
-import { pickPreviewPage, type ChildPage } from "./preview";
+import { eventsOnDay, type CalendarEvent } from "./calendar";
+import { pickPreviewPage, summarizePreview, type ChildPage, type SimpleBlock } from "./preview";
 import { date, getPage, hasNotion, notion, num, queryAll, relationIds, select, text, updatePage, w, type Page } from "./notion";
 import {
   dailySample,
@@ -182,7 +183,30 @@ async function findPreviewPage(day: string) {
     cursor = res.has_more ? (res.next_cursor ?? undefined) : undefined;
   } while (cursor);
   const hit = pickPreviewPage(pages, day, TZ);
-  return hit ? { title: hit.title, url: `https://www.notion.so/${hit.id.replace(/-/g, "")}` } : null;
+  if (!hit) return null;
+
+  // 讀預習頁的第一層區塊，抓課次、考試預告、文法點
+  const res = await notion().blocks.children.list({ block_id: hit.id, page_size: 100 });
+  const blocks: SimpleBlock[] = res.results.filter(isFullBlock).map((b) => {
+    const rich = (b as unknown as Record<string, { rich_text?: { plain_text: string; annotations: { bold: boolean } }[] }>)[b.type]
+      ?.rich_text ?? [];
+    return { type: b.type, text: rich.map((r) => r.plain_text).join(""), boldStart: Boolean(rich[0]?.annotations.bold) };
+  });
+  return { title: hit.title, url: `https://www.notion.so/${hit.id.replace(/-/g, "")}`, ...summarizePreview(blocks) };
+}
+
+/** 環境變數 ICAL_URLS：一個或多個 iCalendar 連結（空白或逗號分隔，webcal:// 也可以） */
+async function calendarEvents(day: string): Promise<CalendarEvent[] | null> {
+  const urls = (process.env.ICAL_URLS ?? "").split(/[\s,]+/).filter(Boolean);
+  if (!urls.length) return null;
+  const all = await Promise.all(
+    urls.map(async (u) => {
+      const res = await fetch(u.replace(/^webcal:/i, "https:"), { next: { revalidate: 300 } });
+      if (!res.ok) throw new Error(`行事曆讀取失敗（${res.status}）`);
+      return eventsOnDay(await res.text(), day, TZ);
+    }),
+  );
+  return all.flat().sort((a, b) => Number(b.allDay) - Number(a.allDay) || a.sortKey - b.sortKey);
 }
 
 export async function getToday(): Promise<TodayData> {
@@ -201,8 +225,20 @@ export async function getToday(): Promise<TodayData> {
   };
   const weekend = isWeekend(day);
 
-  const [preview, review, batch, grammarAll, notes, ted, books] = await Promise.all([
+  const [calendar, preview, homework, review, batch, grammarAll, notes, ted, books] = await Promise.all([
+    safe("行事曆", () => calendarEvents(day), null),
     weekend ? null : safe("每日預習", () => findPreviewPage(day), null),
+    safe(
+      "作業",
+      () =>
+        queryAll(DS.isiNotes, {
+          and: [
+            { property: "作業截止", date: { on_or_after: day } },
+            { property: "作業截止", date: { on_or_before: addDays(day, 7) } },
+          ],
+        }),
+      [] as Page[],
+    ),
     safe("今晚複習", getReviewQueue, [] as ReviewItem[]),
     safe("N3 單字", () => n3Batch(day), [] as Page[]),
     safe("N3 文法", () => queryAll(DS.n3Grammar), [] as Page[]),
@@ -230,6 +266,11 @@ export async function getToday(): Promise<TodayData> {
     dateLabel: formatJP(day),
     weekend,
     exams: EXAMS.map((e) => ({ ...e, daysLeft: diffDays(day, e.date) })).filter((e) => e.daysLeft >= 0 && e.daysLeft <= 7),
+    homework: homework
+      .map((p) => ({ text: text(p, "作業"), due: date(p, "作業截止")!, url: p.url, daysLeft: diffDays(day, date(p, "作業截止")!) }))
+      .filter((h) => h.text)
+      .sort((a, b) => a.daysLeft - b.daysLeft),
+    calendar,
     preview,
     n3: n3BatchRange(day)
       ? {
@@ -240,7 +281,15 @@ export async function getToday(): Promise<TodayData> {
           })),
         }
       : null,
-    classNote: note ? { title: text(note, "課堂標題"), url: note.url, status: select(note, "狀態") } : null,
+    classNote: note
+      ? {
+          title: text(note, "課堂標題"),
+          url: note.url,
+          status: select(note, "狀態"),
+          summary: text(note, "筆記摘要"),
+          homework: text(note, "作業"),
+        }
+      : null,
     review: {
       quiz: review.filter((i) => i.kind === "quiz").length,
       n3: review.filter((i) => i.kind === "n3").length,

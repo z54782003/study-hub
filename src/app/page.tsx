@@ -5,6 +5,22 @@ import { hasNotion } from "@/lib/notion";
 
 export const dynamic = "force-dynamic";
 
+function Section({ title, href, children }: { title: string; href?: string; children: React.ReactNode }) {
+  return (
+    <section className="mb-3 rounded-2xl border border-line bg-card px-4 py-3">
+      <div className="mb-2 flex items-center justify-between">
+        <h2 className="text-sm font-semibold">{title}</h2>
+        {href && href !== "#" && (
+          <a href={href} target="_blank" rel="noreferrer" className="text-xs text-accent">
+            打開 ↗
+          </a>
+        )}
+      </div>
+      {children}
+    </section>
+  );
+}
+
 export default async function TodayPage() {
   if (!hasNotion() && process.env.MOCK !== "1") {
     return (
@@ -25,19 +41,79 @@ export default async function TodayPage() {
         {t.weekend && <span className="text-sm text-muted">週末・輕量</span>}
       </header>
 
-      {t.exams.length > 0 && (
+      {(t.exams.length > 0 || t.homework.length > 0) && (
         <section className="mb-4 space-y-2">
           {t.exams.map((e) => (
             <div key={e.date + e.name} className="rounded-2xl bg-accent/10 px-4 py-3 text-accent">
               <div className="font-semibold">
-                🔔 {e.name}・{e.daysLeft === 0 ? "今天！" : `還有 ${e.daysLeft} 天`}
+                🔔 {e.name}・{e.daysLeft === 0 ? "今天！" : e.daysLeft === 1 ? "明天" : `還有 ${e.daysLeft} 天`}
               </div>
               <div className="text-sm opacity-90">{e.scope}</div>
             </div>
           ))}
+          {t.homework.map((h) => (
+            <a key={h.url + h.due} href={h.url} target="_blank" rel="noreferrer" className="block rounded-2xl border border-line bg-card px-4 py-3">
+              <div className="text-sm font-semibold">
+                📝 作業・{h.daysLeft === 0 ? "今天截止" : h.daysLeft === 1 ? "明天截止" : `${h.daysLeft} 天後截止`}
+              </div>
+              <div className="mt-0.5 line-clamp-2 text-sm text-muted">{h.text}</div>
+            </a>
+          ))}
         </section>
       )}
 
+      <Section title="📅 今天的行程">
+        {t.calendar === null ? (
+          <p className="text-sm text-muted">還沒連結行事曆（設定 ICAL_URLS，見 README）。</p>
+        ) : t.calendar.length === 0 ? (
+          <p className="text-sm text-muted">今天沒有行程</p>
+        ) : (
+          <ul className="divide-y divide-line">
+            {t.calendar.map((e, i) => (
+              <li key={i} className="flex gap-3 py-2 first:pt-0 last:pb-0">
+                <span className="w-24 shrink-0 text-sm tabular-nums text-muted">{e.allDay ? "全天" : `${e.start}–${e.end}`}</span>
+                <span className="min-w-0">
+                  <span className="font-medium">{e.title}</span>
+                  {e.location && <span className="block truncate text-xs text-muted">{e.location}</span>}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Section>
+
+      {!t.weekend && (
+        <Section title="🏫 今天的課" href={t.classNote?.url ?? t.preview?.url}>
+          {t.classNote?.summary ? (
+            <>
+              <p className="text-xs text-muted">{t.classNote.title}</p>
+              <p className="mt-1.5 text-sm leading-relaxed whitespace-pre-line" lang="ja">
+                {t.classNote.summary}
+              </p>
+              {t.classNote.homework && <p className="mt-2 text-sm">📝 {t.classNote.homework}</p>}
+            </>
+          ) : t.preview ? (
+            <>
+              {t.preview.lesson && <p className="text-sm leading-relaxed" lang="ja">{t.preview.lesson}</p>}
+              {t.preview.grammar.length > 0 && (
+                <ul className="mt-2 space-y-1">
+                  {t.preview.grammar.map((g) => (
+                    <li key={g} className="text-sm font-medium" lang="ja">
+                      {g}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {!t.preview.lesson && !t.preview.grammar.length && <p className="text-sm">{t.preview.title}</p>}
+              <p className="mt-2 text-xs text-muted">下課後整理好筆記，這裡會換成課堂摘要和作業</p>
+            </>
+          ) : (
+            <p className="text-sm text-muted">今天的預習頁和課堂筆記都還沒產生</p>
+          )}
+        </Section>
+      )}
+
+      <h2 className="mt-6 mb-2 text-sm font-semibold text-muted">今天要做</h2>
       <ul className="space-y-2.5">
         {!t.weekend && (
           <TaskItem
