@@ -41,6 +41,11 @@ export function parseVtt(vtt: string): Cue[] {
   return cues;
 }
 
+/** HLS 字幕片段的 X-TIMESTAMP-MAP（用來診斷字幕與影片時間軸的差距） */
+export function parseTimestampMap(vtt: string): string | null {
+  return vtt.match(/X-TIMESTAMP-MAP=([^\r\n]+)/)?.[1]?.trim() ?? null;
+}
+
 /** HLS 會把同一句切在兩個片段裡重複出現，依開始時間＋文字去重並排序。 */
 export function dedupeCues(cues: Cue[]): Cue[] {
   const seen = new Set<string>();

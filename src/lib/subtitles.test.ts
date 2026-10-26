@@ -6,6 +6,7 @@ import {
   parseMasterSubtitles,
   parseMediaSegments,
   parseTedPage,
+  parseTimestampMap,
   parseVtt,
   pickChinese,
   pickEnglish,
@@ -32,6 +33,10 @@ describe("parseVtt", () => {
   });
   it("handles mm:ss timestamps and CRLF", () => {
     expect(parseVtt("WEBVTT\r\n\r\n01:02.500 --> 01:04.000\r\nHello\r\n")).toEqual([{ start: 62.5, end: 64, text: "Hello" }]);
+  });
+  it("reads X-TIMESTAMP-MAP for diagnostics", () => {
+    expect(parseTimestampMap(VTT)).toBe("MPEGTS:900000,LOCAL:00:00:00.000");
+    expect(parseTimestampMap("WEBVTT\n\n")).toBeNull();
   });
   it("decodes numeric entities", () => {
     expect(cleanCueText("it&#39;s &#x2014; fine")).toBe("it's — fine");

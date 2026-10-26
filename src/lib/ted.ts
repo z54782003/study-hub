@@ -5,6 +5,7 @@ import {
   parseMasterSubtitles,
   parseMediaSegments,
   parseTedPage,
+  parseTimestampMap,
   parseVtt,
   pickChinese,
   pickEnglish,
@@ -21,6 +22,8 @@ export type TedTalk = {
   cues: Cue[];
   languages: string[];
   chinese: string | null;
+  /** 診斷用：英文字幕第一個片段的 X-TIMESTAMP-MAP */
+  subtitleTimestampMap: string | null;
 };
 
 const UA =
@@ -41,13 +44,13 @@ export function normalizeTedUrl(input: string): string {
   return `https://www.ted.com/talks/${m[1]}`;
 }
 
-async function fetchTrack(track: SubtitleTrack): Promise<Cue[]> {
+async function fetchTrack(track: SubtitleTrack): Promise<{ cues: Cue[]; map: string | null }> {
   const body = await get(track.uri);
   // 有些字幕軌直接就是 .vtt，有些是再一層的播放清單
-  if (body.trimStart().startsWith("WEBVTT")) return parseVtt(body);
+  if (body.trimStart().startsWith("WEBVTT")) return { cues: parseVtt(body), map: parseTimestampMap(body) };
   const segments = parseMediaSegments(body, track.uri);
   const parts = await Promise.all(segments.map(get));
-  return dedupeCues(parts.flatMap(parseVtt));
+  return { cues: dedupeCues(parts.flatMap(parseVtt)), map: parts[0] ? parseTimestampMap(parts[0]) : null };
 }
 
 export async function loadTedTalk(url: string): Promise<TedTalk> {
@@ -55,6 +58,7 @@ export async function loadTedTalk(url: string): Promise<TedTalk> {
   let cues: Cue[] = [];
   let languages: string[] = [];
   let chinese: string | null = null;
+  let subtitleTimestampMap: string | null = null;
 
   if (video.hls) {
     const tracks = parseMasterSubtitles(await get(video.hls), video.hls);
@@ -62,9 +66,13 @@ export async function loadTedTalk(url: string): Promise<TedTalk> {
     const en = pickEnglish(tracks);
     const zh = pickChinese(tracks);
     if (en) {
-      const [enCues, zhCues] = await Promise.all([fetchTrack(en), zh ? fetchTrack(zh).catch(() => []) : []]);
-      cues = zhCues.length ? mergeBilingual(enCues, zhCues) : enCues;
+      const [enTrack, zhCues] = await Promise.all([
+        fetchTrack(en),
+        zh ? fetchTrack(zh).then((t) => t.cues).catch(() => [] as Cue[]) : ([] as Cue[]),
+      ]);
+      cues = zhCues.length ? mergeBilingual(enTrack.cues, zhCues) : enTrack.cues;
       chinese = zhCues.length && zh ? zh.language : null;
+      subtitleTimestampMap = enTrack.map;
     }
   }
 
@@ -80,5 +88,6 @@ export async function loadTedTalk(url: string): Promise<TedTalk> {
     cues,
     languages,
     chinese,
+    subtitleTimestampMap,
   };
 }

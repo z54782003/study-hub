@@ -104,5 +104,6 @@ export function mockTedTalk(): TedTalk {
     cues: lines.map(([text, zh], i) => ({ start: i * 1.25, end: (i + 1) * 1.25, text, zh })),
     languages: ["en", "zh-tw"],
     chinese: "zh-tw",
+    subtitleTimestampMap: null,
   };
 }

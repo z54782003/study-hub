@@ -13,6 +13,7 @@ const MODES: { id: Mode; label: string }[] = [
   { id: "blind", label: "盲聽" },
 ];
 const RATES = [0.5, 0.75, 0.9, 1, 1.25];
+const TED_DEFAULT_OFFSET = 3.75;
 
 /** 最後一個「開始時間 ≤ t」的句子 */
 function cueIndexAt(cues: Cue[], t: number, offset: number): number {
@@ -71,19 +72,21 @@ export function TedPlayer({ tedUrl, title, notionUrl }: { tedUrl: string; title:
       .catch((e) => setError(e.message));
   }, [tedUrl]);
 
-  // 每支 talk 的字幕偏移記在這台裝置，下次打開不用重調
+  // TED 字幕整體比影片早一段片頭的長度（2026-10 實測 +3.75 秒），當作預設；
+  // 個別 talk 調過的偏移記在這台裝置，下次打開不用重調。
   const offsetKey = `offset:${tedUrl}`;
   useEffect(() => {
+    let saved = NaN;
     try {
-      const saved = parseFloat(localStorage.getItem(offsetKey) ?? "");
-      if (!Number.isNaN(saved)) setOffset(saved);
+      saved = parseFloat(localStorage.getItem(offsetKey) ?? "");
     } catch {}
+    setOffset(Number.isNaN(saved) ? TED_DEFAULT_OFFSET : saved);
   }, [offsetKey]);
-  const changeOffset = (delta: number) =>
+  const changeOffset = (delta: number | "reset") =>
     setOffset((o) => {
-      const next = Math.round((o + delta) * 100) / 100;
+      const next = delta === "reset" ? TED_DEFAULT_OFFSET : Math.round((o + delta) * 100) / 100;
       try {
-        if (next === 0) localStorage.removeItem(offsetKey);
+        if (next === TED_DEFAULT_OFFSET) localStorage.removeItem(offsetKey);
         else localStorage.setItem(offsetKey, String(next));
       } catch {}
       return next;
@@ -337,10 +340,15 @@ export function TedPlayer({ tedUrl, title, notionUrl }: { tedUrl: string; title:
             <button type="button" onClick={() => changeOffset(-0.25)} className="px-1.5 py-1" aria-label="字幕提早 0.25 秒">
               ‹
             </button>
-            <span className="w-11 text-center tabular-nums">
+            <button
+              type="button"
+              onClick={() => changeOffset("reset")}
+              className={`w-11 text-center tabular-nums ${offset !== TED_DEFAULT_OFFSET ? "text-accent" : ""}`}
+              aria-label="字幕偏移（點一下回到預設）"
+            >
               {offset > 0 ? "+" : ""}
               {offset.toFixed(2)}
-            </span>
+            </button>
             <button type="button" onClick={() => changeOffset(0.25)} className="px-1.5 py-1" aria-label="字幕延後 0.25 秒">
               ›
             </button>
