@@ -251,14 +251,17 @@ const toVocab = (p: Page): VocabItem => ({
 
 const VOCAB_RANK: Record<string, number> = { 忘記: 0, 學習中: 1, 未學: 2, 熟悉: 3, 精通: 4 };
 
+const ENGLISH_NOT_MASTERED = {
+  and: [{ property: "語言", select: { equals: "🇬🇧 英文" } }, { property: "熟悉度", status: { does_not_equal: "精通" } }],
+};
+
 async function vocabQuiz(s: Extract<ReviewSource, { src: "vocab" }>): Promise<VocabItem[]> {
   const and: object[] = [{ property: "語言", select: { equals: s.lang === "en" ? "🇬🇧 英文" : "🇯🇵 日文" } }];
   if (s.lang === "ja" && s.level) {
     const lessons = s.lessons.length ? s.lessons : Array.from({ length: 15 }, (_, i) => i + 1);
     and.push({ or: lessons.map((n) => ({ property: "課次", select: { equals: `${s.level} L${n}` } })) });
   }
-  if (s.lang === "en") and.push({ property: "熟悉度", status: { does_not_equal: "精通" } });
-  const pages = await queryAll(DS.vocab, { and } as never, undefined, 600);
+  const pages = await queryAll(DS.vocab, (s.lang === "en" ? ENGLISH_NOT_MASTERED : { and }) as never, undefined, 600);
   // 忘記 → 學習中 → 未學 → 熟悉 → 精通，同一級隨機
   return shuffle(pages.map(toVocab))
     .sort((a, b) => (VOCAB_RANK[a.status ?? "未學"] ?? 2) - (VOCAB_RANK[b.status ?? "未學"] ?? 2))
@@ -297,6 +300,23 @@ const cachedVocabLessonCounts = unstable_cache(
 export async function vocabLessonCounts(): Promise<Record<string, number>> {
   if (useMock()) return { "初級 L1": 31, "初級 L2": 77, "初中級 L1": 33, "初中級 L2": 55, "初中級 L3": 58 };
   return cachedVocabLessonCounts();
+}
+
+export async function englishVocabCount(): Promise<number> {
+  if (useMock()) return 12;
+  return (await queryAll(DS.vocab, ENGLISH_NOT_MASTERED as never, undefined, 1000)).length;
+}
+
+/** 日文分頁：某一課的單字（依加入順序＝課本順序） */
+export async function getLessonVocab(level: string, lesson: number): Promise<VocabItem[]> {
+  if (useMock()) return mockVocab();
+  const pages = await queryAll(
+    DS.vocab,
+    { and: [{ property: "語言", select: { equals: "🇯🇵 日文" } }, { property: "課次", select: { equals: `${level} L${lesson}` } }] } as never,
+    [{ timestamp: "created_time", direction: "ascending" }],
+    500,
+  );
+  return pages.map(toVocab);
 }
 
 /** 題庫練習選課畫面：課堂筆記有哪些課（題目都掛在課堂筆記上） */
@@ -665,12 +685,11 @@ export async function recentClassNotes(n: number): Promise<ClassNoteLink[]> {
 
 export type TedLink = { id: string; title: string; progress: string | null };
 
-export async function getEnglishHub(): Promise<{ ted: TedLink[]; books: (Link & { type: string | null })[]; vocabCount: number; errors: string[] }> {
+export async function getEnglishHub(): Promise<{ ted: TedLink[]; books: (Link & { type: string | null })[]; errors: string[] }> {
   if (useMock())
     return {
       ted: [{ id: "mock", title: "How to make stress your friend", progress: "今天做" }],
       books: [{ title: "Atomic Habits", url: "#", type: "Book" }],
-      vocabCount: 12,
       errors: [],
     };
   const errors: string[] = [];
@@ -679,29 +698,17 @@ export async function getEnglishHub(): Promise<{ ted: TedLink[]; books: (Link & 
       errors.push(`${label}：${e instanceof Error ? e.message : String(e)}`);
       return fallback;
     });
-  const [ted, books, vocab] = await Promise.all([
+  const [ted, books] = await Promise.all([
     safe("TED Log", () => queryAll(DS.tedLog, undefined, [{ timestamp: "created_time", direction: "descending" }], 40), [] as Page[]),
     safe("Books", () => queryAll(DS.books, { property: "Status", select: { equals: "Reading" } }), [] as Page[]),
-    safe(
-      "英文單字",
-      () =>
-        queryAll(
-          DS.vocab,
-          { and: [{ property: "語言", select: { equals: "🇬🇧 英文" } }, { property: "熟悉度", status: { does_not_equal: "精通" } }] } as never,
-          undefined,
-          1000,
-        ),
-      [] as Page[],
-    ),
   ]);
-  const order: Record<string, number> = { 今天做: 0, 進行中: 1, 待做: 2 };
+  const order: Record<string, number> = { 今天做: 0, 待做: 2 };
   return {
     ted: ted
       .filter((p) => !text(p, "Talk").includes("模板"))
       .map((p) => ({ id: p.id, title: text(p, "Talk"), progress: select(p, "進度") }))
       .sort((a, b) => (order[a.progress ?? ""] ?? 9) - (order[b.progress ?? ""] ?? 9)),
     books: books.map((p) => ({ title: text(p, "Name"), url: p.url, type: select(p, "Type") })),
-    vocabCount: vocab.length,
     errors,
   };
 }

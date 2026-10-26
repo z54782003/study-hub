@@ -1,6 +1,5 @@
 import { EntryCard } from "@/components/EntryCard";
 import { getEnglishHub } from "@/lib/data";
-import { sourceQuery } from "@/lib/reviewSource";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "英文・Study Hub" };
@@ -25,15 +24,6 @@ export default async function EnglishPage() {
         </div>
       )}
       {done > 0 && <p className="mt-2 text-xs text-muted">已完成 {done} 個 talk</p>}
-
-      <h2 className="mt-6 mb-2 text-sm font-semibold text-muted">單字</h2>
-      <EntryCard
-        href={`/review/session?${sourceQuery({ src: "vocab", lang: "en", level: null, lessons: [], count: 20 })}`}
-        icon="🔤"
-        title="英文單字複習"
-        detail="從 TED 播放器加進單字庫的字；忘記的先出"
-        badge={h.vocabCount}
-      />
 
       <h2 className="mt-6 mb-2 text-sm font-semibold text-muted">📕 閱讀中</h2>
       {h.books.length === 0 ? (

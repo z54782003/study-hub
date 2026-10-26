@@ -27,8 +27,7 @@ export default async function ReviewHub() {
           title="考試複習"
           detail={nextExam ? `下一場：${nextExam.date.slice(5).replace("-", "/")} ${nextExam.name}（${nextExam.scope}）` : "依考試範圍出題"}
         />
-        <EntryCard href="/review/bank" icon="📝" title="題庫練習" detail="選 初級／初中級・課・題型" />
-        <EntryCard href="/review/vocab" icon="🈁" title="單字測驗" detail="できる日本語 每課單字" />
+        <EntryCard href="/review/practice" icon="📝" title="自選練習" detail="題庫・單字（日文／英文）・漢字・動詞の形" />
       </div>
       <h2 className="mt-6 mb-2 text-sm font-semibold text-muted">錯題</h2>
       <EntryCard
