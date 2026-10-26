@@ -10,7 +10,7 @@ const TABS = [
 
 export function BottomNav() {
   const path = usePathname();
-  if (path === "/login") return null;
+  if (path === "/login" || path.startsWith("/ted/") || path === "/play") return null;
   return (
     <nav className="fixed inset-x-0 bottom-0 border-t border-line bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur">
       <ul className="mx-auto flex max-w-xl md:max-w-2xl">

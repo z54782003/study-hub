@@ -2,6 +2,7 @@
 import { EXAMS } from "./config";
 import { diffDays, formatJP, isWeekend } from "./dates";
 import type { ReviewItem, TodayData } from "./types";
+import type { TedTalk } from "./ted";
 
 export function mockToday(day: string): TodayData {
   return {
@@ -13,7 +14,7 @@ export function mockToday(day: string): TodayData {
     n3: { count: 38, grammar: [{ name: "〜たばかり", url: "#" }] },
     classNote: { title: "10/27（火）できる L3｜〜ようと思います", url: "#", status: "未整理" },
     review: { quiz: 20, n3: 20, grammar: 2 },
-    ted: { title: "How to make stress your friend", url: "#", progress: "今天做" },
+    ted: { title: "How to make stress your friend", url: "/ted/mock", progress: "今天做" },
     books: [
       { title: "コンビニ人間", url: "#", type: "Graded reader" },
       { title: "Atomic Habits", url: "#", type: "Book" },
@@ -80,3 +81,26 @@ export function mockReview(): ReviewItem[] {
 
 export async function mockAnswer(): Promise<void> {}
 export async function mockJournal(): Promise<void> {}
+
+// 播放器預覽：用一段公開的測試影片＋假字幕
+export function mockTedTalk(): TedTalk {
+  const lines: [string, string][] = [
+    ["I have a confession to make, but first,", "我要先坦白一件事，但首先，"],
+    ["I want you to make a little confession to me.", "我希望你們先對我坦白一件小事。"],
+    ["In the past year, I want you to just raise your hand", "在過去一年裡，請舉手"],
+    ["if you've experienced relatively little stress.", "如果你經歷的壓力相對較少。"],
+    ["Anyone?", "有人嗎？"],
+    ["How about a moderate amount of stress?", "那中等程度的壓力呢？"],
+    ["Who has experienced a lot of stress?", "誰經歷過很大的壓力？"],
+    ["Yeah. Me too.", "對，我也是。"],
+  ];
+  return {
+    title: "How to make stress your friend",
+    speaker: "Kelly McGonigal",
+    video: { type: "mp4", url: process.env.MOCK_VIDEO_URL ?? "/mock.mp4" },
+    youtube: null,
+    cues: lines.map(([text, zh], i) => ({ start: i * 1.25, end: (i + 1) * 1.25, text, zh })),
+    languages: ["en", "zh-tw"],
+    chinese: "zh-tw",
+  };
+}

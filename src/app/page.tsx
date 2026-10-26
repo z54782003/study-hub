@@ -96,7 +96,6 @@ export default async function TodayPage() {
           title={t.ted ? `TED：${t.ted.title}` : "TED（Log 裡沒有待做的 talk）"}
           detail={t.ted ? "盲聽 → 精讀 → 回聽 → Shadowing → 輸出" : undefined}
           href={t.ted?.url}
-          external
         />
         <TaskItem
           date={t.date}

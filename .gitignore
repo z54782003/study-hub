@@ -6,3 +6,5 @@ out/
 *.tsbuildinfo
 next-env.d.ts
 .vercel
+public/mock.mp4
+public/mock.webm

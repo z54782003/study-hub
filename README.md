@@ -12,6 +12,13 @@
   - 每答一題就寫回 Notion；結束時勾 Journal 的「🇯🇵 Class Review」並累加 Study hours。
 - **N3 單字** `/n3`：Morning brief 的批次，唯讀翻卡。
 
+## P2：TED 精聽播放器
+
+- 今日清單的 TED 會開 `/ted/<TED Log 頁 id>`（讀該頁「連結」欄）；任意 talk 用 `/play?url=https://www.ted.com/talks/...`。
+- 伺服器讀 TED talk 頁的 `__NEXT_DATA__` 取得影片（mp4 優先，否則 HLS），字幕從 HLS 主清單的 WebVTT 字幕軌抓英文＋繁中（沒有繁中就用簡中），依時間重疊合併。做法參考 yt-dlp 的 TED extractor。
+- 播放器：正在播的句子高亮並自動捲動、點句跳轉、上一句／下一句、單句循環、跟讀停（每句播完暫停）、0.5–1.25x、中英／英文／盲聽、字幕時間 ±0.25 秒微調、每句錄音並和原音對比（錄音只在記憶體）。
+- 點單字：英英定義（dictionaryapi.dev）、發音、Cambridge 英漢連結、「＋ 單字庫」寫進 📖 單字庫（同名不重複，中文翻譯交給 Notion AI 自動填入）。
+
 規則與資料庫 ID 在 `src/lib/config.ts`、`src/lib/srs.ts`（有單元測試）。
 
 ## 設定
@@ -27,6 +34,8 @@ npm install
 npm test            # SRS／日期規則
 npm run typecheck
 MOCK=1 MOCK_TODAY=2026-10-27 npm run dev   # 不連 Notion，用假資料看畫面
+# 播放器假資料會播 /mock.mp4（不進版控），可用 ffmpeg 產生：
+# ffmpeg -f lavfi -i testsrc=size=640x360:rate=25 -f lavfi -i sine -t 10 -pix_fmt yuv420p public/mock.mp4
 ```
 
 ## 部署

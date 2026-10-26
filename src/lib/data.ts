@@ -247,7 +247,7 @@ export async function getToday(): Promise<TodayData> {
       n3: review.filter((i) => i.kind === "n3").length,
       grammar: review.filter((i) => i.kind === "grammar").length,
     },
-    ted: tedPage ? { title: text(tedPage, "Talk"), url: tedPage.url, progress: select(tedPage, "進度") } : null,
+    ted: tedPage ? { title: text(tedPage, "Talk"), url: `/ted/${tedPage.id}`, progress: select(tedPage, "進度") } : null,
     books: books.map((p) => ({ title: text(p, "Name"), url: p.url, type: select(p, "Type") })),
     errors,
   };
@@ -319,4 +319,36 @@ export async function logJournal(minutes: number): Promise<void> {
   }
   const hours = Math.round((num(entry, "Study hours") + minutes / 60) * 10) / 10;
   await updatePage(entry.id, { "🇯🇵 Class Review": w.checkbox(true), "Study hours": w.number(hours) });
+}
+
+// ── TED／單字庫 ─────────────────────────────────────
+
+export async function getTedLogEntry(id: string): Promise<{ title: string; link: string; notionUrl: string }> {
+  if (useMock()) return { title: "How to make stress your friend", link: "https://www.ted.com/talks/mock", notionUrl: "#" };
+  const p = await getPage(id);
+  return { title: text(p, "Talk"), link: text(p, "連結"), notionUrl: p.url };
+}
+
+/** 從播放器把單字加進 📖 單字庫；同語言同名已存在就不重複建。中文翻譯等欄位交給 Notion AI 自動填入。 */
+export async function addVocab(word: string, sentence: string, lang: "en" | "ja"): Promise<{ created: boolean; url: string }> {
+  if (useMock()) return { created: true, url: "#" };
+  const language = lang === "en" ? "🇬🇧 英文" : "🇯🇵 日文";
+  const existing = await queryAll(
+    DS.vocab,
+    { and: [{ property: "單字", title: { equals: word } }, { property: "語言", select: { equals: language } }] },
+    undefined,
+    1,
+  );
+  if (existing[0]) return { created: false, url: existing[0].url };
+  const page = await notion().pages.create({
+    parent: { type: "data_source_id", data_source_id: DS.vocab },
+    properties: {
+      單字: w.title(word),
+      語言: w.select(language),
+      例句: { rich_text: [{ text: { content: sentence.slice(0, 1900) } }] },
+      加入日期: w.date(today()),
+      熟悉度: w.status("學習中"),
+    } as never,
+  });
+  return { created: true, url: "url" in page ? page.url : "#" };
 }
