@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkConjugation, conjugate, formException, isIRowIchidan, looksLikeIchidan, parseVerb, specialNote, type VerbClass, type VerbForm } from "./conjugate";
+import { checkConjugation, conjugate, groupRule, formException, isIRowIchidan, looksLikeIchidan, parseVerb, specialNote, type VerbClass, type VerbForm } from "./conjugate";
 
 const v = (dict: string, reading: string, cls: VerbClass) => ({ dict, reading, cls });
 const word = (verb: ReturnType<typeof v>, form: VerbForm) => conjugate(verb, form)?.word;
@@ -119,5 +119,16 @@ describe("special verbs", () => {
     expect(specialNote(v("かえる", "五段"), "意向")).toBe("長得像 G2，其實是 G1");
     expect(specialNote(v("みる", "一段"), "意向")).toBe("い段＋る 的 G2");
     expect(specialNote(v("かく", "五段"), "意向")).toBeNull();
+  });
+});
+
+describe("groupRule", () => {
+  it("keeps only the chosen group's part of the rule", () => {
+    expect(groupRule("て", "G1")).toEqual(["う・つ・る→って", "む・ぶ・ぬ→んで", "く→いて", "ぐ→いで", "す→して（行く→行って）"]);
+    expect(groupRule("ない", "G1")).toEqual(["う段→あ段＋ない（う→わ：買う→買わない）", "ある→ない"]);
+    expect(groupRule("ない", "G3")).toEqual(["しない・こない"]);
+  });
+  it("returns ungrouped rules whole", () => {
+    expect(groupRule("た", "G2")).toEqual(["て形的て→た、で→だ"]);
   });
 });

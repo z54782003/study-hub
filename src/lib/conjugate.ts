@@ -25,7 +25,7 @@ export const FORM_LABEL: Record<VerbForm, string> = {
 
 export const FORM_RULE: Record<VerbForm, string> = {
   ます: "G1：う段→い段＋ます（書く→書きます）／G2：去る＋ます／G3：します・きます",
-  ない: "G1：う段→あ段＋ない（う→わ：買う→買わない）／G2：去る＋ない／G3：しない・こない／ある→ない",
+  ない: "G1：う段→あ段＋ない（う→わ：買う→買わない）／ある→ない／G2：去る＋ない／G3：しない・こない",
   て: "G1：う・つ・る→って／む・ぶ・ぬ→んで／く→いて／ぐ→いで／す→して（行く→行って）／G2：去る＋て／G3：して・きて",
   た: "て形的て→た、で→だ",
   可能: "G1：う段→え段＋る（書ける）／G2：去る＋られる／G3：できる・こられる",
@@ -36,6 +36,20 @@ export const FORM_RULE: Record<VerbForm, string> = {
   禁止: "辭書形＋な（書くな・食べるな・するな・くるな）",
   尊敬: "特別尊敬動詞：いらっしゃる・召し上がる・おっしゃる・ご覧になる・なさる・くださる…",
 };
+
+/** 規則卡只顯示某一組：「G1：…／…／G2：…」切成各組；沒有分組的規則（た形、禁止、尊敬）整句回傳 */
+export function groupRule(form: VerbForm, group: "G1" | "G2" | "G3"): string[] {
+  const parts = FORM_RULE[form].split("／");
+  if (!parts.some((p) => /^G[123]：/.test(p))) return parts;
+  const out: string[] = [];
+  let cur = "";
+  for (const p of parts) {
+    const m = p.match(/^(G[123])：(.*)$/);
+    if (m) cur = m[1];
+    if (cur === group) out.push(m ? m[2] : p);
+  }
+  return out;
+}
 
 export type Verb = {
   id: string;

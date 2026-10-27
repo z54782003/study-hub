@@ -17,6 +17,7 @@ export type PracticePreset = {
   lessons: number[];
   /** 從動詞變化表「練習這個形」過來 */
   verbForms: string[];
+  verbGroups: string[];
   /** 從漢字表「練習這章」過來；沒有就預設下一場漢字テスト的範圍 */
   kanjiChapters: string[];
   kanji: boolean;
@@ -51,7 +52,7 @@ export function PracticeForm({
   const kanjiChapters = Object.keys(kanjiCounts);
   const kanjiTotal = (chapters.length ? chapters : kanjiChapters).reduce((s, c) => s + (kanjiCounts[c] ?? 0), 0);
   const [verbForms, setVerbForms] = useState<string[]>(preset.verbForms.length ? preset.verbForms : ["意向"]);
-  const [groups, setGroups] = useState<string[]>([]);
+  const [groups, setGroups] = useState<string[]>(preset.verbGroups);
   const [judge, setJudge] = useState(true);
   const lang = type === "英文" ? "en" : "ja";
   const [level, setLevel] = useState<string>(preset.level);

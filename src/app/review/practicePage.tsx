@@ -2,7 +2,7 @@ import { PracticeForm, type PracticePreset } from "./PracticeForm";
 import { FORMS } from "@/lib/conjugate";
 import { EXAMS, KANJI_CHAPTERS } from "@/lib/config";
 import { englishVocabCount, kanjiChapterCounts, noteLessons, today, vocabLessonCounts } from "@/lib/data";
-import { examChapters, LEVELS, parseLessons } from "@/lib/reviewSource";
+import { examChapters, GROUPS, LEVELS, parseLessons } from "@/lib/reviewSource";
 import { BackLink } from "@/components/BackLink";
 
 /** 下一場漢字テスト的章（例：HSJⅡ 1章、2章） */
@@ -26,6 +26,7 @@ export async function PracticePage({ mode, query }: { mode: PracticePreset["mode
     level: LEVELS.find((l) => l === query.level) ?? "初中級",
     lessons: parseLessons(query.lessons ?? null),
     verbForms: (query.forms ?? "").split(",").filter((f) => (FORMS as readonly string[]).includes(f)),
+    verbGroups: (query.groups ?? "").split(",").filter((g) => (GROUPS as readonly string[]).includes(g)),
     kanjiChapters: query.chapters ? query.chapters.split(",").filter((c) => KANJI_CHAPTERS.includes(c)) : nextKanjiExamChapters(),
     kanji: query.type === "kanji" || Boolean(query.chapters),
   };
