@@ -41,6 +41,10 @@ export default async function TadokuBookPage({ params }: { params: Promise<{ id:
 
       {detail === null && <p className="mb-3 text-sm text-bad">讀不到這本書的頁面，請到多読網站閱讀。</p>}
 
+      {detail && !detail.audio && !detail.youtube && (
+        <p className="mb-3 rounded-[14px] bg-card-2 px-4 py-3 text-sm text-ink-2">這本書的朗讀還在準備中（多読網站上還沒有），現在只能看 PDF。</p>
+      )}
+
       {detail?.youtube && (
         <details className="group card mb-3 overflow-hidden">
           <summary className="flex min-h-12 cursor-pointer list-none items-center gap-2 px-4 text-[15px] font-semibold">
