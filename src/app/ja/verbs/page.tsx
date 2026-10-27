@@ -3,6 +3,7 @@ import Link from "next/link";
 import {
   FORMS,
   FORM_LABEL,
+  FORM_MEANING,
   GROUP_OF,
   conjugate,
   formException,
@@ -136,9 +137,27 @@ export default async function VerbTablePage({ searchParams }: { searchParams: Pr
         )}
       </div>
 
-      <section className="card mb-3 px-4 py-3 text-sm leading-relaxed">
-        <div className="label mb-1">
-          {formName}・{group}
+      <section className="card mb-3 space-y-2 px-4 py-3 text-sm leading-relaxed">
+        <div>
+          <div className="label">{formName}是什麼</div>
+          <p className="mt-0.5 text-[15px] font-semibold">{FORM_MEANING[form].meaning}</p>
+          <ul className="mt-1 space-y-0.5 text-ink-2">
+            {FORM_MEANING[form].uses.map((u) => (
+              <li key={u} className="flex gap-1.5">
+                <span className="text-muted">・</span>
+                <span>{u}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-1.5 rounded-xl bg-card-2 px-3 py-2">
+            <span className="block" lang="ja">
+              {FORM_MEANING[form].example[0]}
+            </span>
+            <span className="block text-xs text-muted">{FORM_MEANING[form].example[1]}</span>
+          </p>
+        </div>
+        <div className="label border-t border-line pt-2">
+          怎麼變・{group}
         </div>
         <ul lang="ja">
           {groupRule(form, group).map((r) => (
