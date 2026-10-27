@@ -94,8 +94,8 @@ export default async function TodayPage() {
   ];
 
   return (
-    <div className="space-y-3.5">
-      <header className="flex items-end justify-between">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-3.5 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] md:items-start md:gap-x-5 md:[grid-auto-flow:dense]">
+      <header className="flex items-end justify-between md:col-span-2">
         <div>
           <div className="text-[13px] font-medium text-muted">
             {m}月{d}日 星期{WEEKDAY[new Date(`${t.date}T00:00:00Z`).getUTCDay()]}
@@ -105,7 +105,7 @@ export default async function TodayPage() {
         </div>
       </header>
 
-      <section aria-label="考試倒數" className="grid grid-cols-[1.25fr_1fr] gap-2.5">
+      <section aria-label="考試倒數" className="grid grid-cols-[1.25fr_1fr] gap-2.5 md:col-start-1">
         {exam ? (
           <a href="/review/exam" className="block rounded-2xl bg-exam-soft px-3.5 py-3 text-exam">
             <div className="text-xs font-bold">{exam.date.slice(5).replace("-", "/")} 學校考試</div>
@@ -131,6 +131,7 @@ export default async function TodayPage() {
       </section>
 
       {/* 提醒：7 天內的考試（今天以外）與作業截止 */}
+      <div className="space-y-2 empty:hidden md:col-start-1">
       {t.exams
         .filter((e) => !(exam && e.date === exam.date && e.name === exam.name))
         .map((e) => (
@@ -151,9 +152,11 @@ export default async function TodayPage() {
           </span>
         </a>
       ))}
+      </div>
 
+      {/* iPad：今天的課固定在右欄 */}
       {!t.weekend && (
-        <section aria-label="今天的課" className="card space-y-2.5 p-4">
+        <section aria-label="今天的課" className="card space-y-2.5 p-4 md:sticky md:top-4 md:col-start-2 md:row-span-6 md:row-start-2">
           <Heading
             icon="cap"
             title="今天的課"
@@ -169,7 +172,7 @@ export default async function TodayPage() {
         </section>
       )}
 
-      <section aria-label="行程" className="card px-4 py-3.5">
+      <section aria-label="行程" className="card px-4 py-3.5 md:col-start-1">
         {t.calendar === null ? (
           <div className="flex items-center gap-2.5">
             <Heading icon="calendar" title="今天的行程" />
@@ -197,10 +200,12 @@ export default async function TodayPage() {
         )}
       </section>
 
-      <TaskList date={t.date} rows={rows} />
+      <div className="md:col-start-1">
+        <TaskList date={t.date} rows={rows} />
+      </div>
 
       {t.errors.length > 0 && (
-        <details className="card p-4 text-sm">
+        <details className="card p-4 text-sm md:col-span-2">
           <summary className="cursor-pointer text-bad">有 {t.errors.length} 個資料來源讀取失敗</summary>
           <ul className="mt-2 list-disc space-y-1 pl-5 text-muted">
             {t.errors.map((e) => (

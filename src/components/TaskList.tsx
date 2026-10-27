@@ -63,7 +63,7 @@ export function TaskList({ date, rows }: { date: string; rows: TaskRow[] }) {
 
   return (
     <>
-      <div className="mt-5 mb-2 flex items-baseline justify-between">
+      <div className="mt-1.5 mb-2 flex items-baseline justify-between">
         <h2 className="text-[15px] font-bold">今天要做</h2>
         <span className="text-[13px] text-ink-2 tabular-nums">
           {count} / {tasks.length} 完成
