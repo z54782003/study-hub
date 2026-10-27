@@ -5,9 +5,28 @@ import { Speak } from "@/components/Speak";
 type Entry = { phonetic?: string; audio?: string; meanings: { pos: string; def: string }[] };
 
 // 英英定義用免費的 dictionaryapi.dev；中文意思連到 Cambridge 英漢（繁體），存進單字庫後由 Notion AI 補中文翻譯。
+/** 變化形找不到時，依序試原形：gliders→glider、tried→try、making→make… */
+export function baseForms(word: string): string[] {
+  const w = word.toLowerCase();
+  const out = [w];
+  const add = (x: string) => x.length > 2 && !out.includes(x) && out.push(x);
+  if (w.endsWith("ies")) add(w.slice(0, -3) + "y");
+  if (w.endsWith("es")) add(w.slice(0, -2));
+  if (w.endsWith("s")) add(w.slice(0, -1));
+  if (w.endsWith("ied")) add(w.slice(0, -3) + "y");
+  if (w.endsWith("ed")) (add(w.slice(0, -2)), add(w.slice(0, -1)));
+  if (w.endsWith("ing")) (add(w.slice(0, -3)), add(w.slice(0, -3) + "e"));
+  if (/(\w)\1(ed|ing)$/.test(w)) add(w.replace(/(\w)\1(ed|ing)$/, "$1"));
+  return out;
+}
+
 async function lookup(word: string): Promise<Entry | null> {
-  const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`);
-  if (!res.ok) return null;
+  let res: Response | null = null;
+  for (const w of baseForms(word)) {
+    res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(w)}`);
+    if (res.ok) break;
+  }
+  if (!res?.ok) return null;
   const data = (await res.json()) as {
     phonetic?: string;
     phonetics?: { text?: string; audio?: string }[];

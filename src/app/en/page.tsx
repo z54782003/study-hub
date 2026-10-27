@@ -25,6 +25,9 @@ export default async function EnglishPage() {
       )}
       {done > 0 && <p className="mt-2 text-xs text-muted">已完成 {done} 個 talk</p>}
 
+      <h2 className="mt-6 mb-2 text-sm font-semibold text-muted">📰 讀＋聽</h2>
+      <EntryCard href="/en/voa" icon="📻" title="VOA Learning English" detail="慢速英文全文＋朗讀，點字查、加入單字庫" />
+
       <h2 className="mt-6 mb-2 text-sm font-semibold text-muted">📕 閱讀中</h2>
       {h.books.length === 0 ? (
         <p className="text-sm text-muted">目前沒有 Reading 中的書</p>

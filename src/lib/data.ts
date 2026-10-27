@@ -8,6 +8,7 @@ import { autoGrade, gradeChoice, parseChoices } from "./grading";
 import { mockAnswer, mockHistory, mockJournal, mockReview, mockToday, mockVocab } from "./mock";
 import { eventsOnDay, type CalendarEvent } from "./calendar";
 import { GROUP_OF, VERB_CLASSES, conjugate, formsFor, parseVerb, type Verb, type VerbClass, type VerbForm } from "./conjugate";
+import { VOA_BASE, VOA_FEEDS, parseVoaArticle, parseVoaFeed, type VoaArticle, type VoaFeedKey, type VoaItem } from "./voa";
 import { TADOKU_URL, parseTadoku, parseTadokuBook, type TadokuBook, type TadokuDetail } from "./tadoku";
 import { pickPreviewPage, summarizePreview, type ChildPage, type SimpleBlock } from "./preview";
 import { date, getPage, hasNotion, notion, num, queryAll, relationIds, select, text, updatePage, w, type Page } from "./notion";
@@ -964,4 +965,38 @@ export async function toggleTadokuRead(bookId: string): Promise<{ read: boolean 
     } as never,
   });
   return { read: true };
+}
+
+// ── VOA Learning English ─────────────────────────────────
+
+const voaFetch = async (path: string) => {
+  const r = await fetch(`${VOA_BASE}${path}`, { headers: { "user-agent": "StudyHub personal reader" } });
+  if (!r.ok) throw new Error(`VOA 回應 ${r.status}`);
+  return r.text();
+};
+const cachedVoaFeed = unstable_cache(async (id: string) => parseVoaFeed(await voaFetch(`/api/${id}`)), ["voa-feed"], { revalidate: 86400 });
+const cachedVoaArticle = unstable_cache(async (id: string) => parseVoaArticle(await voaFetch(`/a/${id}.html`)), ["voa-article"], {
+  revalidate: 30 * 86400,
+});
+
+const MOCK_VOA_ARTICLE: VoaArticle = {
+  title: "Wilbur and Orville Wright: The First Airplane",
+  audio: null,
+  paragraphs: [
+    "Wilbur and Orville Wright are the American inventors who made a small engine-powered flying machine. They proved that flight without the aid of gas-filled balloons was possible.",
+    "The Wright brothers did many tests with gliders at Kitty Hawk. With these tests, they learned how to solve many problems.",
+  ],
+  words: [{ term: "glider", def: "n. a flying object similar to an airplane but without an engine" }],
+  credit: ["Marilyn Rice Christiano wrote this story for VOA Learning English. John Russell adapted it."],
+};
+
+export async function getVoaFeed(key: VoaFeedKey): Promise<VoaItem[]> {
+  if (useMock()) return [{ id: "7998765", title: MOCK_VOA_ARTICLE.title, description: "The first powered flight.", date: "2025-03-17" }];
+  const feed = VOA_FEEDS.find((f) => f.key === key) ?? VOA_FEEDS[0];
+  return cachedVoaFeed(feed.id);
+}
+
+export async function getVoaArticle(id: string): Promise<VoaArticle> {
+  if (useMock()) return MOCK_VOA_ARTICLE;
+  return cachedVoaArticle(id);
 }
