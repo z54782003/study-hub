@@ -1,4 +1,4 @@
-// できる日本語 初中級 課文音檔：檔名 001–124 依課本順序排（每課：聞いてみよう全文 → ST1 チャレンジ各場面
+// できる日本語 初中級 課文音檔：檔名 001–234 依課本順序排（每課：聞いてみよう全文 → ST1 チャレンジ各場面
 // → ST1 やってみよう → ST2 チャレンジ → ST2 やってみよう → 話読聞書）。音檔和課文都存在 Notion，這裡只有編號規則。
 
 export type TrackKind = "full" | "scene" | "task" | "read";
@@ -15,7 +15,14 @@ export const LESSON_PLANS: LessonPlan[] = [
   { n: 5, title: "大変な1日", st: ["困ったな……", "駅で"], scenes: [["1", "2", "3-1", "3-2"], nums(3)], tasks: [3, 3] },
   { n: 6, title: "旅行に行こう", st: ["旅行の計画", "旅行の準備"], scenes: [nums(4), nums(3)], tasks: [1, 1] },
   { n: 7, title: "西川さんの家へ", st: ["初めての訪問", "一緒に作りましょう"], scenes: [nums(4), ["1", "2", "3-1", "3-2"]], tasks: [3, 1] },
-  { n: 8, title: "ありがとう", st: ["うれしい出来事", "お世話になりました"], scenes: [nums(3), nums(4)], tasks: [2, 4] },
+  { n: 8, title: "ありがとう", st: ["うれしい出来事", "お世話になりました"], scenes: [nums(3), nums(4)], tasks: [3, 4] },
+  { n: 9, title: "アルバイト先で", st: ["アルバイト先のルール", "楽しいアルバイト"], scenes: [["1", "2", "3-1", "3-2", "4"], nums(6)], tasks: [1, 3] },
+  { n: 10, title: "旅行に行って", st: ["ハプニング！", "ガイドブックを片手に"], scenes: [["1-1", "1-2", "2-1", "2-2", "3-1", "3-2"], nums(6)], tasks: [5, 2] },
+  { n: 11, title: "地域社会の中で", st: ["慣れてくると", "スポーツチームに入って"], scenes: [nums(3), nums(4)], tasks: [2, 2] },
+  { n: 12, title: "私の健康法", st: ["体調不良", "毎日、元気に！"], scenes: [nums(6), nums(5)], tasks: [2, 2] },
+  { n: 13, title: "親の気持ち・子の気持ち", st: ["町で見かけた子どもたち", "思い出すと"], scenes: [nums(3), nums(3)], tasks: [3, 3] },
+  { n: 14, title: "イベント・行事", st: ["私の国・町の行事", "贈り物の習慣"], scenes: [["1", "2", "3", "4-1", "4-2"], nums(4)], tasks: [2, 2] },
+  { n: 15, title: "気になるニュース", st: ["発表の準備", "みんなの前で発表"], scenes: [nums(4), nums(3)], tasks: [2, 2] },
 ];
 
 /** 這一課在課本順序裡的所有音檔 */
@@ -33,7 +40,7 @@ function planTracks(p: LessonPlan, start: number): Track[] {
   return out;
 }
 
-/** 每一課的音檔編號（第 9 課之後只有開頭，看手上有哪些檔案） */
+/** 每一課的音檔編號（001–234，依官方スクリプト的編號） */
 export function lessonTracks(n: number): Track[] {
   let start = 1;
   for (const p of LESSON_PLANS) {
@@ -41,8 +48,7 @@ export function lessonTracks(n: number): Track[] {
     if (p.n === n) return tracks;
     start += tracks.length;
   }
-  // 規劃以外的課：從上一課結束後的編號開始，第一個當全文
-  return n === LESSON_PLANS.length + 1 ? [{ no: start, kind: "full", label: "聞いてみよう（全文）" }] : [];
+  return [];
 }
 
 export const lessonTitle = (n: number) => LESSON_PLANS.find((p) => p.n === n)?.title ?? "";
@@ -63,13 +69,19 @@ export type IndexBlock = TranscriptBlock & { bold?: string };
 /** 「初中級課本索引｜L〇」頁 → 課文：
  *  「## もう一度聞こう」每段「**場面**：人：台詞／人：台詞…」、
  *  「## できる！＋話読聞書」的「**短文「題目」…**：本文」、
- *  「## チャレンジ スクリプト」底下「### ST1 1」＋每段一句。 */
+ *  「## 音檔スクリプト（チャレンジ・やってみよう…）」底下「### ST1 1」「### ST1 やってみよう 2」＋每段一句。 */
 export function parseIndexPage(blocks: IndexBlock[]): TranscriptPart[] {
   const out: TranscriptBlock[] = [];
   let mode: "listen" | "read" | "challenge" | null = null;
   for (const b of blocks) {
     if (b.type === "heading_1" || b.type === "heading_2") {
-      mode = b.text.includes("もう一度聞こう") ? "listen" : b.text.includes("話読聞書") ? "read" : b.text.includes("チャレンジ") ? "challenge" : null;
+      mode = b.text.includes("もう一度聞こう")
+        ? "listen"
+        : b.text.includes("話読聞書")
+          ? "read"
+          : b.text.includes("スクリプト") && /チャレンジ|やってみよう/.test(b.text)
+            ? "challenge"
+            : null;
       if (mode) out.push({ type: "heading_2", text: { listen: "聞いてみよう", read: "話読聞書", challenge: "チャレンジ" }[mode] });
       continue;
     }

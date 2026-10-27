@@ -20,9 +20,11 @@ describe("lessonTracks", () => {
     expect(lessonTracks(6)[0].no).toBe(84);
     expect(lessonTracks(7)[0].no).toBe(95);
     expect(lessonTracks(8)[0].no).toBe(109);
-    expect(lessonTracks(8).at(-1)).toMatchObject({ no: 123, kind: "read" });
-    expect(lessonTracks(9)).toEqual([{ no: 124, kind: "full", label: "聞いてみよう（全文）" }]);
-    expect(lessonTracks(10)).toEqual([]);
+    expect(lessonTracks(8).at(-1)).toMatchObject({ no: 124, kind: "read" });
+    expect(lessonTracks(9)[0].no).toBe(125);
+    expect(lessonTracks(10)[0].no).toBe(142);
+    expect(lessonTracks(15).at(-1)).toMatchObject({ no: 234, kind: "read" });
+    expect(lessonTracks(16)).toEqual([]);
   });
 });
 

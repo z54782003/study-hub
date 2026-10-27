@@ -8,7 +8,7 @@ import { LessonAudioView } from "./LessonAudioView";
 export const dynamic = "force-dynamic";
 export const metadata = { title: "課文音檔・Study Hub" };
 
-const LESSONS = Array.from({ length: LESSON_PLANS.length + 1 }, (_, i) => i + 1);
+const LESSONS = LESSON_PLANS.map((p) => p.n);
 
 export default async function LessonAudioPage({ searchParams }: { searchParams: Promise<{ l?: string }> }) {
   const q = await searchParams;
@@ -24,7 +24,7 @@ export default async function LessonAudioPage({ searchParams }: { searchParams: 
         できる日本語 初中級
       </p>
 
-      <nav aria-label="課" className="mb-4 grid grid-cols-9 gap-1">
+      <nav aria-label="課" className="mb-4 grid grid-cols-8 gap-1">
         {LESSONS.map((l) => (
           <Link
             key={l}
@@ -45,7 +45,6 @@ export default async function LessonAudioPage({ searchParams }: { searchParams: 
           <h2 className="mb-3 text-xl font-bold" lang="ja">
             第{n}課{lesson.title && `　${lesson.title}`}
           </h2>
-          {!plan && <p className="mb-3 text-sm text-muted">這一課目前只有開頭的全文音檔；其他檔案放進 Notion 之後再整理。</p>}
           <LessonAudioView tracks={lesson.tracks} transcript={lesson.transcript} st={plan?.st ?? null} />
         </>
       )}

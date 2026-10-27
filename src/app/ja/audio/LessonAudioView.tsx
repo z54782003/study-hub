@@ -71,10 +71,10 @@ export function LessonAudioView({ tracks, transcript, st }: { tracks: Row[]; tra
   const read = tracks.filter((t) => t.kind === "read");
   const listen = part("聞いて");
   const story = part("話読聞書");
-  // チャレンジ各場面有自己的課文（Notion「## チャレンジ」底下「### ST1 1」）
-  const challenge = part("チャレンジ");
-  const sceneText = (t: Row) =>
-    t.kind === "scene" ? challenge?.scenes.find((s) => s.title === `ST${t.st} ${t.label.replace("チャレンジ ", "")}`) : undefined;
+  // チャレンジ／やってみよう各音檔有自己的スクリプト（課本索引「## 音檔スクリプト」底下）
+  // 「ST1 1」「ST1 やってみよう 2」：跟音檔標籤對應
+  const scripts = transcript.filter((p) => p.heading === "チャレンジ").flatMap((p) => p.scenes);
+  const sceneText = (t: Row) => (t.st ? scripts.find((s) => s.title === `ST${t.st} ${t.label.replace(/^チャレンジ /, "")}`) : undefined);
 
   return (
     <>
@@ -100,11 +100,20 @@ export function LessonAudioView({ tracks, transcript, st }: { tracks: Row[]; tra
                   return (
                     <div key={t.no}>
                       {row(t)}
-                      {text && (
-                        <div className="px-4 pt-1 pb-3" lang="ja">
-                          <Lines lines={text.lines} />
-                        </div>
-                      )}
+                      {text &&
+                        (t.kind === "task" ? (
+                          // やってみよう是聽力題：スクリプト先收起來
+                          <details className="px-4 pb-3">
+                            <summary className="cursor-pointer text-[13px] font-semibold text-accent">看スクリプト</summary>
+                            <div className="pt-2" lang="ja">
+                              <Lines lines={text.lines} />
+                            </div>
+                          </details>
+                        ) : (
+                          <div className="px-4 pt-1 pb-3" lang="ja">
+                            <Lines lines={text.lines} />
+                          </div>
+                        ))}
                     </div>
                   );
                 })}
