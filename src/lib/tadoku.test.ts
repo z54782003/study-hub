@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseTadoku, parseTadokuBook } from "./tadoku";
+import { parseTadoku, parseTadokuBook, pdfKind } from "./tadoku";
 
 const entry = (id: string, level: string, title: string, extra = "") => `
 <div class="bl-item" data-desc="…&lt;ruby&gt;…" data-order-level="${level}" data-date="1770374648">
@@ -61,4 +61,13 @@ describe("parseTadokuBook", () => {
     });
   });
   it("handles books without media", () => expect(parseTadokuBook("<p>no media</p>")).toEqual({ youtube: null, audio: null, pdf: [] }));
+});
+
+describe("pdfKind", () => {
+  it("reads the e/p letter right after the book number, not anywhere in the name", () => {
+    expect(pdfKind("https://tadoku.org/japanese/wp-content/uploads/w0012e-inutoniku-v3.pdf")).toBe("screen");
+    expect(pdfKind("https://tadoku.org/japanese/wp-content/uploads/w0012p-inutoniku-v3.pdf")).toBe("print");
+    expect(pdfKind("https://tadoku.org/japanese/wp-content/uploads/w0034p-hime-no-hanashi.pdf")).toBe("print");
+    expect(pdfKind("https://tadoku.org/japanese/wp-content/uploads/booklet.pdf")).toBeNull();
+  });
 });

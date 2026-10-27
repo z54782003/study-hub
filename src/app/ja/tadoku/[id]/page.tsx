@@ -3,6 +3,7 @@ import { ReadButton } from "../ReadButton";
 import { AudioPlayer } from "@/components/AudioPlayer";
 import { getTadokuBooks, getTadokuDetail, getTadokuLog } from "@/lib/data";
 import { BackLink } from "@/components/BackLink";
+import { pdfKind } from "@/lib/tadoku";
 import { Icon } from "@/components/Icon";
 import { YouTubeEmbed } from "@/components/YouTubeEmbed";
 
@@ -54,13 +55,21 @@ export default async function TadokuBookPage({ params }: { params: Promise<{ id:
       )}
 
       <section className="mb-6 space-y-2">
-        {detail?.pdf.map((u) => (
-          <a key={u} href={u} target="_blank" rel="noreferrer" className="card flex min-h-14 items-center gap-3 px-4 text-[15px] font-semibold">
-            <Icon name="book" className="text-accent" />
-            <span className="flex-1">{/[^/]+e-[^/]*\.pdf$/.test(u) ? "PDF（電子版）" : /[^/]+p-[^/]*\.pdf$/.test(u) ? "PDF（列印版）" : "PDF"}</span>
-            <Icon name="external" size={18} stroke={2} className="text-muted" label="外部連結" />
-          </a>
-        ))}
+        {[...(detail?.pdf ?? [])]
+          .sort((x, y) => Number(pdfKind(x) !== "screen") - Number(pdfKind(y) !== "screen"))
+          .map((u) => {
+            const kind = pdfKind(u);
+            return (
+              <a key={u} href={u} target="_blank" rel="noreferrer" className="card flex min-h-14 items-center gap-3 px-4 py-2.5">
+                <Icon name="book" className="shrink-0 text-accent" />
+                <span className="flex-1">
+                  <span className="block text-[15px] font-semibold">{kind === "screen" ? "PDF・電子版" : kind === "print" ? "PDF・列印版" : "PDF"}</span>
+                  {kind && <span className="block text-xs text-muted">{kind === "screen" ? "在手機或平板上一頁一頁看" : "印出來看的版面；在手機上看用電子版就好"}</span>}
+                </span>
+                <Icon name="external" size={18} stroke={2} className="shrink-0 text-muted" label="外部連結" />
+              </a>
+            );
+          })}
         <a href={book.url} target="_blank" rel="noreferrer" className="card flex min-h-14 items-center gap-3 px-4 text-[15px] font-semibold">
           <Icon name="news" className="text-accent" />
           <span className="flex-1">在多読網站上看這本書</span>

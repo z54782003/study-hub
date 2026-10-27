@@ -65,3 +65,10 @@ export function parseTadokuBook(html: string): TadokuDetail {
   const pdf = [...new Set([...html.matchAll(/https:\/\/tadoku\.org\/[^"'\s]+\.pdf/g)].map((m) => m[0]))];
   return { youtube: yt?.[1] ?? null, audio: audio?.[0] ?? null, pdf };
 }
+
+/** 書的 PDF 檔名「w0012e-…」「w0012p-…」：編號後面的 e＝電子版（在螢幕上看）、p＝列印版（印出來看） */
+export function pdfKind(url: string): "screen" | "print" | null {
+  const head = (url.split("/").pop() ?? "").split(/[-_]/)[0];
+  const code = head.match(/\d([ep])$/i)?.[1]?.toLowerCase();
+  return code === "e" ? "screen" : code === "p" ? "print" : null;
+}
