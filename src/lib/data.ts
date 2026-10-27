@@ -8,6 +8,7 @@ import { autoGrade, gradeChoice, parseChoices } from "./grading";
 import { mockAnswer, mockHistory, mockJournal, mockReview, mockToday, mockVocab } from "./mock";
 import { eventsOnDay, type CalendarEvent } from "./calendar";
 import { GROUP_OF, VERB_CLASSES, conjugate, formsFor, parseVerb, type Verb, type VerbClass, type VerbForm } from "./conjugate";
+import { TADOKU_URL, parseTadoku, type TadokuBook } from "./tadoku";
 import { pickPreviewPage, summarizePreview, type ChildPage, type SimpleBlock } from "./preview";
 import { date, getPage, hasNotion, notion, num, queryAll, relationIds, select, text, updatePage, w, type Page } from "./notion";
 import {
@@ -894,4 +895,58 @@ export async function getEnglishHub(): Promise<{ ted: TedLink[]; books: (Link & 
     books: books.map((p) => ({ title: text(p, "Name"), url: p.url, type: select(p, "Type") })),
     errors,
   };
+}
+
+// ── 多読書庫 ─────────────────────────────────────────
+
+const cachedTadokuBooks = unstable_cache(
+  async (): Promise<TadokuBook[]> => {
+    const r = await fetch(TADOKU_URL, { headers: { "user-agent": "StudyHub personal reading log" } });
+    if (!r.ok) throw new Error(`多読網站回應 ${r.status}`);
+    return parseTadoku(await r.text());
+  },
+  ["tadoku-books"],
+  { revalidate: 86400 },
+);
+
+export async function getTadokuBooks(): Promise<TadokuBook[]> {
+  if (useMock())
+    return [
+      { id: "61273", title: "ちょっと来て！", level: "Start", url: "https://tadoku.org/japanese/book/61273/", cover: null, tags: ["ふりがな付き"] },
+      { id: "40182", title: "犬と肉〜イソップ物語より", level: "0", url: "https://tadoku.org/japanese/book/40182/", cover: null, tags: ["ふりがな付き", "音声あり"] },
+      { id: "50001", title: "浦島太郎", level: "1", url: "https://tadoku.org/japanese/book/50001/", cover: null, tags: [] },
+    ];
+  return cachedTadokuBooks();
+}
+
+export type TadokuRead = { pageId: string; date: string | null };
+
+/** 讀過的書：書號 → 讀完日期 */
+export async function getTadokuLog(): Promise<Record<string, TadokuRead>> {
+  if (useMock()) return { "61273": { pageId: "m1", date: "2026-10-25" } };
+  const pages = await queryAll(DS.tadokuLog, undefined, undefined, 1000);
+  return Object.fromEntries(pages.map((p) => [text(p, "書號"), { pageId: p.id, date: date(p, "讀完日期") }]));
+}
+
+/** 讀完／取消讀完（取消就把那筆紀錄移到垃圾桶） */
+export async function toggleTadokuRead(bookId: string): Promise<{ read: boolean }> {
+  if (useMock()) return { read: true };
+  const existing = await queryAll(DS.tadokuLog, { property: "書號", rich_text: { equals: bookId } } as never, undefined, 5);
+  if (existing.length) {
+    for (const p of existing) await notion().pages.update({ page_id: p.id, in_trash: true } as never);
+    return { read: false };
+  }
+  const book = (await getTadokuBooks()).find((b) => b.id === bookId);
+  if (!book) throw new Error("書單裡找不到這本書");
+  await notion().pages.create({
+    parent: { type: "data_source_id", data_source_id: DS.tadokuLog },
+    properties: {
+      書名: w.title(book.title),
+      レベル: w.select(book.level),
+      連結: { url: book.url },
+      書號: { rich_text: [{ text: { content: book.id } }] },
+      讀完日期: w.date(today()),
+    } as never,
+  });
+  return { read: true };
 }

@@ -17,7 +17,8 @@ export default async function JapanesePage() {
 
       <div className="space-y-2.5">
         <EntryCard href="/n3" icon="🈁" title="N3 單字・今日文型" detail="今天這批的單字卡" />
-        <EntryCard href={NHK_EASY_URL} icon="📰" title="NHK Easy" detail="聽讀 5 分" external />
+        <EntryCard href="/ja/tadoku" icon="📚" title="多読書庫" detail="依級數的免費讀本，記錄讀過哪些" />
+        <EntryCard href={NHK_EASY_URL} icon="📰" title="NHK Easy" detail="聽讀 5 分（NHK 網站）" external />
         <EntryCard href="/ja/kanji" icon="🈴" title="漢字表" detail="HSJⅠ・Ⅱ 依章：音訓、意思、例詞" />
         <EntryCard href="/ja/verbs" icon="🔤" title="動詞變化表" detail="ます・ない・て・可能・意向・條件・受身・命令・尊敬" />
       </div>

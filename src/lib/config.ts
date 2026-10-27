@@ -9,6 +9,7 @@ export const DS = {
   books: process.env.DS_BOOKS ?? "a73097c5-7668-8295-ab2c-8735d209f19f", // 📕 Books
   journal: process.env.DS_JOURNAL ?? "9f8acad0-843a-443d-bc22-8050e151eae9", // 📔 Journal
   attempts: process.env.DS_ATTEMPTS ?? "0f5829ab-0ceb-4322-823e-71058525a2d4", // 📝 作答紀錄（Study Hub）
+  tadokuLog: process.env.DS_TADOKU_LOG ?? "ff956b29-87b5-4995-8026-b2947331d885", // 📚 多読紀錄
   kanji: process.env.DS_KANJI ?? "a05cd8c3-2228-4aca-af1f-d7d6d95f3980", // 🈴 漢字庫（HSJ）
 };
 
