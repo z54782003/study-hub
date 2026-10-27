@@ -29,6 +29,7 @@ export async function PracticePage({ mode, query }: { mode: PracticePreset["mode
     verbGroups: (query.groups ?? "").split(",").filter((g) => (GROUPS as readonly string[]).includes(g)),
     kanjiChapters: query.chapters ? query.chapters.split(",").filter((c) => KANJI_CHAPTERS.includes(c)) : nextKanjiExamChapters(),
     kanji: query.type === "kanji" || Boolean(query.chapters),
+    fromLink: Boolean(query.level || query.lessons || query.forms || query.groups || query.chapters),
   };
   const [lessons, counts, english, kanjiCounts] = await Promise.all([
     noteLessons(),

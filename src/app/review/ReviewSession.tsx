@@ -272,6 +272,24 @@ function QuizCard({ item, onDone }: { item: QuizItem; onDone: (p: Pending) => vo
       feedback: result?.feedback || undefined,
     });
 
+  // 自動比對判對（寫的和正解一樣）：0.6 秒後自動下一題，不用再按
+  const autoNext = result?.method === "自動比對" && result.correct === true && !choices && override === null;
+  const finishRef = useRef(finish);
+  finishRef.current = finish;
+  useEffect(() => {
+    if (!autoNext) return;
+    const t = setTimeout(() => finishRef.current(true), 600);
+    return () => clearTimeout(t);
+  }, [autoNext]);
+  // 選擇題：點完先看對錯，0.8 秒後才出現「下一題」，避免連點跳過
+  const [nextReady, setNextReady] = useState(false);
+  useEffect(() => {
+    if (!result || !choices) return;
+    const t = setTimeout(() => setNextReady(true), 800);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [result]);
+
   return (
     <>
       <article className="card mt-2 flex-1 rounded-3xl p-5">
@@ -375,8 +393,13 @@ function QuizCard({ item, onDone }: { item: QuizItem; onDone: (p: Pending) => vo
             </button>
           </div>
         ) : (
-          <button type="button" onClick={() => finish(finalCorrect)} className="w-full rounded-2xl bg-accent py-4 text-lg font-semibold text-on-accent">
-            下一題
+          <button
+            type="button"
+            onClick={() => finish(finalCorrect)}
+            className={`btn-primary w-full transition-opacity ${choices && !nextReady ? "pointer-events-none opacity-0" : ""}`}
+            aria-hidden={choices && !nextReady ? true : undefined}
+          >
+            {autoNext ? "答對了，下一題…" : "下一題"}
           </button>
         )}
         {result && finalCorrect === null && (
@@ -394,9 +417,29 @@ function QuizCard({ item, onDone }: { item: QuizItem; onDone: (p: Pending) => vo
 
 function FlipCard({ item, onDone }: { item: Exclude<ReviewItem, QuizItem | VerbItem>; onDone: (p: Pending) => void }) {
   const [revealed, setRevealed] = useState(false);
+  // 背面可以滑：左滑＝會、右滑＝不會（超過 80px 才算）
+  const [drag, setDrag] = useState<{ x: number; dx: number } | null>(null);
+  const answer = (correct: boolean) => onDone({ item, correct, method: "自評" });
   return (
     <>
-      <article className="mt-2 flex-1 rounded-3xl border border-line bg-card p-5">
+      <article
+        key={revealed ? "back" : "front"}
+        onClick={() => !revealed && setRevealed(true)}
+        onPointerDown={(e) => revealed && !(e.target as HTMLElement).closest("a,button") && setDrag({ x: e.clientX, dx: 0 })}
+        onPointerMove={(e) => drag && setDrag({ ...drag, dx: e.clientX - drag.x })}
+        onPointerUp={() => {
+          if (drag && Math.abs(drag.dx) > 80) answer(drag.dx < 0);
+          setDrag(null);
+        }}
+        onPointerCancel={() => setDrag(null)}
+        style={drag ? { transform: `translateX(${drag.dx}px) rotate(${drag.dx / 30}deg)` } : undefined}
+        className={`card relative mt-2 flex-1 rounded-3xl p-5 ${revealed ? "flip-in touch-pan-y" : "cursor-pointer"} ${
+          drag && drag.dx < -40 ? "ring-2 ring-ok" : drag && drag.dx > 40 ? "ring-2 ring-bad" : ""
+        }`}
+      >
+        {drag && Math.abs(drag.dx) > 40 && (
+          <span className={`tag absolute top-4 ${drag.dx < 0 ? "right-4 bg-ok-soft text-ok" : "left-4 bg-bad-soft text-bad"}`}>{drag.dx < 0 ? "✓ 會" : "✕ 不會"}</span>
+        )}
         <p
           className={`py-6 text-center font-bold ${item.kind === "grammar" ? "text-3xl" : "text-5xl"}`}
           lang={item.kind === "vocab" && item.lang === "en" ? "en" : "ja"}
@@ -444,18 +487,19 @@ function FlipCard({ item, onDone }: { item: Exclude<ReviewItem, QuizItem | VerbI
       <div className="sticky bottom-24 mt-4">
         {revealed ? (
           <div className="grid grid-cols-2 gap-3">
-            <button type="button" onClick={() => onDone({ item, correct: false, method: "自評" })} className="rounded-2xl bg-bad py-4 text-lg font-semibold text-on-accent">
+            <button type="button" onClick={() => answer(false)} className="rounded-2xl bg-bad py-4 text-lg font-semibold text-on-accent">
               ✗ 不會
             </button>
-            <button type="button" onClick={() => onDone({ item, correct: true, method: "自評" })} className="rounded-2xl bg-ok py-4 text-lg font-semibold text-on-accent">
+            <button type="button" onClick={() => answer(true)} className="rounded-2xl bg-ok py-4 text-lg font-semibold text-on-accent">
               ✓ 會
             </button>
           </div>
         ) : (
-          <button type="button" onClick={() => setRevealed(true)} className="w-full rounded-2xl bg-ink py-4 text-lg font-semibold text-bg">
+          <button type="button" onClick={() => setRevealed(true)} className="btn-primary w-full">
             看答案
           </button>
         )}
+        {revealed && <p className="mt-2 text-center text-xs text-muted">也可以左滑＝會、右滑＝不會</p>}
       </div>
     </>
   );

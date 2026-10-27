@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Chips, Field } from "@/components/Chips";
 import { FORMS, FORM_LABEL } from "@/lib/conjugate";
 import { GROUPS, LESSON_COUNT, LEVELS, QTYPES, sourceQuery } from "@/lib/reviewSource";
@@ -21,7 +21,20 @@ export type PracticePreset = {
   /** 從漢字表「練習這章」過來；沒有就預設下一場漢字テスト的範圍 */
   kanjiChapters: string[];
   kanji: boolean;
+  /** 從別頁帶條件過來（練習這課／這章／這個形）：用帶來的條件，不套上次的 */
+  fromLink: boolean;
 };
+
+// 各分頁記住上次的條件（只存在這台裝置）；漢字章不記，固定預設下一場漢字テスト的範圍
+const MEMORY_KEY = "practice-conditions:v1";
+type Saved = Partial<{ level: string; picked: number[]; count: number; qtype: string | null; scope: "weak" | "all"; verbForms: string[]; groups: string[]; judge: boolean }>;
+function loadSaved(): Record<string, Saved> {
+  try {
+    return JSON.parse(localStorage.getItem(MEMORY_KEY) ?? "{}");
+  } catch {
+    return {};
+  }
+}
 
 export function PracticeForm({
   noteLessons,
@@ -61,6 +74,46 @@ export function PracticeForm({
   const [scope, setScope] = useState<"weak" | "all">("weak");
   const [count, setCount] = useState<number>(20);
 
+  // 換分頁時套上那一頁上次的條件；條件一改就記下來
+  const restore = (t: PracticeType) => {
+    const m = loadSaved()[t];
+    if (!m) return;
+    if (m.level && LEVELS.includes(m.level as (typeof LEVELS)[number])) setLevel(m.level);
+    if (m.picked) setPicked(m.picked);
+    if (m.count) setCount(m.count);
+    if (m.qtype !== undefined) setQtype(m.qtype);
+    if (m.scope) setScope(m.scope);
+    if (m.verbForms?.length) setVerbForms(m.verbForms);
+    if (m.groups) setGroups(m.groups);
+    if (m.judge !== undefined) setJudge(m.judge);
+  };
+  const restored = useRef(false);
+  useEffect(() => {
+    if (!preset.fromLink) restore(type);
+    restored.current = true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    if (!restored.current) return;
+    const snapshot: Saved =
+      type === "漢字"
+        ? { count }
+        : type === "動詞の形"
+          ? { verbForms, groups, judge, count }
+          : type === "題庫"
+            ? { level, picked, qtype, scope, count }
+            : type === "日文"
+              ? { level, picked, count }
+              : { count };
+    try {
+      localStorage.setItem(MEMORY_KEY, JSON.stringify({ ...loadSaved(), [type]: snapshot }));
+    } catch {}
+  }, [type, level, picked, count, qtype, scope, verbForms, groups, judge]);
+  const switchType = (t: PracticeType) => {
+    setType(t);
+    restore(t);
+  };
+
   const toggle = (n: number) => setPicked((p) => (p.includes(n) ? p.filter((x) => x !== n) : [...p, n].sort((a, b) => a - b)));
   const pickLevel = (l: string) => {
     setLevel(l);
@@ -80,6 +133,9 @@ export function PracticeForm({
       ? `/review/session?${sourceQuery({ src: "bank", level, lessons: picked, qtype, scope, count })}`
       : `/review/session?${sourceQuery({ src: "vocab", lang, level: lang === "ja" ? level : null, lessons: lang === "ja" ? picked : [], count })}`;
   const soon = SOON[type];
+  // 看得出來沒有題目的條件：按鈕停用並說明（題庫、動詞要開始後才知道）
+  const empty =
+    type === "漢字" ? kanjiTotal === 0 : type === "日文" ? vocabTotal === 0 : type === "英文" ? englishCount === 0 : type === "題庫" ? bankLessons.length === 0 : false;
   const levelField = (
     <Field title="冊">
       <Chips options={LEVELS} value={[level as (typeof LEVELS)[number]]} onToggle={pickLevel} />
@@ -100,7 +156,7 @@ export function PracticeForm({
             type="button"
             role="tab"
             aria-selected={t === type}
-            onClick={() => setType(t)}
+            onClick={() => switchType(t)}
             className={`rounded-xl py-2 text-sm font-semibold ${t === type ? "bg-card shadow-sm" : "text-muted"}`}
           >
             {t}
@@ -193,9 +249,15 @@ export function PracticeForm({
 
       {!soon && (
         <div className="fixed inset-x-0 bottom-[calc(49px+env(safe-area-inset-bottom)+12px)] mx-auto max-w-xl px-4 md:max-w-[760px]">
-          <Link href={href} className="btn-primary">
-            開始練習
-          </Link>
+          {empty ? (
+            <div aria-disabled className="btn-primary !bg-card-2 !text-muted !shadow-none">
+              這個條件沒有題目
+            </div>
+          ) : (
+            <Link href={href} className="btn-primary">
+              開始練習
+            </Link>
+          )}
         </div>
       )}
     </>
