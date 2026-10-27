@@ -117,10 +117,10 @@ export default async function VerbTablePage({ searchParams }: { searchParams: Pr
         })}
       </div>
 
-      <div className="fixed inset-x-0 bottom-20 mx-auto max-w-xl px-4 md:max-w-2xl">
+      <div className="fixed inset-x-0 bottom-[calc(49px+env(safe-area-inset-bottom)+12px)] mx-auto max-w-xl px-4 md:max-w-[760px]">
         <Link
           href={`/review/questions?forms=${encodeURIComponent(form)}`}
-          className="block rounded-2xl bg-accent py-4 text-center text-lg font-semibold text-on-accent shadow-lg"
+          className="btn-primary"
         >
           練習{FORM_LABEL[form].replace(/（.*）/, "")}
         </Link>

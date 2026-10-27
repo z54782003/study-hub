@@ -191,8 +191,8 @@ export function PracticeForm({
       )}
 
       {!soon && (
-        <div className="fixed inset-x-0 bottom-20 mx-auto max-w-xl px-4 md:max-w-2xl">
-          <Link href={href} className="block rounded-2xl bg-accent py-4 text-center text-lg font-semibold text-on-accent shadow-lg">
+        <div className="fixed inset-x-0 bottom-[calc(49px+env(safe-area-inset-bottom)+12px)] mx-auto max-w-xl px-4 md:max-w-[760px]">
+          <Link href={href} className="btn-primary">
             開始練習
           </Link>
         </div>
