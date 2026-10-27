@@ -16,6 +16,8 @@ export default async function KanjiTablePage({ searchParams }: { searchParams: P
   // 預設：最新的一章（HSJⅡ 的最後一章）
   const chapter = chapters.includes(q.ch ?? "") ? (q.ch as string) : (chapters.at(-1) ?? "");
   const list = chapter ? await getKanji([chapter]) : [];
+  const books = [...new Set(chapters.map((c) => c.split(" ")[0]))];
+  const book = chapter.split(" ")[0];
   return (
     <>
       <BackLink href="/ja">日文</BackLink>
@@ -24,18 +26,41 @@ export default async function KanjiTablePage({ searchParams }: { searchParams: P
       {chapters.length === 0 ? (
         <StatusMessage title="漢字庫還沒有資料" body="在 Notion 漢字庫加入章節後，會出現在這裡。" />
       ) : (
-        <nav className="-mx-4 mb-4 flex gap-1.5 overflow-x-auto px-4 pb-1">
-          {chapters.map((c) => (
-            <Link
-              key={c}
-              href={`/ja/kanji?ch=${encodeURIComponent(c)}`}
-              scroll={false}
-              className={`flex h-9 shrink-0 items-center rounded-full border px-3 text-sm font-semibold whitespace-nowrap ${c === chapter ? "border-ink bg-ink text-bg" : "border-line bg-card text-ink-2"}`}
-            >
-              {c.replace("HSJ", "")}・{counts[c]}
-            </Link>
-          ))}
-        </nav>
+        <div className="mb-4 space-y-2.5">
+          {/* 先選冊，再選章（章只顯示數字，字數放在下面的標題） */}
+          <nav aria-label="冊" className="grid grid-cols-2 gap-1 rounded-[14px] bg-card-2 p-1">
+            {books.map((b) => (
+              <Link
+                key={b}
+                href={`/ja/kanji?ch=${encodeURIComponent(b === book ? chapter : chapters.filter((c) => c.startsWith(b)).at(-1)!)}`}
+                scroll={false}
+                aria-current={b === book ? "page" : undefined}
+                className={`flex h-10 items-center justify-center rounded-[10px] text-sm ${b === book ? "bg-card font-bold text-ink shadow-card" : "font-semibold text-ink-2"}`}
+              >
+                {b}
+              </Link>
+            ))}
+          </nav>
+          <nav aria-label="章" className="flex flex-wrap gap-1.5">
+            {chapters
+              .filter((c) => c.startsWith(book))
+              .map((c) => (
+                <Link
+                  key={c}
+                  href={`/ja/kanji?ch=${encodeURIComponent(c)}`}
+                  scroll={false}
+                  aria-label={`${c}・${counts[c]} 字`}
+                  aria-current={c === chapter ? "page" : undefined}
+                  className={`grid size-10 place-items-center rounded-xl border text-[15px] font-bold tabular-nums ${c === chapter ? "border-ink bg-ink text-bg" : "border-line bg-card text-ink-2"}`}
+                >
+                  {c.match(/(\d+)章/)?.[1]}
+                </Link>
+              ))}
+          </nav>
+          <p className="text-sm text-muted">
+            <b className="text-ink">{chapter.replace(" ", " 第")}</b>・{counts[chapter]} 字
+          </p>
+        </div>
       )}
 
       <ul className="mb-24 grid gap-2.5 md:grid-cols-2">
