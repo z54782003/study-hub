@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseTadoku, parseTadokuBook, pdfKind } from "./tadoku";
+import { parseTadoku, parseTadokuBook, pdfKind, pdfProxyPath } from "./tadoku";
 
 const entry = (id: string, level: string, title: string, extra = "") => `
 <div class="bl-item" data-desc="…&lt;ruby&gt;…" data-order-level="${level}" data-date="1770374648">
@@ -69,5 +69,14 @@ describe("pdfKind", () => {
     expect(pdfKind("https://tadoku.org/japanese/wp-content/uploads/w0012p-inutoniku-v3.pdf")).toBe("print");
     expect(pdfKind("https://tadoku.org/japanese/wp-content/uploads/w0034p-hime-no-hanashi.pdf")).toBe("print");
     expect(pdfKind("https://tadoku.org/japanese/wp-content/uploads/booklet.pdf")).toBeNull();
+  });
+});
+
+describe("pdfProxyPath", () => {
+  it("maps tadoku uploads to the same-origin path and refuses anything else", () => {
+    expect(pdfProxyPath("https://tadoku.org/japanese/wp-content/uploads/w0012e-inutoniku-v3.pdf")).toBe("/tadoku-pdf/w0012e-inutoniku-v3.pdf");
+    expect(pdfProxyPath("https://tadoku.org/japanese/wp-content/uploads/2020/05/x.pdf")).toBe("/tadoku-pdf/2020/05/x.pdf");
+    expect(pdfProxyPath("https://tadoku.org/japanese/wp-content/uploads/../../x.pdf")).toBeNull();
+    expect(pdfProxyPath("https://evil.example/japanese/wp-content/uploads/x.pdf")).toBeNull();
   });
 });

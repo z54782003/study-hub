@@ -72,3 +72,10 @@ export function pdfKind(url: string): "screen" | "print" | null {
   const code = head.match(/\d([ep])$/i)?.[1]?.toLowerCase();
   return code === "e" ? "screen" : code === "p" ? "print" : null;
 }
+
+/** 同網域的 PDF 網址（next.config 的 /tadoku-pdf rewrite）；不是多読上傳區的檔就回傳 null */
+export function pdfProxyPath(url: string): string | null {
+  const m = url.match(/^https:\/\/tadoku\.org\/japanese\/wp-content\/uploads\/((?:[\w-]+\/)*[\w.-]+\.pdf)$/i);
+  if (m && m[1].includes("..")) return null;
+  return m ? `/tadoku-pdf/${m[1]}` : null;
+}

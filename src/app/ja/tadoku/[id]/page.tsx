@@ -3,7 +3,8 @@ import { ReadButton } from "../ReadButton";
 import { AudioPlayer } from "@/components/AudioPlayer";
 import { getTadokuBooks, getTadokuDetail, getTadokuLog } from "@/lib/data";
 import { BackLink } from "@/components/BackLink";
-import { pdfKind } from "@/lib/tadoku";
+import { pdfKind, pdfProxyPath } from "@/lib/tadoku";
+import { PdfReader } from "@/components/PdfReader";
 import { Icon } from "@/components/Icon";
 import { YouTubeEmbed } from "@/components/YouTubeEmbed";
 
@@ -20,6 +21,8 @@ export default async function TadokuBookPage({ params }: { params: Promise<{ id:
     getTadokuLog().catch(() => ({}) as Awaited<ReturnType<typeof getTadokuLog>>),
   ]);
   const read = log[id];
+  // 頁面裡直接讀：電子版優先，沒有就用第一個 PDF
+  const readable = [...(detail?.pdf ?? [])].sort((x, y) => Number(pdfKind(x) !== "screen") - Number(pdfKind(y) !== "screen")).find((u) => pdfProxyPath(u));
   return (
     <>
       <BackLink href={`/ja/tadoku?level=${book.level}`}>多読書庫</BackLink>
@@ -37,6 +40,12 @@ export default async function TadokuBookPage({ params }: { params: Promise<{ id:
       </div>
 
       {detail === null && <p className="mb-3 text-sm text-bad">讀不到這本書的頁面，請到多読網站閱讀。</p>}
+
+      {readable && (
+        <div className="mb-5">
+          <PdfReader src={pdfProxyPath(readable)!} original={readable} title={book.title} />
+        </div>
+      )}
 
       {detail?.youtube && (
         <div className="-mx-4 mb-3 aspect-video md:mx-0 md:overflow-hidden md:rounded-2xl">
