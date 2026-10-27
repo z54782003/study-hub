@@ -26,7 +26,7 @@ export default async function LessonWordsPage({ searchParams }: { searchParams: 
   const practice = `/review/words?${new URLSearchParams({ level, lessons: String(lesson) })}`;
   return (
     <>
-      <BackLink href="/ja">日文</BackLink>
+      <BackLink href="/ja/lessons">できる日本語</BackLink>
       <h1 className="mt-1 text-[28px] leading-[34px] font-bold">
         {level} 第{lesson}課
       </h1>
