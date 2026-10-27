@@ -12,7 +12,7 @@ export default async function MistakesPage() {
       <header className="mb-4 flex items-baseline justify-between">
         <h1 className="text-2xl font-bold">錯題區</h1>
         <Link href="/review/due" className="text-sm text-accent">
-          今晚複習 ›
+          今日到期 ›
         </Link>
       </header>
       <MistakeList items={items} />

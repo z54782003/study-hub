@@ -136,7 +136,7 @@ export default async function TodayPage() {
           date={t.date}
           id="review"
           icon="🔁"
-          title={reviewTotal ? `今晚複習 ${reviewTotal} 張` : "今晚複習：全部完成"}
+          title={reviewTotal ? `今日到期複習 ${reviewTotal} 張` : "今日到期：全部完成"}
           detail={reviewTotal ? `題庫 ${t.review.quiz}・N3 單字 ${t.review.n3}・文型 ${t.review.grammar}` : undefined}
           href="/review/due"
           autoDone={reviewTotal === 0}
