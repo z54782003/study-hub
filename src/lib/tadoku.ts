@@ -48,3 +48,20 @@ export function parseTadoku(html: string): TadokuBook[] {
   }
   return [...books.values()];
 }
+
+export type TadokuDetail = {
+  /** YouTube 影片 ID（書頁畫面＋朗讀） */
+  youtube: string | null;
+  /** 朗讀 mp3 */
+  audio: string | null;
+  /** PDF：e＝電子版、p＝列印版 */
+  pdf: string[];
+};
+
+/** 書的頁面 → 影片、朗讀、PDF 連結 */
+export function parseTadokuBook(html: string): TadokuDetail {
+  const yt = html.match(/(?:youtube(?:-nocookie)?\.com\/(?:embed\/|watch\?v=)|youtu\.be\/)([\w-]{11})/);
+  const audio = html.match(/https:\/\/tadoku\.org\/[^"'\s]+\.(?:mp3|m4a)/);
+  const pdf = [...new Set([...html.matchAll(/https:\/\/tadoku\.org\/[^"'\s]+\.pdf/g)].map((m) => m[0]))];
+  return { youtube: yt?.[1] ?? null, audio: audio?.[0] ?? null, pdf };
+}

@@ -8,7 +8,7 @@ import { autoGrade, gradeChoice, parseChoices } from "./grading";
 import { mockAnswer, mockHistory, mockJournal, mockReview, mockToday, mockVocab } from "./mock";
 import { eventsOnDay, type CalendarEvent } from "./calendar";
 import { GROUP_OF, VERB_CLASSES, conjugate, formsFor, parseVerb, type Verb, type VerbClass, type VerbForm } from "./conjugate";
-import { TADOKU_URL, parseTadoku, type TadokuBook } from "./tadoku";
+import { TADOKU_URL, parseTadoku, parseTadokuBook, type TadokuBook, type TadokuDetail } from "./tadoku";
 import { pickPreviewPage, summarizePreview, type ChildPage, type SimpleBlock } from "./preview";
 import { date, getPage, hasNotion, notion, num, queryAll, relationIds, select, text, updatePage, w, type Page } from "./notion";
 import {
@@ -917,6 +917,21 @@ export async function getTadokuBooks(): Promise<TadokuBook[]> {
       { id: "50001", title: "浦島太郎", level: "1", url: "https://tadoku.org/japanese/book/50001/", cover: null, tags: [] },
     ];
   return cachedTadokuBooks();
+}
+
+const cachedTadokuDetail = unstable_cache(
+  async (id: string): Promise<TadokuDetail> => {
+    const r = await fetch(`https://tadoku.org/japanese/book/${id}/`, { headers: { "user-agent": "StudyHub personal reading log" } });
+    if (!r.ok) throw new Error(`多読網站回應 ${r.status}`);
+    return parseTadokuBook(await r.text());
+  },
+  ["tadoku-book"],
+  { revalidate: 7 * 86400 },
+);
+
+export async function getTadokuDetail(id: string): Promise<TadokuDetail> {
+  if (useMock()) return { youtube: "ReJug5QyW_I", audio: null, pdf: [] };
+  return cachedTadokuDetail(id);
 }
 
 export type TadokuRead = { pageId: string; date: string | null };

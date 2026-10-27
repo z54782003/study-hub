@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseTadoku } from "./tadoku";
+import { parseTadoku, parseTadokuBook } from "./tadoku";
 
 const entry = (id: string, level: string, title: string, extra = "") => `
 <div class="bl-item" data-desc="…&lt;ruby&gt;…" data-order-level="${level}" data-date="1770374648">
@@ -42,4 +42,23 @@ describe("parseTadoku", () => {
     ]);
   });
   it("strips ruby from titles", () => expect(parseTadoku(entry("1", "l2", "<ruby>桃<rt>もも</rt></ruby>太郎"))[0].title).toBe("桃太郎"));
+});
+
+describe("parseTadokuBook", () => {
+  it("finds the YouTube video, narration and PDFs", () => {
+    const html = `<iframe src="https://www.youtube.com/embed/ReJug5QyW_I?rel=0"></iframe>
+      <audio src="https://tadoku.org/japanese/wp-content/uploads/w0012a-inutoniku.mp3"></audio>
+      <a href="https://tadoku.org/japanese/wp-content/uploads/w0012e-inutoniku-v3.pdf">e</a>
+      <a href="https://tadoku.org/japanese/wp-content/uploads/w0012p-inutoniku-v3.pdf">p</a>
+      <a href="https://tadoku.org/japanese/wp-content/uploads/w0012e-inutoniku-v3.pdf">again</a>`;
+    expect(parseTadokuBook(html)).toEqual({
+      youtube: "ReJug5QyW_I",
+      audio: "https://tadoku.org/japanese/wp-content/uploads/w0012a-inutoniku.mp3",
+      pdf: [
+        "https://tadoku.org/japanese/wp-content/uploads/w0012e-inutoniku-v3.pdf",
+        "https://tadoku.org/japanese/wp-content/uploads/w0012p-inutoniku-v3.pdf",
+      ],
+    });
+  });
+  it("handles books without media", () => expect(parseTadokuBook("<p>no media</p>")).toEqual({ youtube: null, audio: null, pdf: [] }));
 });

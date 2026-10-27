@@ -67,7 +67,7 @@ export default async function TadokuPage({ searchParams }: { searchParams: Promi
           const read = log[b.id];
           return (
             <li key={b.id} className={`flex items-center gap-3 rounded-2xl border border-line bg-card p-2.5 ${read ? "opacity-70" : ""}`}>
-              <a href={b.url} target="_blank" rel="noreferrer" className="flex min-w-0 flex-1 items-center gap-3">
+              <Link href={`/ja/tadoku/${b.id}`} className="flex min-w-0 flex-1 items-center gap-3">
                 {b.cover ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={b.cover} alt="" loading="lazy" className="h-16 w-11 shrink-0 rounded-md object-cover" />
@@ -82,7 +82,7 @@ export default async function TadokuPage({ searchParams }: { searchParams: Promi
                     {[...b.tags, read?.date ? `${read.date.slice(5).replace("-", "/")} 讀完` : null].filter(Boolean).join("・")}
                   </span>
                 </span>
-              </a>
+              </Link>
               <ReadButton id={b.id} initial={Boolean(read)} />
             </li>
           );
@@ -90,7 +90,7 @@ export default async function TadokuPage({ searchParams }: { searchParams: Promi
       </ul>
 
       <p className="mt-6 mb-4 text-xs leading-relaxed text-muted">
-        書單來自 NPO 多言語多読「無料の読みもの」（CC BY-NC-ND 4.0）。點書名在多読網站上閱讀；這裡只記錄讀過哪些。
+        書單來自 NPO 多言語多読「無料の読みもの」（CC BY-NC-ND 4.0）。點書名在 app 裡看影片版（書頁＋朗讀）或只聽朗讀；內容都來自多読網站，未經修改。
       </p>
     </>
   );
