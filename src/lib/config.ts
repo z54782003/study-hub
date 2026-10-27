@@ -30,8 +30,10 @@ export const QUIZ_DAILY_LIMIT = 20;
 export const N3_BATCH_SAMPLE = 10;
 export const N3_DUE_LIMIT = 10;
 
-// N3 自補起算日（第 0 天）
-export const N3_START = "2026-10-08";
+// N3 自補：10/27 重新開始（第 0 天），N3／N2+ 的字（約 2,600 個）依編號順序每天 40 個，12/31 背完
+export const N3_START = "2026-10-27";
+export const N3_END = "2026-12-31";
+export const N3_PER_DAY = 40;
 
 /** JLPT 倒數（今日頁右邊那格） */
 export const JLPT = { date: "2026-12-06", name: "JLPT N3" };
@@ -63,7 +65,7 @@ export const EXAMS: { date: string; name: string; scope: string }[] = [
   { date: "2026-12-18", name: "期末試験／漢字テスト", scope: "口頭表現／HSJⅡ 7・8章" },
 ];
 
-// N3 文型順序（操作手冊「N3 自補」）：第 k 個平日學第 k 個
+// N3 文型順序（操作手冊「N3 自補」）：第 k 天學第 k 個（週末照排，12/17 學完）
 export const GRAMMAR_ORDER = [
   "〜うちに", "〜かのように", "〜からこそ", "〜からといって", "〜がち", "〜きる", "〜ぎみ",
   "〜ことはない", "〜こともある", "〜しかない", "〜ず（に）", "〜たて", "〜たとたん", "〜たばかり",

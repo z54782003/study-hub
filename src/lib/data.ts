@@ -3,9 +3,10 @@ import { unstable_cache } from "next/cache";
 import { isFullBlock } from "@notionhq/client";
 import { DS, EXAMS, GRAMMAR_ORDER, LESSON_AUDIO_PAGE, TEXTBOOK_INDEX_PARENT, N3_BATCH_SAMPLE, N3_DUE_LIMIT, QUIZ_DAILY_LIMIT, TZ, W3_PARENT_PAGE } from "./config";
 import { addDays, diffDays, formatJP, isWeekend, todayISO } from "./dates";
-import { gradeWithAi } from "./ai";
+import { generateN3Detail, gradeWithAi } from "./ai";
+import { DETAIL_HEADING, detailLines, parseDetail, type N3Detail } from "./n3Detail";
 import { autoGrade, gradeChoice, parseChoices } from "./grading";
-import { mockAnswer, mockHistory, mockJournal, mockReview, mockToday, mockVocab } from "./mock";
+import { mockAnswer, mockHistory, mockN3Detail, mockJournal, mockReview, mockToday, mockVocab } from "./mock";
 import { byTime, eventsOnDay, nextEventDay, type CalendarEvent } from "./calendar";
 import { GROUP_OF, VERB_CLASSES, conjugate, formsFor, parseVerb, type Verb, type VerbClass, type VerbForm } from "./conjugate";
 import { VOA_BASE, VOA_FEEDS, parseVoaArticle, parseVoaFeed, type VoaArticle, type VoaFeedKey, type VoaItem } from "./voa";
@@ -79,15 +80,29 @@ const N3_LEVEL_FILTER = {
   ],
 };
 
+// N3／N2+ 字的編號（排序好）：把「第幾個字」換算成編號範圍。資料庫前段多是 N5，直接用編號切會很不平均
+const cachedN3Numbers = unstable_cache(
+  async () =>
+    (await queryAll(DS.n3Words, N3_LEVEL_FILTER, [{ property: "編號 / 번호", direction: "ascending" }], 5000))
+      .map((p) => num(p, "編號 / 번호"))
+      .filter((n) => n > 0),
+  ["n3-numbers"],
+  { revalidate: 86400 },
+);
+
 async function n3Batch(day: string): Promise<Page[]> {
   const range = n3BatchRange(day);
   if (!range) return [];
+  const nos = await cachedN3Numbers();
+  if (range.lo >= nos.length) return [];
+  const lo = range.lo > 0 ? nos[range.lo - 1] : 0;
+  const hi = nos[Math.min(range.hi, nos.length) - 1];
   return queryAll(
     DS.n3Words,
     {
       and: [
-        { property: "編號 / 번호", number: { greater_than: range.lo } },
-        { property: "編號 / 번호", number: { less_than_or_equal_to: range.hi } },
+        { property: "編號 / 번호", number: { greater_than: lo } },
+        { property: "編號 / 번호", number: { less_than_or_equal_to: hi } },
         N3_LEVEL_FILTER,
       ],
     },
@@ -177,8 +192,8 @@ export async function getReviewQueue(): Promise<ReviewItem[]> {
 }
 
 /** Morning brief：今日 N3 批次（唯讀） */
-export async function getN3Batch(): Promise<{ words: N3WordItem[]; grammar: GrammarItem[] }> {
-  const day = today();
+/** 某一天的 N3 批次（預設今天；可以回頭看前幾天的） */
+export async function getN3Batch(day = today()): Promise<{ words: N3WordItem[]; grammar: GrammarItem[] }> {
   if (useMock()) {
     const items = mockReview();
     return {
@@ -187,11 +202,34 @@ export async function getN3Batch(): Promise<{ words: N3WordItem[]; grammar: Gram
     };
   }
   const [batch, grammarAll] = await Promise.all([n3Batch(day), queryAll(DS.n3Grammar)]);
-  const names = todaysGrammarNames(day);
+  const idx = grammarIndexForDate(day);
+  const name = idx === null ? null : GRAMMAR_ORDER[idx];
   return {
     words: batch.map((p) => toN3(p, "batch")),
-    grammar: grammarAll.filter((p) => names.some((n) => matchGrammar(n, text(p, "文型 / 문형")))).map(toGrammar),
+    grammar: name ? grammarAll.filter((p) => matchGrammar(name, text(p, "文型 / 문형"))).map(toGrammar) : [],
   };
+}
+
+/** N3 單字／文型詳解：先讀 Notion 頁內文的「📘 詳解」，沒有就請 AI 寫一份存回去 */
+export async function getN3Detail(id: string): Promise<N3Detail> {
+  if (useMock()) return mockN3Detail(id);
+  const page = await getPage(id);
+  const source = page.parent.type === "data_source_id" ? page.parent.data_source_id.replace(/-/g, "") : "";
+  const kind = source === DS.n3Words.replace(/-/g, "") ? "word" : source === DS.n3Grammar.replace(/-/g, "") ? "grammar" : null;
+  if (!kind) throw new Error("不是 N3 單字或文型的頁面");
+  const saved = parseDetail((await allChildren(id)).map((b) => ({ type: b.type, text: richText(b) })));
+  if (saved) return saved;
+  const fields =
+    kind === "word"
+      ? (({ word, reading, meaning, pos, note }) => ({ 單字: word, 讀音: reading, 中文: meaning, 詞性: pos ?? "", 備註: note }))(toN3(page, "batch"))
+      : (({ pattern, meaning, connection, confusable }) => ({ 文型: pattern, 中文説明: meaning, 接續: connection, 易混淆: confusable }))(toGrammar(page));
+  const detail = await generateN3Detail({ kind, fields });
+  const para = (content: string) => ({ paragraph: { rich_text: [{ text: { content: content.slice(0, 2000) } }] } });
+  await notion().blocks.children.append({
+    block_id: id,
+    children: [{ heading_3: { rich_text: [{ text: { content: DETAIL_HEADING } }] } }, ...detailLines(detail).map(para)],
+  });
+  return detail;
 }
 
 // ── 題庫練習／單字測驗（複習頁的篩選入口）──────────────────

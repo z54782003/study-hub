@@ -1,5 +1,5 @@
-import { GRAMMAR_ORDER, N3_START } from "./config";
-import { addDays, diffDays, isWeekend, weekday } from "./dates";
+import { GRAMMAR_ORDER, N3_END, N3_PER_DAY, N3_START } from "./config";
+import { addDays, diffDays, weekday } from "./dates";
 
 // ── 日文題庫 SRS（操作手冊 W2）────────────────────────────
 // 新題目 → D+1 → D+3 → D+7 → D+14 → D+30；對→下一階，錯→回 D+1。
@@ -53,29 +53,24 @@ export function n3NextLevel(current: string | null, correct: boolean): N3Level {
   }
 }
 
-/** 第 d 天（10/8 為 0，週末照算）的單字批次編號範圍 (lo, hi]；超過 12/18 回傳 null（純複習期）。 */
+/** 第 d 天（N3_START 為 0，週末照算）要背第幾個到第幾個 N3 字：[lo, hi)，依編號排序後的名次；12/31 以後回傳 null（純複習期）。 */
 export function n3BatchRange(today: string): { lo: number; hi: number } | null {
   const d = diffDays(N3_START, today);
-  if (d < 0 || d > 71) return null;
-  if (d <= 4) return { lo: 41 * d, hi: 41 * d + 41 };
-  return { lo: 205 + 42 * (d - 5), hi: 205 + 42 * (d - 4) };
+  if (d < 0 || today > N3_END) return null;
+  return { lo: N3_PER_DAY * d, hi: N3_PER_DAY * (d + 1) };
 }
 
-/** 第 k 個平日（10/8 為 1）；週末或超出 52 個回傳 null。回傳 0-based index。 */
+/** 第 d 天學第 d 個文型（0-based）；超出 52 個回傳 null。 */
 export function grammarIndexForDate(today: string): number | null {
-  if (isWeekend(today)) return null;
-  const span = diffDays(N3_START, today);
-  if (span < 0) return null;
-  let k = 0;
-  for (let i = 0; i <= span; i++) if (!isWeekend(addDays(N3_START, i))) k++;
-  return k <= GRAMMAR_ORDER.length ? k - 1 : null;
+  const d = diffDays(N3_START, today);
+  return d >= 0 && d < GRAMMAR_ORDER.length ? d : null;
 }
 
-/** 週末考本週 5 個：回傳本週一～五的文型 index。 */
+/** 週末複習本週學過的：回傳本週一到今天的文型 index。 */
 export function weekGrammarIndices(today: string): number[] {
   const monday = addDays(today, -((weekday(today) + 6) % 7));
   const out: number[] = [];
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 7; i++) {
     const idx = grammarIndexForDate(addDays(monday, i));
     if (idx !== null && addDays(monday, i) <= today) out.push(idx);
   }

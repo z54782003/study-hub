@@ -2,6 +2,7 @@
 import { useRouter } from "next/navigation";
 import { Fragment, useState } from "react";
 import { BackLink } from "@/components/BackLink";
+import { Icon } from "@/components/Icon";
 import { Speak } from "@/components/Speak";
 import { speakableJa } from "@/lib/speech";
 import { markWord, parseUsage } from "@/lib/usage";
@@ -9,7 +10,7 @@ import type { VocabItem } from "@/lib/types";
 
 const LEVELS = ["未學", "忘記", "學習中", "熟悉", "精通"] as const;
 
-/** 單字詳情卡：熟悉度點一下就存；左右滑切上一個／下一個字 */
+/** 單字詳情卡：熟悉度點一下就存；上一個／下一個按鈕或左右滑切換 */
 export function WordCard({
   word: w,
   index,
@@ -130,7 +131,28 @@ export function WordCard({
           來源：<span lang="ja">{source}</span>
         </div>
       </article>
-      {(prev || next) && <p className="mt-2 text-center text-xs text-muted">左右滑切換上一個／下一個字</p>}
+      {(prev || next) && (
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            disabled={!prev}
+            onClick={() => prev && router.replace(prev, { scroll: false })}
+            className="flex h-11 items-center justify-center gap-1 rounded-[14px] border border-line bg-card text-[15px] font-semibold disabled:opacity-40"
+          >
+            <Icon name="back" stroke={2.2} />
+            上一個
+          </button>
+          <button
+            type="button"
+            disabled={!next}
+            onClick={() => next && router.replace(next, { scroll: false })}
+            className="flex h-11 items-center justify-center gap-1 rounded-[14px] border border-line bg-card text-[15px] font-semibold disabled:opacity-40"
+          >
+            下一個
+            <Icon name="chevron" stroke={2.2} />
+          </button>
+        </div>
+      )}
 
       <div className="fixed inset-x-0 bottom-[calc(49px+env(safe-area-inset-bottom))] mx-auto max-w-xl space-y-2 border-t border-line bg-bg px-4 pt-2.5 pb-3 md:max-w-[760px]">
         <div className="label text-center">

@@ -67,22 +67,23 @@ describe("N3", () => {
     expect(n3NextLevel("熟悉", true)).toBe("精通");
     expect(n3NextLevel("精通", false)).toBe("忘記");
   });
-  it("batch ranges follow the 10/12 revision", () => {
-    expect(n3BatchRange("2026-10-08")).toEqual({ lo: 0, hi: 41 });
-    expect(n3BatchRange("2026-10-12")).toEqual({ lo: 164, hi: 205 });
-    expect(n3BatchRange("2026-10-13")).toEqual({ lo: 205, hi: 247 });
-    expect(n3BatchRange("2026-12-18")).toEqual({ lo: 2977, hi: 3019 });
-    expect(n3BatchRange("2026-12-19")).toBeNull();
+  it("batch ranges restart on 10/27 and finish on 12/31", () => {
+    expect(n3BatchRange("2026-10-26")).toBeNull();
+    expect(n3BatchRange("2026-10-27")).toEqual({ lo: 0, hi: 40 });
+    expect(n3BatchRange("2026-10-28")).toEqual({ lo: 40, hi: 80 });
+    expect(n3BatchRange("2026-12-31")).toEqual({ lo: 2600, hi: 2640 });
+    expect(n3BatchRange("2027-01-01")).toBeNull();
   });
-  it("grammar of the day counts weekdays from 10/8", () => {
-    expect(grammarIndexForDate("2026-10-08")).toBe(0);
-    expect(grammarIndexForDate("2026-10-09")).toBe(1);
-    expect(grammarIndexForDate("2026-10-10")).toBeNull(); // 土
-    expect(grammarIndexForDate("2026-10-12")).toBe(2);
-    expect(GRAMMAR_ORDER[grammarIndexForDate("2026-10-27")!]).toBe("〜たばかり");
+  it("one grammar a day from 10/27, weekends included", () => {
+    expect(grammarIndexForDate("2026-10-26")).toBeNull();
+    expect(grammarIndexForDate("2026-10-27")).toBe(0);
+    expect(grammarIndexForDate("2026-10-31")).toBe(4); // 土
+    expect(grammarIndexForDate("2026-12-17")).toBe(51);
+    expect(grammarIndexForDate("2026-12-18")).toBeNull();
   });
-  it("weekend reviews this week's grammar", () => {
-    expect(weekGrammarIndices("2026-10-31")).toEqual([12, 13, 14, 15, 16]);
+  it("weekend reviews what this week covered", () => {
+    expect(weekGrammarIndices("2026-10-31")).toEqual([0, 1, 2, 3, 4]);
+    expect(weekGrammarIndices("2026-11-08")).toEqual([6, 7, 8, 9, 10, 11, 12]);
   });
   it("matches every grammar in the order list to exactly one real Notion title", () => {
     // 2026-10-26 從「N3 文法補強」資料庫讀到的實際標題

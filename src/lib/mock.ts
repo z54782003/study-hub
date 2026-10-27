@@ -1,6 +1,7 @@
 // 本機預覽用的假資料（MOCK=1 且沒有 NOTION_TOKEN 時才會用到）。
 import { EXAMS } from "./config";
 import { addDays, diffDays, formatJP, isWeekend } from "./dates";
+import type { N3Detail } from "./n3Detail";
 import type { ReviewItem, TodayData, VocabItem } from "./types";
 import type { TedTalk } from "./ted";
 
@@ -223,4 +224,31 @@ export function mockTedTalk(): TedTalk {
     chinese: "zh-tw",
     subtitleTimestampMap: null,
   };
+}
+
+export function mockN3Detail(id: string): N3Detail {
+  return id === "g1"
+    ? {
+        usage: "動作剛完成不久，說話者覺得「才剛…」。時間長短是主觀感覺，過了一個月也可以用。",
+        forms: ["動詞た形＋ばかり", "動詞た形＋ばかりの＋名詞"],
+        collocations: [],
+        examples: [
+          { ja: "日本に来たばかりなので、まだ友達がいません。", kana: "にほんにきたばかりなので、まだともだちがいません。", zh: "因為才剛來日本，還沒有朋友。" },
+          { ja: "買ったばかりの傘をなくしてしまった。", kana: "かったばかりのかさをなくしてしまった。", zh: "把剛買的傘弄丟了。" },
+        ],
+        compare: "〜たところ：客觀上動作剛結束的那一刻；〜たばかり：主觀覺得沒過多久。",
+      }
+    : {
+        usage: "做事的期限、截止的時間點。常用在報告、申請、報名。",
+        forms: [],
+        collocations: [
+          { ja: "締め切りに間に合う", zh: "趕上截止" },
+          { ja: "締め切りを延ばす", zh: "延後截止日" },
+        ],
+        examples: [
+          { ja: "レポートの締め切りは明日です。", kana: "れぽーとのしめきりはあしたです。", zh: "報告明天截止。" },
+          { ja: "締め切りに間に合わなかった。", kana: "しめきりにまにあわなかった。", zh: "沒趕上截止。" },
+        ],
+        compare: "期限：有效期間的界線（賞味期限）；締め切り：交件、報名的截止。",
+      };
 }

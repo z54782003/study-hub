@@ -1,26 +1,43 @@
-import { N3Cards } from "./N3Cards";
+import Link from "next/link";
+import { BackLink } from "@/components/BackLink";
 import { getN3Batch, today } from "@/lib/data";
-import { formatJP } from "@/lib/dates";
+import { addDays, diffDays, formatJP } from "@/lib/dates";
+import { N3_START } from "@/lib/config";
+import { n3BatchRange } from "@/lib/srs";
+import { N3Study } from "./N3Study";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "N3 單字・Study Hub" };
 
-export default async function N3Page() {
-  const { words, grammar } = await getN3Batch();
+export default async function N3Page({ searchParams }: { searchParams: Promise<{ day?: string }> }) {
+  const now = today();
+  const q = (await searchParams).day;
+  // 可以回頭看前幾天的批次（不能看未來的）
+  const day = q && /^\d{4}-\d{2}-\d{2}$/.test(q) && q >= N3_START && q <= now ? q : now;
+  const { words, grammar } = await getN3Batch(day);
+  const range = n3BatchRange(day);
+  const prev = day > N3_START ? addDays(day, -1) : null;
+  const next = day < now ? addDays(day, 1) : null;
+  const dayLink = (d: string) => (d === now ? "/n3" : `/n3?day=${d}`);
+
   return (
     <>
-      <h1 className="mb-1 text-[28px] leading-[34px] font-bold">N3 單字 {formatJP(today())}</h1>
-      <p className="mb-4 text-sm text-muted">今天這批 {words.length} 個（只看不考；晚上的複習會抽 10 個考）</p>
-      {grammar.map((g) => (
-        <section key={g.id} className="mb-4 card p-4">
-          <div className="text-xs text-muted">今日文型</div>
-          <div className="mt-1 text-xl font-bold" lang="ja">{g.pattern}</div>
-          <div className="mt-1">{g.meaning}</div>
-          {g.connection && <div className="mt-1 text-sm text-muted">接續：<span lang="ja">{g.connection}</span></div>}
-          {g.confusable && <div className="text-sm text-muted">易混淆：<span lang="ja">{g.confusable}</span></div>}
-        </section>
-      ))}
-      <N3Cards words={words} />
+      <BackLink href="/">今天</BackLink>
+      <h1 className="mt-1 mb-1 text-[28px] leading-[34px] font-bold">N3 單字 {formatJP(day)}</h1>
+      <div className="mb-3 flex items-center justify-between gap-2 text-sm text-muted">
+        <span>
+          {range ? `第 ${diffDays(N3_START, day) + 1} 天・${words.length} 個` : "今天沒有新的批次"}
+        </span>
+        <span className="flex shrink-0 gap-3">
+          {prev && <Link href={dayLink(prev)} className="font-semibold text-accent">‹ 前一天</Link>}
+          {next && <Link href={dayLink(next)} className="font-semibold text-accent">後一天 ›</Link>}
+        </span>
+      </div>
+      {words.length + grammar.length > 0 ? (
+        <N3Study key={day} cards={[...grammar, ...words]} />
+      ) : (
+        <p className="text-muted">N3 單字 12/31 前全部背完（每天 40 個）；之後是純複習期。</p>
+      )}
     </>
   );
 }
