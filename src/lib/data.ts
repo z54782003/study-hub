@@ -12,6 +12,7 @@ import { GROUP_OF, VERB_CLASSES, conjugate, formsFor, parseVerb, type Verb, type
 import { VOA_BASE, VOA_FEEDS, parseVoaArticle, parseVoaFeed, type VoaArticle, type VoaFeedKey, type VoaItem } from "./voa";
 import { TADOKU_URL, parseTadoku, parseTadokuBook, type TadokuBook, type TadokuDetail } from "./tadoku";
 import { lessonTitle, lessonTracks, parseIndexPage, parseTranscript, trackNumber, type IndexBlock, type Track, type TranscriptPart } from "./lessonAudio";
+import { parseNoteGrammar, type GrammarPoint, type Seg } from "./noteGrammar";
 import { pickPreviewPage, summarizePreview, type ChildPage, type SimpleBlock } from "./preview";
 import { date, getPage, hasNotion, notion, num, queryAll, relationIds, select, text, updatePage, w, type Page } from "./notion";
 import {
@@ -962,6 +963,53 @@ export async function recentClassNotes(n: number): Promise<ClassNoteLink[]> {
     date: date(p, "日期"),
     url: p.url,
   }));
+}
+
+export type ClassNoteDetail = ClassNoteLink & { homework: string; grammar: GrammarPoint[] };
+
+const segsOf = (b: object): Seg[] => {
+  const v = (b as Record<string, { rich_text?: { plain_text: string; annotations: { bold: boolean } }[] }>)[(b as { type: string }).type];
+  return (v?.rich_text ?? []).map((r) => ({ text: r.plain_text, bold: r.annotations.bold }));
+};
+
+const cachedNoteGrammar = unstable_cache(
+  async (id: string) => parseNoteGrammar((await allChildren(id)).map((b) => ({ type: b.type, segs: segsOf(b) }))),
+  ["class-note-grammar"],
+  { revalidate: 600 },
+);
+
+/** 課堂筆記：屬性＋「## 文法（全部）」的 ①②③ */
+export async function getClassNote(id: string): Promise<ClassNoteDetail | null> {
+  if (useMock())
+    return {
+      ...(await recentClassNotes(1))[0],
+      homework: "①文法ノート 大8〜13番",
+      grammar: [
+        {
+          no: "①",
+          title: "〜ために、〜（目的）",
+          bullets: [
+            { label: "句型", segs: [{ text: "V辞書形＋ために、〜／Nの＋ために、〜", bold: false }] },
+            { label: "說明", segs: [{ text: "目的「為了〜」", bold: true }, { text: "。名詞のときは必ず「の」。", bold: false }] },
+            { label: "例", segs: [{ text: "ケーキを作るために、卵とバターを買います。／健康のために、バランスよく食べます。", bold: false }] },
+            { label: "⚠️易錯", segs: [{ text: "×上手するために→○上手になるために", bold: true }] },
+          ],
+        },
+      ],
+    };
+  const page = await getPage(id).catch(() => null);
+  const source = page?.parent.type === "data_source_id" ? page.parent.data_source_id.replace(/-/g, "") : "";
+  if (!page || source !== DS.isiNotes.replace(/-/g, "")) return null;
+  return {
+    id: page.id,
+    title: text(page, "課堂標題"),
+    lesson: text(page, "課次"),
+    level: select(page, "レベル"),
+    date: date(page, "日期"),
+    url: page.url,
+    homework: text(page, "作業"),
+    grammar: await cachedNoteGrammar(id),
+  };
 }
 
 export type TedLink = { id: string; title: string; progress: string | null };

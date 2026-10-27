@@ -17,27 +17,17 @@ const SHADE: Record<string, string> = {
 /** 一課的熟悉度分布：未學／忘記／學習中／熟悉／精通，寬度＝字數 */
 function FamiliarityBar({ counts = {} }: { counts?: Record<string, number> }) {
   return (
-    <span
-      className="flex h-1.5 gap-0.5 overflow-hidden rounded-[3px]"
-      aria-hidden
-    >
+    <span className="flex h-1.5 gap-0.5 overflow-hidden rounded-[3px]" aria-hidden>
       {FAMILIARITY.filter((f) => counts[f]).map((f) => (
-        <span
-          key={f}
-          className={SHADE[f]}
-          style={{ flex: `${counts[f]} 0 0` }}
-        />
+        <span key={f} className={SHADE[f]} style={{ flex: `${counts[f]} 0 0` }} />
       ))}
     </span>
   );
 }
 
 export default async function LessonsPage() {
-  const stats = await vocabLessonStats().catch(
-    () => ({}) as Record<string, Record<string, number>>,
-  );
-  const total = (k: string) =>
-    Object.values(stats[k] ?? {}).reduce((a, b) => a + b, 0);
+  const stats = await vocabLessonStats().catch(() => ({}) as Record<string, Record<string, number>>);
+  const total = (k: string) => Object.values(stats[k] ?? {}).reduce((a, b) => a + b, 0);
   return (
     <>
       <BackLink href="/ja">日文</BackLink>
@@ -47,10 +37,7 @@ export default async function LessonsPage() {
         </h1>
         <span className="text-xs text-muted">只顯示單字庫有資料的課</span>
       </div>
-      <ul
-        className="mt-2 flex flex-wrap gap-2.5 text-[11px] text-ink-2"
-        aria-label="熟悉度圖例"
-      >
+      <ul className="mt-2 flex flex-wrap gap-2.5 text-[11px] text-ink-2" aria-label="熟悉度圖例">
         {FAMILIARITY.map((f) => (
           <li key={f} className="flex items-center gap-1">
             <span className={`size-2.5 rounded-[3px] ${SHADE[f]}`} />
@@ -59,10 +46,7 @@ export default async function LessonsPage() {
         ))}
       </ul>
       {LEVELS.toReversed().map((level) => {
-        const lessons = Array.from(
-          { length: LESSON_COUNT },
-          (_, i) => i + 1,
-        ).filter((n) => total(`${level} L${n}`));
+        const lessons = Array.from({ length: LESSON_COUNT }, (_, i) => i + 1).filter((n) => total(`${level} L${n}`));
         if (!lessons.length) return null;
         return (
           <section key={level}>
@@ -76,10 +60,7 @@ export default async function LessonsPage() {
                     className="card flex min-h-16 flex-col justify-between gap-2 rounded-[14px] p-3"
                   >
                     <span className="text-[15px] font-bold">
-                      第{n}課
-                      <span className="text-xs font-medium text-muted">
-                        ・{total(`${level} L${n}`)} 字
-                      </span>
+                      第{n}課<span className="text-xs font-medium text-muted">・{total(`${level} L${n}`)} 字</span>
                     </span>
                     <FamiliarityBar counts={stats[`${level} L${n}`]} />
                   </Link>
@@ -89,6 +70,7 @@ export default async function LessonsPage() {
           </section>
         );
       })}
+
     </>
   );
 }
