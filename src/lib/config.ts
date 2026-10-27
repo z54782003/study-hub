@@ -16,8 +16,11 @@ export const DS = {
 // 「每日預習（W3）」父頁，底下一天一頁，標題「MM/DD（曜）預習｜L〇 ST〇」
 export const W3_PARENT_PAGE = process.env.W3_PARENT_PAGE ?? "3f2097c576688100bc56d2f56e4d80c7";
 
-// 📼 課文音檔（できる日本語 初中級）：底下是 001–124 mp3 和每課課文頁（第N課 …）
+// 📼 課文音檔（できる日本語 初中級）：001–124 mp3（檔名就是編號）
 export const LESSON_AUDIO_PAGE = process.env.LESSON_AUDIO_PAGE ?? "406097c5-7668-810e-ade7-e0954334c539";
+
+// 🎯 日本語計畫頁：底下「初中級課本索引｜L〇」一課一頁，課文音檔頁從這裡讀課文
+export const TEXTBOOK_INDEX_PARENT = process.env.TEXTBOOK_INDEX_PARENT ?? "397097c5-7668-8187-8165-f7c1e1131929";
 
 export const TZ = process.env.APP_TZ ?? "Asia/Tokyo";
 

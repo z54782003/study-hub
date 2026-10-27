@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { lessonTracks, parseTranscript, trackNumber } from "./lessonAudio";
+import { lessonTracks, parseIndexPage, parseTranscript, trackNumber } from "./lessonAudio";
 
 describe("lessonTracks", () => {
   it("numbers lesson 1 from 001: full, ST1 scenes, tasks, ST2, tasks, reading", () => {
@@ -31,6 +31,42 @@ describe("trackNumber", () => {
     expect(trackNumber("https://s3.example.com/a/b/030_v3.mp3?X-Amz=1")).toBe(30);
     expect(trackNumber("https://s3.example.com/a/b/124_v2.mp3")).toBe(124);
     expect(trackNumber("https://s3.example.com/a/b/book.pdf")).toBeNull();
+  });
+});
+
+describe("parseIndexPage", () => {
+  it("reads the full dialogue, the short text and the scene scripts from a 課本索引 page", () => {
+    const parts = parseIndexPage([
+      { type: "heading_2", text: "1-1｜場面（p.16）" },
+      { type: "paragraph", text: "練習：Ａ：これは出さない。", bold: "練習" },
+      { type: "heading_2", text: "できる！＋話読聞書（p.26）" },
+      { type: "paragraph", text: "任務：ほかの段落。" },
+      { type: "paragraph", text: "短文「自己紹介」（可背誦範本）：短文です。", bold: "短文「自己紹介」（可背誦範本）" },
+      { type: "heading_2", text: "もう一度聞こう（p.28，CD A01）" },
+      { type: "paragraph", text: "電話で：Ａ：もしもし。／…／Ｂ：はい。", bold: "電話で" },
+      { type: "heading_2", text: "📘 文法ノート" },
+      { type: "paragraph", text: "自習用。" },
+      { type: "heading_2", text: "チャレンジ スクリプト" },
+      { type: "heading_3", text: "ST1 1" },
+      { type: "paragraph", text: "Ａ：こんにちは。" },
+    ]);
+    expect(parts).toEqual([
+      { heading: "話読聞書", scenes: [{ title: "自己紹介", lines: [{ speaker: null, text: "短文です。" }] }] },
+      {
+        heading: "聞いてみよう",
+        scenes: [
+          {
+            title: "電話で",
+            lines: [
+              { speaker: "Ａ", text: "もしもし。" },
+              { speaker: null, text: "⋮" },
+              { speaker: "Ｂ", text: "はい。" },
+            ],
+          },
+        ],
+      },
+      { heading: "チャレンジ", scenes: [{ title: "ST1 1", lines: [{ speaker: "Ａ", text: "こんにちは。" }] }] },
+    ]);
   });
 });
 

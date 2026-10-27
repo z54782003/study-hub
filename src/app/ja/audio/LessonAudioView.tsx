@@ -82,7 +82,7 @@ export function LessonAudioView({ tracks, transcript, st }: { tracks: Row[]; tra
         {full.length > 0 && (
           <div className="card overflow-hidden">
             {full.map(row)}
-            {listen ? <Transcript part={listen} /> : <p className="border-t border-line px-4 py-3 text-sm text-muted">Notion 裡還沒有這課的課文</p>}
+            {listen ? <Transcript part={listen} /> : <p className="border-t border-line px-4 py-3 text-sm text-muted">讀不到這課的課文（Notion「初中級課本索引」）</p>}
           </div>
         )}
 

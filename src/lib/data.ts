@@ -1,7 +1,7 @@
 import "server-only";
 import { unstable_cache } from "next/cache";
 import { isFullBlock } from "@notionhq/client";
-import { DS, EXAMS, GRAMMAR_ORDER, LESSON_AUDIO_PAGE, N3_BATCH_SAMPLE, N3_DUE_LIMIT, QUIZ_DAILY_LIMIT, TZ, W3_PARENT_PAGE } from "./config";
+import { DS, EXAMS, GRAMMAR_ORDER, LESSON_AUDIO_PAGE, TEXTBOOK_INDEX_PARENT, N3_BATCH_SAMPLE, N3_DUE_LIMIT, QUIZ_DAILY_LIMIT, TZ, W3_PARENT_PAGE } from "./config";
 import { addDays, diffDays, formatJP, isWeekend, todayISO } from "./dates";
 import { gradeWithAi } from "./ai";
 import { autoGrade, gradeChoice, parseChoices } from "./grading";
@@ -10,7 +10,7 @@ import { byTime, eventsOnDay, nextEventDay, type CalendarEvent } from "./calenda
 import { GROUP_OF, VERB_CLASSES, conjugate, formsFor, parseVerb, type Verb, type VerbClass, type VerbForm } from "./conjugate";
 import { VOA_BASE, VOA_FEEDS, parseVoaArticle, parseVoaFeed, type VoaArticle, type VoaFeedKey, type VoaItem } from "./voa";
 import { TADOKU_URL, parseTadoku, parseTadokuBook, type TadokuBook, type TadokuDetail } from "./tadoku";
-import { lessonTitle, lessonTracks, parseTranscript, trackNumber, type Track, type TranscriptBlock, type TranscriptPart } from "./lessonAudio";
+import { lessonTitle, lessonTracks, parseIndexPage, parseTranscript, trackNumber, type IndexBlock, type Track, type TranscriptPart } from "./lessonAudio";
 import { pickPreviewPage, summarizePreview, type ChildPage, type SimpleBlock } from "./preview";
 import { date, getPage, hasNotion, notion, num, queryAll, relationIds, select, text, updatePage, w, type Page } from "./notion";
 import {
@@ -1081,24 +1081,42 @@ async function allChildren(id: string) {
 const cachedLessonAudioIndex = unstable_cache(
   async () => {
     const urls: Record<number, string> = {};
-    const pages: { id: string; title: string }[] = [];
     for (const b of await allChildren(LESSON_AUDIO_PAGE)) {
       if (b.type === "audio" && b.audio.type === "file") {
         const no = trackNumber(b.audio.file.url);
         if (no) urls[no] = b.audio.file.url;
       }
-      if (b.type === "child_page") pages.push({ id: b.id, title: b.child_page.title });
     }
-    return { urls, pages };
+    return { urls };
   },
   ["lesson-audio-index"],
   { revalidate: 1800 },
 );
 
+// 課文從「初中級課本索引｜L〇」讀（日本語計畫頁底下，一課一頁）
+const cachedIndexPages = unstable_cache(
+  async () =>
+    (await allChildren(TEXTBOOK_INDEX_PARENT)).flatMap((b) =>
+      b.type === "child_page" && b.child_page.title.startsWith("初中級課本索引") ? [{ id: b.id, title: b.child_page.title }] : [],
+    ),
+  ["textbook-index-pages"],
+  { revalidate: 86400 },
+);
+
+const boldPrefix = (b: object): string => {
+  const v = (b as Record<string, { rich_text?: { plain_text: string; annotations: { bold: boolean } }[] }>)[(b as { type: string }).type];
+  const out: string[] = [];
+  for (const r of v?.rich_text ?? []) {
+    if (!r.annotations.bold) break;
+    out.push(r.plain_text);
+  }
+  return out.join("");
+};
+
 const cachedTranscript = unstable_cache(
   async (pageId: string): Promise<TranscriptPart[]> =>
-    parseTranscript((await allChildren(pageId)).map((b): TranscriptBlock => ({ type: b.type, text: richText(b) }))),
-  ["lesson-transcript"],
+    parseIndexPage((await allChildren(pageId)).map((b): IndexBlock => ({ type: b.type, text: richText(b), bold: boldPrefix(b) }))),
+  ["lesson-transcript-index"],
   { revalidate: 3600 },
 );
 
@@ -1124,12 +1142,13 @@ export async function getLessonAudio(n: number): Promise<LessonAudio> {
         { type: "paragraph", text: "Ｂ：はい。" },
       ]),
     };
-  const { urls, pages } = await cachedLessonAudioIndex();
-  const page = pages.find((p) => new RegExp(`^第${n}課`).test(p.title));
+  // 課本索引讀不到時，音檔照樣能聽
+  const [{ urls }, pages] = await Promise.all([cachedLessonAudioIndex(), cachedIndexPages().catch(() => [])]);
+  const page = pages.find((p) => new RegExp(`｜L${n}\\s`).test(p.title));
   return {
     n,
-    title: page?.title.replace(/^第\d+課\s*/, "") || lessonTitle(n),
+    title: page?.title.match(new RegExp(`｜L${n}\\s+([^（(]+)`))?.[1].trim() || lessonTitle(n),
     tracks: tracks.map((t) => ({ ...t, url: urls[t.no] ?? null })),
-    transcript: page ? await cachedTranscript(page.id) : [],
+    transcript: page ? await cachedTranscript(page.id).catch(() => []) : [],
   };
 }

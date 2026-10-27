@@ -58,6 +58,40 @@ export type TranscriptLine = { speaker: string | null; text: string };
 export type TranscriptPart = { heading: string; scenes: { title: string | null; lines: TranscriptLine[] }[] };
 export type TranscriptBlock = { type: string; text: string };
 
+export type IndexBlock = TranscriptBlock & { bold?: string };
+
+/** 「初中級課本索引｜L〇」頁 → 課文：
+ *  「## もう一度聞こう」每段「**場面**：人：台詞／人：台詞…」、
+ *  「## できる！＋話読聞書」的「**短文「題目」…**：本文」、
+ *  「## チャレンジ スクリプト」底下「### ST1 1」＋每段一句。 */
+export function parseIndexPage(blocks: IndexBlock[]): TranscriptPart[] {
+  const out: TranscriptBlock[] = [];
+  let mode: "listen" | "read" | "challenge" | null = null;
+  for (const b of blocks) {
+    if (b.type === "heading_1" || b.type === "heading_2") {
+      mode = b.text.includes("もう一度聞こう") ? "listen" : b.text.includes("話読聞書") ? "read" : b.text.includes("チャレンジ") ? "challenge" : null;
+      if (mode) out.push({ type: "heading_2", text: { listen: "聞いてみよう", read: "話読聞書", challenge: "チャレンジ" }[mode] });
+      continue;
+    }
+    if (!mode || (b.type !== "paragraph" && b.type !== "heading_3")) continue;
+    if (mode === "challenge") {
+      out.push(b);
+      continue;
+    }
+    const bold = b.bold?.trim() ?? "";
+    const body = (bold && b.text.startsWith(bold) ? b.text.slice(bold.length) : b.text).replace(/^[：:]\s*/, "");
+    if (mode === "listen") {
+      if (bold) out.push({ type: "heading_3", text: bold.replace(/[：:]$/, "") });
+      for (const line of body.split("／")) out.push({ type: "paragraph", text: line.trim() === "…" ? "⋮" : line });
+    } else if (bold.startsWith("短文")) {
+      const title = /「(.+?)」/.exec(bold)?.[1];
+      if (title) out.push({ type: "heading_3", text: title });
+      out.push({ type: "paragraph", text: body });
+    }
+  }
+  return parseTranscript(out);
+}
+
 /** 課文頁：## 段落（聞いてみよう／話読聞書）、### 場面、每段「人名：台詞」 */
 export function parseTranscript(blocks: TranscriptBlock[]): TranscriptPart[] {
   const parts: TranscriptPart[] = [];
