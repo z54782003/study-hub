@@ -8,6 +8,7 @@ import { speakableJa } from "@/lib/speech";
 import { FORM_LABEL, FORM_RULE, GROUP_OF, checkConjugation, specialNote, type VerbForm } from "@/lib/conjugate";
 import type { GradeMethod, GradeResult, KanjiItem, QuizItem, ReviewItem, ReviewSource, VerbItem, VocabItem } from "@/lib/types";
 import { Icon } from "@/components/Icon";
+import { charDiff } from "@/lib/diff";
 
 type Result = { item: ReviewItem; correct: boolean; answer?: string };
 type Pending = { item: ReviewItem; correct: boolean; answer?: string; method?: GradeMethod; feedback?: string };
@@ -273,7 +274,7 @@ function QuizCard({ item, onDone }: { item: QuizItem; onDone: (p: Pending) => vo
 
   return (
     <>
-      <article className="mt-2 flex-1 rounded-3xl border border-line bg-card p-5">
+      <article className="card mt-2 flex-1 rounded-3xl p-5">
         <p className="text-xl leading-relaxed whitespace-pre-wrap" lang="ja">
           {choices ? choices.stem : item.prompt}
         </p>
@@ -304,8 +305,8 @@ function QuizCard({ item, onDone }: { item: QuizItem; onDone: (p: Pending) => vo
           </div>
         )}
         {item.myAnswer && !result && (
-          <p className="mt-3 text-xs text-muted" lang="ja">
-            上次寫錯：{item.myAnswer}
+          <p className="mt-3 rounded-xl bg-due-soft px-3 py-2 text-sm text-due">
+            上次寫錯：<span lang="ja">{item.myAnswer}</span>
           </p>
         )}
 
@@ -320,39 +321,30 @@ function QuizCard({ item, onDone }: { item: QuizItem; onDone: (p: Pending) => vo
             className="mt-4 w-full rounded-xl border border-line bg-bg p-3 text-base outline-none focus:border-accent"
           />
         ) : null}
-        {result && (
-          <div className="mt-5 space-y-3 border-t border-line pt-4">
-            {finalCorrect !== null && (
-              <p className={`text-lg font-bold ${finalCorrect ? "text-ok" : "text-bad"}`}>
-                {finalCorrect ? "✓ 正確" : "✗ 錯誤"}
-                <span className="ml-2 rounded-full bg-bg px-2 py-0.5 text-xs font-normal text-muted">
-                  {override !== null ? "已改判" : result.method === "AI" ? "AI 批改" : result.method}
-                </span>
-              </p>
-            )}
-            {draft.trim() && !choices && (
-              <p className="text-muted">
-                你的答案：<span lang="ja">{draft}</span>
-              </p>
-            )}
-            {result.feedback && <p className="rounded-xl bg-bg p-3 text-sm leading-relaxed">{result.feedback}</p>}
-            {result.suggestion && !finalCorrect && (
-              <p className="text-sm">
-                改正：<span lang="ja">{result.suggestion}</span>
-              </p>
-            )}
-            <p className="text-xl font-semibold text-ok" lang="ja">
-              {item.answer}
-            </p>
-            {item.explanation && <p className="text-sm leading-relaxed whitespace-pre-wrap text-muted">{item.explanation}</p>}
-            {result.correct !== null && (
-              <button type="button" onClick={() => setOverride(!(override ?? result.correct))} className="text-xs text-muted underline">
-                批改有誤？改判為{(override ?? result.correct) ? "錯" : "對"}
-              </button>
-            )}
-          </div>
-        )}
+        {result && <GradeResultView result={result} answer={choices ? "" : draft.trim()} finalCorrect={finalCorrect} overridden={override !== null} />}
       </article>
+
+      {result && (
+        <section className="card mt-3 space-y-2 rounded-[20px] px-[18px] py-4">
+          <div className="label">正確答案</div>
+          <p className="text-lg leading-relaxed font-bold" lang="ja">
+            {item.answer}
+          </p>
+          {item.explanation && (
+            <>
+              <div className="label pt-1">解析</div>
+              <p className="text-[15px] leading-relaxed whitespace-pre-wrap text-ink-2">{item.explanation}</p>
+            </>
+          )}
+        </section>
+      )}
+      {result && result.correct !== null && (
+        <Overrule
+          key={item.id}
+          aiSays={result.correct}
+          onChange={setOverride}
+        />
+      )}
 
       <div className="sticky bottom-24 mt-4">
         {!result && choices ? (
@@ -368,7 +360,7 @@ function QuizCard({ item, onDone }: { item: QuizItem; onDone: (p: Pending) => vo
               type="button"
               onClick={() => grade()}
               disabled={!draft.trim() || grading}
-              className="rounded-2xl bg-ink py-4 text-lg font-semibold text-bg disabled:opacity-40"
+              className="btn-primary disabled:opacity-40"
             >
               {grading ? "批改中…" : "送出批改"}
             </button>
@@ -652,5 +644,94 @@ function VerbCard({ item, onDone }: { item: VerbItem; onDone: (p: Pending) => vo
         )}
       </div>
     </>
+  );
+}
+
+/** 批改結果：對錯標示、AI 評語、逐字差異（你寫的／改正） */
+function GradeResultView({
+  result,
+  answer,
+  finalCorrect,
+  overridden,
+}: {
+  result: GradeResult;
+  answer: string;
+  finalCorrect: boolean | null;
+  overridden: boolean;
+}) {
+  const diff = answer && result.suggestion && !finalCorrect ? charDiff(answer, result.suggestion) : null;
+  return (
+    <div className="mt-4 space-y-3">
+      {finalCorrect !== null && (
+        <div
+          role="status"
+          className={`flex items-center gap-2 rounded-xl px-3 py-2.5 text-[15px] font-bold ${finalCorrect ? "bg-ok-soft text-ok" : "bg-bad-soft text-bad"}`}
+        >
+          <span className={`grid size-[22px] place-items-center rounded-full text-xs text-card ${finalCorrect ? "bg-ok" : "bg-bad"}`}>{finalCorrect ? "✓" : "✕"}</span>
+          {finalCorrect ? "正確" : "錯誤"}
+          <span className="tag ml-auto bg-card text-muted">{overridden ? "已改判" : result.method === "AI" ? "AI 批改" : result.method}</span>
+        </div>
+      )}
+      {result.feedback && <p className="text-[15px] leading-relaxed">{result.feedback}</p>}
+      {diff ? (
+        <div className="grid grid-cols-[52px_1fr] items-baseline gap-y-2.5">
+          <span className="label">你寫的</span>
+          <span className="text-lg leading-relaxed" lang="ja">
+            {diff.mine.map((d, i) =>
+              d.op === "del" ? (
+                <del key={i} className="rounded-sm bg-bad-soft text-bad decoration-2">
+                  {d.text}
+                </del>
+              ) : (
+                <span key={i}>{d.text}</span>
+              ),
+            )}
+          </span>
+          <span className="label">改正</span>
+          <span className="text-lg leading-relaxed" lang="ja">
+            {diff.fixed.map((d, i) =>
+              d.op === "ins" ? (
+                <ins key={i} className="rounded-sm bg-ok-soft text-ok underline decoration-2 underline-offset-4">
+                  {d.text}
+                </ins>
+              ) : (
+                <span key={i}>{d.text}</span>
+              ),
+            )}
+          </span>
+        </div>
+      ) : (
+        answer && (
+          <p className="text-muted">
+            你的答案：<span lang="ja">{answer}</span>
+          </p>
+        )
+      )}
+    </div>
+  );
+}
+
+/** 「批改有誤？改判為對／錯」：改判後 5 秒內可以復原 */
+function Overrule({ aiSays, onChange }: { aiSays: boolean; onChange: (v: boolean | null) => void }) {
+  const [state, setState] = useState<"none" | "undoable" | "fixed">("none");
+  useEffect(() => {
+    if (state !== "undoable") return;
+    const t = setTimeout(() => setState("fixed"), 5000);
+    return () => clearTimeout(t);
+  }, [state]);
+  const to = aiSays ? "錯" : "對";
+  if (state === "fixed") return <p className="mt-2 text-center text-sm text-muted">已改判為{to}</p>;
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        const next = state === "none";
+        setState(next ? "undoable" : "none");
+        onChange(next ? !aiSays : null);
+      }}
+      className="mx-auto mt-2 block h-11 px-3 text-sm font-semibold text-ink-2 underline underline-offset-4"
+    >
+      {state === "undoable" ? `已改判為${to}・復原` : `批改有誤？改判為${to}`}
+    </button>
   );
 }
