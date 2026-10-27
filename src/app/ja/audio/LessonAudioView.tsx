@@ -6,27 +6,36 @@ import type { Track, TranscriptPart } from "@/lib/lessonAudio";
 
 type Row = Track & { url: string | null };
 
-/** 課文全文：場面標題＋「人名　台詞」 */
-function Transcript({ part }: { part: TranscriptPart }) {
+type Scene = TranscriptPart["scenes"][number];
+
+/** 一段課文：「人名　台詞」 */
+function Lines({ lines }: { lines: Scene["lines"] }) {
   return (
-    <div className="space-y-3 border-t border-line px-4 py-3" lang="ja">
-      {part.scenes.map((s, i) => (
-        <section key={i}>
-          {s.title && <h4 className="mb-1 text-xs font-bold text-muted">{s.title}</h4>}
-          <div className="space-y-1.5 text-[15px] leading-relaxed">
-            {s.lines.map((l, j) =>
+    <div className="space-y-1.5 text-[15px] leading-relaxed">
+      {lines.map((l, j) =>
               l.speaker ? (
                 <p key={j} className="grid grid-cols-[auto_1fr] gap-x-2">
                   <span className="min-w-[3.5em] text-[13px] font-bold text-accent">{l.speaker}</span>
                   <span>{l.text}</span>
                 </p>
               ) : (
-                <p key={j} className={l.text === "⋮" ? "pl-[4.2em] text-muted" : ""}>
+                <p key={j} className={l.text === "⋮" || l.text === "＊＊＊" ? "pl-[4.2em] text-muted" : ""}>
                   {l.text}
                 </p>
               ),
-            )}
-          </div>
+      )}
+    </div>
+  );
+}
+
+/** 課文全文：場面標題＋台詞 */
+function Transcript({ part }: { part: TranscriptPart }) {
+  return (
+    <div className="space-y-3 border-t border-line px-4 py-3" lang="ja">
+      {part.scenes.map((s, i) => (
+        <section key={i}>
+          {s.title && <h4 className="mb-1 text-xs font-bold text-muted">{s.title}</h4>}
+          <Lines lines={s.lines} />
         </section>
       ))}
     </div>
@@ -62,6 +71,10 @@ export function LessonAudioView({ tracks, transcript, st }: { tracks: Row[]; tra
   const read = tracks.filter((t) => t.kind === "read");
   const listen = part("聞いて");
   const story = part("話読聞書");
+  // チャレンジ各場面有自己的課文（Notion「## チャレンジ」底下「### ST1 1」）
+  const challenge = part("チャレンジ");
+  const sceneText = (t: Row) =>
+    t.kind === "scene" ? challenge?.scenes.find((s) => s.title === `ST${t.st} ${t.label.replace("チャレンジ ", "")}`) : undefined;
 
   return (
     <>
@@ -81,7 +94,21 @@ export function LessonAudioView({ tracks, transcript, st }: { tracks: Row[]; tra
               <h3 className="px-4 pt-3 pb-1 text-[13px] font-bold text-ink-2" lang="ja">
                 ST{n}{st && `　${st[n - 1]}`}
               </h3>
-              <div className="divide-y divide-line">{list.map(row)}</div>
+              <div className="divide-y divide-line">
+                {list.map((t) => {
+                  const text = sceneText(t);
+                  return (
+                    <div key={t.no}>
+                      {row(t)}
+                      {text && (
+                        <div className="px-4 pt-1 pb-3" lang="ja">
+                          <Lines lines={text.lines} />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </section>
           );
         })}

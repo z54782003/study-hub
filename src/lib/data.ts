@@ -1118,6 +1118,10 @@ export async function getLessonAudio(n: number): Promise<LessonAudio> {
         { type: "paragraph", text: "Ｂ：課文從 Notion 的課文頁讀。" },
         { type: "heading_2", text: "話読聞書" },
         { type: "paragraph", text: "（本機預覽用的假短文）" },
+        { type: "heading_2", text: "チャレンジ" },
+        { type: "heading_3", text: "ST1 1" },
+        { type: "paragraph", text: "Ａ：（場面 1 的假台詞）" },
+        { type: "paragraph", text: "Ｂ：はい。" },
       ]),
     };
   const { urls, pages } = await cachedLessonAudioIndex();
