@@ -21,7 +21,8 @@ export function Chips<T extends string | number>({
             key={String(o)}
             type="button"
             onClick={() => onToggle(o)}
-            className={`min-w-11 rounded-full border px-3 py-1.5 text-sm ${on ? "border-accent bg-accent text-white" : "border-line bg-card"}`}
+            aria-pressed={on}
+            className={`h-9 min-w-11 rounded-full border px-3 text-sm font-semibold whitespace-nowrap ${on ? "border-ink bg-ink text-bg" : "border-line bg-card text-ink-2"}`}
           >
             {label(o)}
           </button>
@@ -34,9 +35,9 @@ export function Chips<T extends string | number>({
 export function Field({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
   return (
     <section className="mb-5">
-      <h2 className="mb-2 text-sm font-semibold">
+      <h2 className="label mb-2">
         {title}
-        {hint && <span className="ml-2 font-normal text-muted">{hint}</span>}
+        {hint && <span className="ml-2 font-normal tracking-normal">{hint}</span>}
       </h2>
       {children}
     </section>

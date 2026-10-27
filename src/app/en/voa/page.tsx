@@ -2,6 +2,7 @@ import Link from "next/link";
 import { VoaReadMark } from "./VoaText";
 import { getVoaFeed } from "@/lib/data";
 import { VOA_FEEDS, type VoaFeedKey } from "@/lib/voa";
+import { BackLink } from "@/components/BackLink";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "VOA 讀＋聽・Study Hub" };
@@ -18,10 +19,8 @@ export default async function VoaPage({ searchParams }: { searchParams: Promise<
   }
   return (
     <>
-      <Link href="/en" className="text-sm text-muted">
-        ‹ 英文
-      </Link>
-      <h1 className="mt-1 text-2xl font-bold">VOA 讀＋聽</h1>
+      <BackLink href="/en">英文</BackLink>
+      <h1 className="mt-1 text-[28px] leading-[34px] font-bold">VOA 讀＋聽</h1>
       <p className="mb-3 text-sm text-muted">慢速英文全文＋朗讀；點單字查字典、加入單字庫</p>
 
       <nav className="-mx-4 mb-4 flex gap-1.5 overflow-x-auto px-4 pb-1">
@@ -30,7 +29,7 @@ export default async function VoaPage({ searchParams }: { searchParams: Promise<
             key={f.key}
             href={`/en/voa?feed=${f.key}`}
             scroll={false}
-            className={`shrink-0 rounded-full border px-3 py-1.5 text-sm ${f.key === feed.key ? "border-accent bg-accent text-white" : "border-line bg-card"}`}
+            className={`flex h-9 shrink-0 items-center rounded-full border px-3 text-sm font-semibold whitespace-nowrap ${f.key === feed.key ? "border-ink bg-ink text-bg" : "border-line bg-card text-ink-2"}`}
           >
             {f.title}
           </Link>
@@ -42,7 +41,7 @@ export default async function VoaPage({ searchParams }: { searchParams: Promise<
       <ul className="space-y-2.5">
         {items.map((it) => (
           <li key={it.id}>
-            <Link href={`/en/voa/${it.id}?feed=${feed.key}`} className="block rounded-2xl border border-line bg-card px-4 py-3">
+            <Link href={`/en/voa/${it.id}?feed=${feed.key}`} className="block card px-4 py-3">
               <span className="flex items-baseline gap-2">
                 <span className="flex-1 font-semibold" lang="en">
                   {it.title}

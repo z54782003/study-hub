@@ -14,9 +14,9 @@ export default async function PlayPage({ searchParams }: { searchParams: Promise
         type="url"
         required
         placeholder="https://www.ted.com/talks/..."
-        className="w-full rounded-2xl border border-line bg-card px-4 py-3 outline-none focus:border-accent"
+        className="w-full card px-4 py-3 outline-none focus:border-accent"
       />
-      <button className="w-full rounded-2xl bg-accent py-3 font-semibold text-white">開始精聽</button>
+      <button className="w-full rounded-2xl bg-accent py-3 font-semibold text-on-accent">開始精聽</button>
     </form>
   );
 }

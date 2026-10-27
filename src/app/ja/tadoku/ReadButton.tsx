@@ -26,7 +26,7 @@ export function ReadButton({ id, initial }: { id: string; initial: boolean }) {
         type="button"
         onClick={toggle}
         disabled={busy}
-        className={`rounded-full border px-3 py-1.5 text-sm ${read ? "border-ok bg-ok/10 text-ok" : "border-line"} disabled:opacity-50`}
+        className={`rounded-full border px-3 py-1.5 text-sm ${read ? "border-ok bg-ok-soft text-ok" : "border-line"} disabled:opacity-50`}
       >
         {busy ? "…" : read ? "✓ 讀完" : "讀完了"}
       </button>

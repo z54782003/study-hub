@@ -8,11 +8,11 @@ export function MistakeList({ items }: { items: QuizItem[] }) {
   const [filter, setFilter] = useState<string | null>(null);
   const shown = filter ? items.filter((i) => (i.qtype ?? "其他") === filter) : items;
 
-  if (items.length === 0) return <p className="mt-10 text-center text-muted">目前沒有錯題 🎉</p>;
+  if (items.length === 0) return <p className="mt-10 text-center text-muted">目前沒有錯題</p>;
 
   return (
     <>
-      <Link href="/mistakes/retest" className="mb-4 block rounded-2xl bg-accent py-3 text-center font-semibold text-white">
+      <Link href="/mistakes/retest" className="mb-4 block rounded-2xl bg-accent py-3 text-center font-semibold text-on-accent">
         重測錯題（{Math.min(items.length, 30)} 題）
       </Link>
       <div className="mb-3 flex flex-wrap gap-1.5 text-sm">
@@ -27,7 +27,7 @@ export function MistakeList({ items }: { items: QuizItem[] }) {
       </div>
       <ul className="space-y-2.5">
         {shown.map((i) => (
-          <li key={i.id} className="rounded-2xl border border-line bg-card px-4 py-3">
+          <li key={i.id} className="card px-4 py-3">
             <div className="flex justify-between text-xs text-muted">
               <span>{i.qtype}</span>
               {i.lastTested && <span>{i.lastTested.slice(5).replace("-", "/")} 答錯</span>}

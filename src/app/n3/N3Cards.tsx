@@ -29,7 +29,7 @@ export function N3Cards({ words }: { words: N3WordItem[] }) {
               <button
                 type="button"
                 onClick={() => toggle(w.id)}
-                className="flex h-full min-h-24 w-full flex-col items-center justify-center rounded-2xl border border-line bg-card p-3 text-center"
+                className="flex h-full min-h-24 w-full flex-col items-center justify-center card p-3 text-center"
               >
                 <span className="text-2xl font-bold" lang="ja">{w.word}</span>
                 <span className={`mt-1 text-sm ${shown ? "" : "invisible"}`} lang="ja">{w.reading}</span>

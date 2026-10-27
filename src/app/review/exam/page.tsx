@@ -1,9 +1,9 @@
-import Link from "next/link";
 import { EntryCard } from "@/components/EntryCard";
 import { EXAMS } from "@/lib/config";
 import { today } from "@/lib/data";
 import { diffDays } from "@/lib/dates";
 import { examChapters, examLessons, sourceQuery } from "@/lib/reviewSource";
+import { BackLink } from "@/components/BackLink";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "考試複習・Study Hub" };
@@ -55,10 +55,8 @@ export default function ExamPage() {
   const upcoming = EXAMS.map((e) => ({ ...e, daysLeft: diffDays(day, e.date) })).filter((e) => e.daysLeft >= 0 && e.daysLeft <= 30);
   return (
     <>
-      <Link href="/review" className="text-sm text-muted">
-        ‹ 複習
-      </Link>
-      <h1 className="mt-1 mb-1 text-2xl font-bold">考試複習</h1>
+      <BackLink href="/review">複習</BackLink>
+      <h1 className="mt-1 mb-1 text-[28px] leading-[34px] font-bold">考試複習</h1>
       <p className="mb-4 text-sm text-muted">未來 30 天的考試，點了直接開始；アチーブ的語彙範圍考單字，其他考題庫。</p>
       {upcoming.length === 0 && <p className="text-muted">這一期沒有接下來的考試了</p>}
       <div className="space-y-2.5">
@@ -71,7 +69,8 @@ export default function ExamPage() {
               <EntryCard
                 key={e.date + name}
                 href={entry.href}
-                icon={e.daysLeft <= 7 ? "🔔" : "🗓️"}
+                icon={e.daysLeft <= 7 ? "bell" : "calendar"}
+                tone={e.daysLeft <= 7 ? "exam" : "accent"}
                 title={`${e.date.slice(5).replace("-", "/")} ${name}`}
                 detail={entry.detail}
                 badge={e.daysLeft === 0 ? "今天" : `${e.daysLeft} 天`}

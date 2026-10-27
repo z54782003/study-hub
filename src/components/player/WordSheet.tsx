@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { Speak } from "@/components/Speak";
+import { Icon } from "@/components/Icon";
 
 type Entry = { phonetic?: string; audio?: string; meanings: { pos: string; def: string }[] };
 
@@ -85,8 +86,8 @@ export function WordSheet({ word: raw, sentence, onClose }: { word: string; sent
           </h2>
           {entry && entry !== "loading" && entry.phonetic && <span className="text-muted">{entry.phonetic}</span>}
           {entry && entry !== "loading" && entry.audio ? (
-            <button type="button" onClick={() => void new Audio(entry.audio!).play()} className="text-xl" aria-label="發音">
-              🔊
+            <button type="button" onClick={() => void new Audio(entry.audio!).play()} className="grid size-11 place-items-center text-muted" aria-label="發音">
+              <Icon name="speaker" stroke={2} />
             </button>
           ) : (
             <Speak text={word} lang="en" />
@@ -122,7 +123,7 @@ export function WordSheet({ word: raw, sentence, onClose }: { word: string; sent
             type="button"
             onClick={save}
             disabled={saved !== "idle" && saved !== "error"}
-            className="rounded-2xl bg-accent py-3 font-semibold text-white disabled:opacity-70"
+            className="rounded-2xl bg-accent py-3 font-semibold text-on-accent disabled:opacity-70"
           >
             {saved === "idle" && "＋ 單字庫"}
             {saved === "saving" && "加入中…"}

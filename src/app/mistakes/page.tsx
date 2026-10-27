@@ -10,7 +10,7 @@ export default async function MistakesPage() {
   return (
     <>
       <header className="mb-4 flex items-baseline justify-between">
-        <h1 className="text-2xl font-bold">錯題區</h1>
+        <h1 className="text-[28px] leading-[34px] font-bold">錯題區</h1>
         <Link href="/review/due" className="text-sm text-accent">
           今日到期 ›
         </Link>

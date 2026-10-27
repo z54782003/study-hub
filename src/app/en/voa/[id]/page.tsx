@@ -1,10 +1,10 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { VoaDone, VoaText } from "../VoaText";
 import { AudioPlayer } from "@/components/AudioPlayer";
 import { Speak } from "@/components/Speak";
 import { getVoaArticle } from "@/lib/data";
 import { VOA_BASE } from "@/lib/voa";
+import { BackLink } from "@/components/BackLink";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "VOA・Study Hub" };
@@ -23,9 +23,7 @@ export default async function VoaArticlePage({ params, searchParams }: { params:
   const source = `${VOA_BASE}/a/${id}.html`;
   return (
     <>
-      <Link href={`/en/voa${feed ? `?feed=${feed}` : ""}`} className="text-sm text-muted">
-        ‹ VOA
-      </Link>
+      <BackLink href={`/en/voa${feed ? `?feed=${feed}` : ""}`}>VOA</BackLink>
       {error || !a ? (
         <p className="mt-4 text-bad">
           讀取失敗：{error}。
@@ -51,7 +49,7 @@ export default async function VoaArticlePage({ params, searchParams }: { params:
           <VoaText paragraphs={a.paragraphs} />
 
           {a.words.length > 0 && (
-            <section className="mt-6 rounded-2xl border border-line bg-card p-4">
+            <section className="mt-6 card p-4">
               <h2 className="mb-2 font-semibold">Words in This Story</h2>
               <ul className="space-y-1.5 text-sm" lang="en">
                 {a.words.map((w) => (

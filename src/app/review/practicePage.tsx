@@ -1,9 +1,9 @@
-import Link from "next/link";
 import { PracticeForm, type PracticePreset } from "./PracticeForm";
 import { FORMS } from "@/lib/conjugate";
 import { EXAMS, KANJI_CHAPTERS } from "@/lib/config";
 import { englishVocabCount, kanjiChapterCounts, noteLessons, today, vocabLessonCounts } from "@/lib/data";
 import { examChapters, LEVELS, parseLessons } from "@/lib/reviewSource";
+import { BackLink } from "@/components/BackLink";
 
 /** 下一場漢字テスト的章（例：HSJⅡ 1章、2章） */
 function nextKanjiExamChapters(): string[] {
@@ -37,10 +37,8 @@ export async function PracticePage({ mode, query }: { mode: PracticePreset["mode
   ]);
   return (
     <>
-      <Link href="/review" className="text-sm text-muted">
-        ‹ 複習
-      </Link>
-      <h1 className="mt-1 mb-4 text-2xl font-bold">{mode === "words" ? "單字・漢字" : "題目練習"}</h1>
+      <BackLink href="/review">複習</BackLink>
+      <h1 className="mt-1 mb-4 text-[28px] leading-[34px] font-bold">{mode === "words" ? "單字・漢字" : "題目練習"}</h1>
       <PracticeForm noteLessons={lessons} vocabCounts={counts} englishCount={english} kanjiCounts={kanjiCounts} preset={preset} />
     </>
   );

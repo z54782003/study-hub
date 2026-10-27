@@ -256,7 +256,7 @@ export function TedPlayer({ tedUrl, title, notionUrl }: { tedUrl: string; title:
               key={i}
               data-i={i}
               onClick={() => playCue(i)}
-              className={`cursor-pointer rounded-xl px-3 py-2 transition-colors ${isActive ? "bg-accent/12" : ""}`}
+              className={`cursor-pointer rounded-xl px-3 py-2 transition-colors ${isActive ? "bg-accent-soft" : ""}`}
             >
               <div className="flex gap-2">
                 <span className={`pt-1 text-[11px] tabular-nums ${isActive ? "text-accent" : "text-muted"}`}>{fmt(c.start)}</span>
@@ -276,7 +276,7 @@ export function TedPlayer({ tedUrl, title, notionUrl }: { tedUrl: string; title:
                                 videoRef.current?.pause();
                                 setSheet({ word: t.s, sentence: c.text });
                               }}
-                              className="rounded active:bg-accent/25"
+                              className="rounded active:bg-accent-soft"
                             >
                               {t.s}
                             </span>
@@ -368,7 +368,7 @@ export function TedPlayer({ tedUrl, title, notionUrl }: { tedUrl: string; title:
             type="button"
             onClick={togglePlay}
             disabled={!talk?.video}
-            className="grid size-14 place-items-center rounded-full bg-accent text-2xl text-white disabled:opacity-40"
+            className="grid size-14 place-items-center rounded-full bg-accent text-2xl text-on-accent disabled:opacity-40"
             aria-label={playing ? "暫停" : "播放"}
           >
             {playing ? "❚❚" : "▶"}

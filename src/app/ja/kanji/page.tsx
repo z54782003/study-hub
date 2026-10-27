@@ -3,6 +3,7 @@ import { speakableJa } from "@/lib/speech";
 import Link from "next/link";
 import { KANJI_CHAPTERS } from "@/lib/config";
 import { getKanji, kanjiChapterCounts } from "@/lib/data";
+import { BackLink } from "@/components/BackLink";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "漢字表・Study Hub" };
@@ -16,10 +17,8 @@ export default async function KanjiTablePage({ searchParams }: { searchParams: P
   const list = chapter ? await getKanji([chapter]) : [];
   return (
     <>
-      <Link href="/ja" className="text-sm text-muted">
-        ‹ 日文
-      </Link>
-      <h1 className="mt-1 mb-3 text-2xl font-bold">漢字表</h1>
+      <BackLink href="/ja">日文</BackLink>
+      <h1 className="mt-1 mb-3 text-[28px] leading-[34px] font-bold">漢字表</h1>
 
       {chapters.length === 0 ? (
         <p className="text-muted">漢字庫還沒有資料</p>
@@ -30,7 +29,7 @@ export default async function KanjiTablePage({ searchParams }: { searchParams: P
               key={c}
               href={`/ja/kanji?ch=${encodeURIComponent(c)}`}
               scroll={false}
-              className={`shrink-0 rounded-full border px-3 py-1.5 text-sm ${c === chapter ? "border-accent bg-accent text-white" : "border-line bg-card"}`}
+              className={`flex h-9 shrink-0 items-center rounded-full border px-3 text-sm font-semibold whitespace-nowrap ${c === chapter ? "border-ink bg-ink text-bg" : "border-line bg-card text-ink-2"}`}
             >
               {c.replace("HSJ", "")}・{counts[c]}
             </Link>
@@ -40,7 +39,7 @@ export default async function KanjiTablePage({ searchParams }: { searchParams: P
 
       <ul className="mb-24 grid gap-2.5 md:grid-cols-2">
         {list.map((k) => (
-          <li key={k.id} className="rounded-2xl border border-line bg-card p-3" lang="ja">
+          <li key={k.id} className="card p-3" lang="ja">
             <div className="flex gap-3">
               <span className="text-4xl leading-none font-bold">{k.kanji}</span>
               <div className="min-w-0 flex-1 text-sm">
@@ -83,7 +82,7 @@ export default async function KanjiTablePage({ searchParams }: { searchParams: P
         <div className="fixed inset-x-0 bottom-20 mx-auto max-w-xl px-4 md:max-w-2xl">
           <Link
             href={`/review/words?chapters=${encodeURIComponent(chapter)}`}
-            className="block rounded-2xl bg-accent py-4 text-center text-lg font-semibold text-white shadow-lg"
+            className="block rounded-2xl bg-accent py-4 text-center text-lg font-semibold text-on-accent shadow-lg"
           >
             練習這章（{list.length}）
           </Link>

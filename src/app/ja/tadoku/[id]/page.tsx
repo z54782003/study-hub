@@ -1,8 +1,9 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ReadButton } from "../ReadButton";
 import { AudioPlayer } from "@/components/AudioPlayer";
 import { getTadokuBooks, getTadokuDetail, getTadokuLog } from "@/lib/data";
+import { BackLink } from "@/components/BackLink";
+import { Icon } from "@/components/Icon";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "多読・Study Hub" };
@@ -19,12 +20,10 @@ export default async function TadokuBookPage({ params }: { params: Promise<{ id:
   const read = log[id];
   return (
     <>
-      <Link href={`/ja/tadoku?level=${book.level}`} className="text-sm text-muted">
-        ‹ 多読書庫
-      </Link>
+      <BackLink href={`/ja/tadoku?level=${book.level}`}>多読書庫</BackLink>
       <div className="mt-1 mb-3 flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-2xl font-bold" lang="ja">
+          <h1 className="text-[28px] leading-[34px] font-bold" lang="ja">
             {book.title}
           </h1>
           <p className="text-sm text-muted">
@@ -59,12 +58,16 @@ export default async function TadokuBookPage({ params }: { params: Promise<{ id:
 
       <section className="mb-6 space-y-2">
         {detail?.pdf.map((u) => (
-          <a key={u} href={u} target="_blank" rel="noreferrer" className="block rounded-2xl border border-line bg-card px-4 py-3 text-sm">
-            📄 {/[^/]+e-[^/]*\.pdf$/.test(u) ? "PDF（電子版）" : /[^/]+p-[^/]*\.pdf$/.test(u) ? "PDF（列印版）" : "PDF"} ↗
+          <a key={u} href={u} target="_blank" rel="noreferrer" className="card flex min-h-14 items-center gap-3 px-4 text-[15px] font-semibold">
+            <Icon name="book" className="text-accent" />
+            <span className="flex-1">{/[^/]+e-[^/]*\.pdf$/.test(u) ? "PDF（電子版）" : /[^/]+p-[^/]*\.pdf$/.test(u) ? "PDF（列印版）" : "PDF"}</span>
+            <Icon name="external" size={18} stroke={2} className="text-muted" label="外部連結" />
           </a>
         ))}
-        <a href={book.url} target="_blank" rel="noreferrer" className="block rounded-2xl border border-line bg-card px-4 py-3 text-sm">
-          🌐 在多読網站上看這本書 ↗
+        <a href={book.url} target="_blank" rel="noreferrer" className="card flex min-h-14 items-center gap-3 px-4 text-[15px] font-semibold">
+          <Icon name="news" className="text-accent" />
+          <span className="flex-1">在多読網站上看這本書</span>
+          <Icon name="external" size={18} stroke={2} className="text-muted" label="外部連結" />
         </a>
       </section>
 

@@ -27,6 +27,9 @@ export const N3_DUE_LIMIT = 10;
 // N3 自補起算日（第 0 天）
 export const N3_START = "2026-10-08";
 
+/** JLPT 倒數（今日頁右邊那格） */
+export const JLPT = { date: "2026-12-06", name: "JLPT N3" };
+
 // 10 月期考試與重要日期（日本語計畫頁）
 export const EXAMS: { date: string; name: string; scope: string }[] = [
   { date: "2026-10-13", name: "動詞の形テスト", scope: "可能動詞" },

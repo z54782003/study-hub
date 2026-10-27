@@ -12,20 +12,23 @@ export default async function ReviewHub() {
   const nextExam = EXAMS.find((e) => diffDays(day, e.date) >= 0);
   return (
     <>
-      <h1 className="mb-4 text-2xl font-bold">複習</h1>
+      <h1 className="mb-4 text-[28px] leading-[34px] font-bold">複習</h1>
       <div className="space-y-2.5">
         <EntryCard
           href="/review/due"
-          icon="🔁"
+          icon="repeat"
+          tone="due"
           title="今日到期"
-          detail="題庫到期題＋N3 單字＋今日文型"
-          badge={queue === null ? "?" : queue.length || "✓"}
+          detail={queue?.length === 0 ? "今天到期的都做完了" : "題庫到期題＋N3 單字＋今日文型"}
+          badge={queue === null ? "?" : queue.length}
+          disabled={queue?.length === 0}
         />
-        <EntryCard href="/review/words" icon="🈁" title="單字・漢字" detail="日文依課・英文・漢字依章（HSJ）｜翻卡自評" />
-        <EntryCard href="/review/questions" icon="📝" title="題目練習" detail="題庫依冊・課・題型、動詞の形｜寫答案批改" />
+        <EntryCard href="/review/words" icon="cards" title="單字・漢字" detail="日文依課・英文・漢字依章｜翻卡自評" />
+        <EntryCard href="/review/questions" icon="pencil" title="題目練習" detail="題庫・動詞の形｜寫答案批改" />
         <EntryCard
           href="/review/exam"
-          icon="🎯"
+          icon="target"
+          tone="exam"
           title="考試複習"
           detail={nextExam ? `下一場：${nextExam.date.slice(5).replace("-", "/")} ${nextExam.name}（${nextExam.scope}）` : "依考試範圍出題"}
         />
@@ -33,10 +36,12 @@ export default async function ReviewHub() {
       <h2 className="mt-6 mb-2 text-sm font-semibold text-muted">錯題</h2>
       <EntryCard
         href="/mistakes"
-        icon="📌"
+        icon="pin"
+        tone="bad"
         title="錯題區"
-        detail="上次答錯的題目，可以整批重測"
+        detail={mistakes?.length === 0 ? "目前沒有錯題" : "答對一次就移出，可以整批重測"}
         badge={mistakes === null ? "?" : mistakes.length}
+        disabled={mistakes?.length === 0}
       />
     </>
   );

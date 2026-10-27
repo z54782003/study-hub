@@ -9,10 +9,10 @@ export default async function N3Page() {
   const { words, grammar } = await getN3Batch();
   return (
     <>
-      <h1 className="mb-1 text-2xl font-bold">N3 單字 {formatJP(today())}</h1>
+      <h1 className="mb-1 text-[28px] leading-[34px] font-bold">N3 單字 {formatJP(today())}</h1>
       <p className="mb-4 text-sm text-muted">今天這批 {words.length} 個（只看不考；晚上的複習會抽 10 個考）</p>
       {grammar.map((g) => (
-        <section key={g.id} className="mb-4 rounded-2xl border border-line bg-card p-4">
+        <section key={g.id} className="mb-4 card p-4">
           <div className="text-xs text-muted">今日文型</div>
           <div className="mt-1 text-xl font-bold" lang="ja">{g.pattern}</div>
           <div className="mt-1">{g.meaning}</div>

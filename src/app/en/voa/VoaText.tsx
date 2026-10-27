@@ -14,7 +14,7 @@ export function VoaText({ paragraphs }: { paragraphs: string[] }) {
           <p key={i}>
             {tokens(p).map((t, j) =>
               t.word ? (
-                <span key={j} onClick={() => setSheet({ word: t.s, sentence: p })} className="cursor-pointer rounded active:bg-accent/20">
+                <span key={j} onClick={() => setSheet({ word: t.s, sentence: p })} className="cursor-pointer rounded active:bg-accent-soft">
                   {t.s}
                 </span>
               ) : (
@@ -54,7 +54,7 @@ export function VoaDone({ id }: { id: string }) {
     <button
       type="button"
       onClick={toggle}
-      className={`shrink-0 rounded-full border px-3 py-1.5 text-sm whitespace-nowrap ${done ? "border-ok bg-ok/10 text-ok" : "border-line"}`}
+      className={`shrink-0 rounded-full border px-3 py-1.5 text-sm whitespace-nowrap ${done ? "border-ok bg-ok-soft text-ok" : "border-line"}`}
      
     >
       {done ? "✓ 讀完" : "讀完了"}

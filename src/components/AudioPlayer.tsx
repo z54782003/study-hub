@@ -12,7 +12,7 @@ export function AudioPlayer({ src }: { src: string }) {
     if (ref.current) ref.current.playbackRate = r;
   };
   return (
-    <div className="rounded-2xl border border-line bg-card p-3">
+    <div className="card p-3">
       <audio ref={ref} src={src} controls preload="none" className="w-full" onPlay={(e) => (e.currentTarget.playbackRate = rate)} />
       <div className="mt-2 flex items-center gap-1.5 text-sm">
         <span className="mr-1 text-xs text-muted">速度</span>
@@ -21,7 +21,7 @@ export function AudioPlayer({ src }: { src: string }) {
             key={r}
             type="button"
             onClick={() => pick(r)}
-            className={`rounded-full border px-2.5 py-0.5 ${r === rate ? "border-accent bg-accent text-white" : "border-line"}`}
+            className={`rounded-full border px-2.5 py-0.5 ${r === rate ? "border-accent bg-accent text-on-accent" : "border-line"}`}
           >
             {r}×
           </button>

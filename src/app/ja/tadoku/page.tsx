@@ -2,6 +2,8 @@ import Link from "next/link";
 import { ReadButton } from "./ReadButton";
 import { getTadokuBooks, getTadokuLog, today } from "@/lib/data";
 import { TADOKU_LEVELS, TADOKU_URL, type TadokuLevel } from "@/lib/tadoku";
+import { BackLink } from "@/components/BackLink";
+import { Icon } from "@/components/Icon";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "多読書庫・Study Hub" };
@@ -31,10 +33,8 @@ export default async function TadokuPage({ searchParams }: { searchParams: Promi
 
   return (
     <>
-      <Link href="/ja" className="text-sm text-muted">
-        ‹ 日文
-      </Link>
-      <h1 className="mt-1 text-2xl font-bold">多読書庫</h1>
+      <BackLink href="/ja">日文</BackLink>
+      <h1 className="mt-1 text-[28px] leading-[34px] font-bold">多読書庫</h1>
       <p className="mb-3 text-sm text-muted">
         讀完 {readTotal} 本・這個月 {readMonth} 本
       </p>
@@ -55,7 +55,7 @@ export default async function TadokuPage({ searchParams }: { searchParams: Promi
             key={s.level}
             href={`/ja/tadoku?level=${s.level}`}
             scroll={false}
-            className={`shrink-0 rounded-full border px-3 py-1.5 text-sm ${s.level === level ? "border-accent bg-accent text-white" : "border-line bg-card"}`}
+            className={`flex h-9 shrink-0 items-center rounded-full border px-3 text-sm font-semibold whitespace-nowrap ${s.level === level ? "border-ink bg-ink text-bg" : "border-line bg-card text-ink-2"}`}
           >
             {s.level === "Start" ? "入門" : `L${s.level}`}・{s.read}/{s.total}
           </Link>
@@ -66,13 +66,15 @@ export default async function TadokuPage({ searchParams }: { searchParams: Promi
         {list.map((b) => {
           const read = log[b.id];
           return (
-            <li key={b.id} className={`flex items-center gap-3 rounded-2xl border border-line bg-card p-2.5 ${read ? "opacity-70" : ""}`}>
+            <li key={b.id} className={`flex items-center gap-3 card p-2.5 ${read ? "opacity-70" : ""}`}>
               <Link href={`/ja/tadoku/${b.id}`} className="flex min-w-0 flex-1 items-center gap-3">
                 {b.cover ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={b.cover} alt="" loading="lazy" className="h-16 w-11 shrink-0 rounded-md object-cover" />
                 ) : (
-                  <span className="flex h-16 w-11 shrink-0 items-center justify-center rounded-md bg-bg text-xl">📖</span>
+                  <span className="flex h-16 w-11 shrink-0 items-center justify-center rounded-md bg-card-2 text-muted">
+                  <Icon name="book" />
+                </span>
                 )}
                 <span className="min-w-0">
                   <span className="block font-semibold" lang="ja">

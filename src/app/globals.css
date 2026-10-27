@@ -1,38 +1,135 @@
 @import "tailwindcss";
 
+/* Design tokens（Study Hub 設計稿）：安靜的紙面、一個藍色，狀態色只在需要時出現。
+   既有名稱保留：card=surface、muted=ink-3、bad=ng。 */
 :root {
-  --bg: #faf8f5;
+  --bg: #f6f6f3;
   --card: #ffffff;
-  --ink: #1f1d1a;
-  --muted: #6b665e;
-  --line: #e7e2da;
-  --accent: #c2410c;
-  --ok: #15803d;
-  --bad: #b91c1c;
+  --card-2: #efefea;
+  --line: #e2e1db;
+  --ink: #1b1c1e;
+  --ink-2: #4f535a;
+  --muted: #686c73;
+  --accent: #3550a0;
+  --on-accent: #ffffff;
+  --accent-soft: #e7ecf8;
+  --ok: #1e7650;
+  --ok-soft: #e2f1e9;
+  --bad: #b23a0a;
+  --bad-soft: #fbe9e0;
+  --due: #8f5500;
+  --due-soft: #faefd9;
+  --exam: #b0212b;
+  --exam-soft: #fbe7e8;
+  --h1: #dce3f5;
+  --h2: #aebee8;
+  --h3: #7590d6;
+  --h4: #3550a0;
+  --shadow-card: 0 1px 2px rgba(17, 18, 24, 0.05), 0 4px 12px rgba(17, 18, 24, 0.05);
+  --shadow-sheet: 0 -8px 28px rgba(17, 18, 24, 0.14);
+  --shadow-cta: 0 6px 18px rgba(53, 80, 160, 0.28);
+  --font-zh: -apple-system, BlinkMacSystemFont, "PingFang TC", "Noto Sans TC", "Hiragino Sans", sans-serif;
+  --font-ja: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", -apple-system, sans-serif;
+  --font-read: "Iowan Old Style", Charter, Georgia, serif;
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #161513;
-    --card: #211f1c;
-    --ink: #f2efe9;
-    --muted: #a39d93;
-    --line: #34312c;
-    --accent: #fb923c;
-    --ok: #4ade80;
-    --bad: #f87171;
+    --bg: #111214;
+    --card: #1a1c1f;
+    --card-2: #24272b;
+    --line: #30333a;
+    --ink: #ecedee;
+    --ink-2: #bcc0c7;
+    --muted: #9499a1;
+    --accent: #97abee;
+    --on-accent: #101634;
+    --accent-soft: #1f2947;
+    --ok: #62cb9a;
+    --ok-soft: #14291f;
+    --bad: #f2906f;
+    --bad-soft: #35190f;
+    --due: #ebb860;
+    --due-soft: #2f2511;
+    --exam: #f27c83;
+    --exam-soft: #36161a;
+    --h1: #222b45;
+    --h2: #2e4180;
+    --h3: #4d67be;
+    --h4: #97abee;
+    /* 深色不用陰影，改 1px 邊線 */
+    --shadow-card: 0 0 0 1px #2a2d33;
+    --shadow-sheet: 0 -1px 0 #30333a;
+    --shadow-cta: none;
   }
 }
 
 @theme inline {
   --color-bg: var(--bg);
   --color-card: var(--card);
+  --color-card-2: var(--card-2);
   --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
   --color-muted: var(--muted);
   --color-line: var(--line);
   --color-accent: var(--accent);
+  --color-on-accent: var(--on-accent);
+  --color-accent-soft: var(--accent-soft);
   --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
   --color-bad: var(--bad);
+  --color-bad-soft: var(--bad-soft);
+  --color-due: var(--due);
+  --color-due-soft: var(--due-soft);
+  --color-exam: var(--exam);
+  --color-exam-soft: var(--exam-soft);
+  --color-h1: var(--h1);
+  --color-h2: var(--h2);
+  --color-h3: var(--h3);
+  --color-h4: var(--h4);
+  --font-sans: var(--font-zh);
+  --shadow-card: var(--shadow-card);
+  --shadow-sheet: var(--shadow-sheet);
+  --shadow-cta: var(--shadow-cta);
+}
+
+/* 卡片：18 圓角＋淡陰影（深色是邊線） */
+@utility card {
+  background: var(--card);
+  border-radius: 18px;
+  box-shadow: var(--shadow-card);
+}
+/* 主要按鈕：高 56、圓角 16 */
+@utility btn-primary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 56px;
+  border-radius: 16px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 17px;
+  font-weight: 700;
+  box-shadow: var(--shadow-cta);
+}
+/* 小標籤 */
+@utility tag {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+/* 區塊小標 */
+@utility label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  letter-spacing: 0.04em;
 }
 
 html, body { background: var(--bg); color: var(--ink); }
-body { -webkit-tap-highlight-color: transparent; }
+body { -webkit-tap-highlight-color: transparent; font-family: var(--font-zh); }
+.ja, :lang(ja) { font-family: var(--font-ja); }
+.read { font-family: var(--font-read); }
+rt { font-size: 0.5em; color: var(--muted); font-weight: 400; }

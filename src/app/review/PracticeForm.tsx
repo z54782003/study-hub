@@ -108,7 +108,7 @@ export function PracticeForm({
       </div>
 
       {soon ? (
-        <p className="rounded-2xl border border-line bg-card p-4 text-sm text-muted">{soon}</p>
+        <p className="card p-4 text-sm text-muted">{soon}</p>
       ) : type === "漢字" ? (
         <>
           <Field title="章" hint={`共 ${kanjiTotal} 字${chapters.length ? "" : "（不選＝全部）"}`}>
@@ -192,7 +192,7 @@ export function PracticeForm({
 
       {!soon && (
         <div className="fixed inset-x-0 bottom-20 mx-auto max-w-xl px-4 md:max-w-2xl">
-          <Link href={href} className="block rounded-2xl bg-accent py-4 text-center text-lg font-semibold text-white shadow-lg">
+          <Link href={href} className="block rounded-2xl bg-accent py-4 text-center text-lg font-semibold text-on-accent shadow-lg">
             開始練習
           </Link>
         </div>

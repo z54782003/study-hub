@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export const metadata = { title: "紀錄・Study Hub" };
 
 const WEEKS = 12;
-const SHADES = ["bg-line", "bg-accent/25", "bg-accent/50", "bg-accent/75", "bg-accent"];
+const SHADES = ["bg-card-2", "bg-h1", "bg-h2", "bg-h3", "bg-h4"];
 
 export default async function HistoryPage({ searchParams }: { searchParams: Promise<{ d?: string }> }) {
   const { today, attempts } = await getHistory(WEEKS * 7);
@@ -33,7 +33,7 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
 
   return (
     <>
-      <h1 className="mb-4 text-2xl font-bold">紀錄</h1>
+      <h1 className="mb-4 text-[28px] leading-[34px] font-bold">紀錄</h1>
 
       <section className="mb-4 grid grid-cols-3 gap-2 text-center">
         {[
@@ -41,14 +41,14 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
           { label: "這週作答", value: `${week.length} 題` },
           { label: "這週正確率", value: week.length ? `${pct(week)}%` : "—" },
         ].map((s) => (
-          <div key={s.label} className="rounded-2xl border border-line bg-card py-3">
+          <div key={s.label} className="card py-3">
             <div className="text-xl font-bold tabular-nums">{s.value}</div>
             <div className="text-xs text-muted">{s.label}</div>
           </div>
         ))}
       </section>
 
-      <section className="mb-5 rounded-2xl border border-line bg-card p-4">
+      <section className="mb-5 card p-4">
         <h2 className="mb-3 text-sm font-semibold">最近 {WEEKS} 週</h2>
         <div className="flex gap-1">
           <div className="mr-1 grid grid-rows-7 gap-1 text-[10px] leading-none text-muted">

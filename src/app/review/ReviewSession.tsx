@@ -7,6 +7,7 @@ import { Speak } from "@/components/Speak";
 import { speakableJa } from "@/lib/speech";
 import { FORM_LABEL, FORM_RULE, GROUP_OF, checkConjugation, specialNote, type VerbForm } from "@/lib/conjugate";
 import type { GradeMethod, GradeResult, KanjiItem, QuizItem, ReviewItem, ReviewSource, VerbItem, VocabItem } from "@/lib/types";
+import { Icon } from "@/components/Icon";
 
 type Result = { item: ReviewItem; correct: boolean; answer?: string };
 type Pending = { item: ReviewItem; correct: boolean; answer?: string; method?: GradeMethod; feedback?: string };
@@ -98,7 +99,9 @@ export function ReviewSession({ source }: { source: ReviewSource }) {
   if (items.length === 0)
     return (
       <div className="mt-16 text-center">
-        <div className="text-5xl">🎉</div>
+        <div className="mx-auto grid size-16 place-items-center rounded-full bg-ok-soft text-ok">
+          <Icon name="check" size={32} stroke={2.6} />
+        </div>
         <p className="mt-3 text-lg font-semibold">
           {mode === "mistakes" ? "錯題區是空的" : mode === "due" ? "今天沒有到期的題目" : "這個條件沒有題目"}
         </p>
@@ -131,7 +134,7 @@ export function ReviewSession({ source }: { source: ReviewSource }) {
     const wrong = results.filter((r) => !r.correct);
     return (
       <div className="mt-6">
-        <h1 className="text-2xl font-bold">{sourceLabel(source)}・完成</h1>
+        <h1 className="text-[28px] leading-[34px] font-bold">{sourceLabel(source)}・完成</h1>
         <p className="mt-2 text-4xl font-bold">
           {right}/{results.length}
           <span className="ml-2 text-lg font-normal text-muted">{Math.round((right / results.length) * 100)}%</span>
@@ -176,7 +179,7 @@ export function ReviewSession({ source }: { source: ReviewSource }) {
           <Link href="/mistakes" className="rounded-2xl border border-line py-3 text-center font-semibold">
             錯題區
           </Link>
-          <Link href="/review" className="rounded-2xl bg-accent py-3 text-center font-semibold text-white">
+          <Link href="/review" className="rounded-2xl bg-accent py-3 text-center font-semibold text-on-accent">
             回複習
           </Link>
         </div>
@@ -287,7 +290,7 @@ function QuizCard({ item, onDone }: { item: QuizItem; onDone: (p: Pending) => vo
                   disabled={Boolean(result) || grading}
                   onClick={() => pick(o.key)}
                   className={`flex items-center gap-3 rounded-2xl border-2 px-4 py-3 text-left text-lg ${
-                    isCorrect ? "border-ok bg-ok/10" : isWrongPick ? "border-bad bg-bad/10" : picked === o.key ? "border-accent" : "border-line"
+                    isCorrect ? "border-ok bg-ok-soft" : isWrongPick ? "border-bad bg-bad-soft" : picked === o.key ? "border-accent" : "border-line"
                   }`}
                   lang="ja"
                 >
@@ -372,15 +375,15 @@ function QuizCard({ item, onDone }: { item: QuizItem; onDone: (p: Pending) => vo
           </div>
         ) : finalCorrect === null ? (
           <div className="grid grid-cols-2 gap-3">
-            <button type="button" onClick={() => finish(false)} className="rounded-2xl bg-bad py-4 text-lg font-semibold text-white">
+            <button type="button" onClick={() => finish(false)} className="rounded-2xl bg-bad py-4 text-lg font-semibold text-on-accent">
               ✗ 錯了
             </button>
-            <button type="button" onClick={() => finish(true)} className="rounded-2xl bg-ok py-4 text-lg font-semibold text-white">
+            <button type="button" onClick={() => finish(true)} className="rounded-2xl bg-ok py-4 text-lg font-semibold text-on-accent">
               ✓ 對了
             </button>
           </div>
         ) : (
-          <button type="button" onClick={() => finish(finalCorrect)} className="w-full rounded-2xl bg-accent py-4 text-lg font-semibold text-white">
+          <button type="button" onClick={() => finish(finalCorrect)} className="w-full rounded-2xl bg-accent py-4 text-lg font-semibold text-on-accent">
             下一題
           </button>
         )}
@@ -449,10 +452,10 @@ function FlipCard({ item, onDone }: { item: Exclude<ReviewItem, QuizItem | VerbI
       <div className="sticky bottom-24 mt-4">
         {revealed ? (
           <div className="grid grid-cols-2 gap-3">
-            <button type="button" onClick={() => onDone({ item, correct: false, method: "自評" })} className="rounded-2xl bg-bad py-4 text-lg font-semibold text-white">
+            <button type="button" onClick={() => onDone({ item, correct: false, method: "自評" })} className="rounded-2xl bg-bad py-4 text-lg font-semibold text-on-accent">
               ✗ 不會
             </button>
-            <button type="button" onClick={() => onDone({ item, correct: true, method: "自評" })} className="rounded-2xl bg-ok py-4 text-lg font-semibold text-white">
+            <button type="button" onClick={() => onDone({ item, correct: true, method: "自評" })} className="rounded-2xl bg-ok py-4 text-lg font-semibold text-on-accent">
               ✓ 會
             </button>
           </div>
@@ -577,7 +580,7 @@ function VerbCard({ item, onDone }: { item: VerbItem; onDone: (p: Pending) => vo
                   disabled={result !== null}
                   onClick={() => pickGroup(g)}
                   className={`rounded-2xl border-2 py-4 text-lg font-semibold ${
-                    isRight ? "border-ok bg-ok/10" : isWrongPick ? "border-bad bg-bad/10" : "border-line"
+                    isRight ? "border-ok bg-ok-soft" : isWrongPick ? "border-bad bg-bad-soft" : "border-line"
                   }`}
                 >
                   {g}
@@ -616,7 +619,7 @@ function VerbCard({ item, onDone }: { item: VerbItem; onDone: (p: Pending) => vo
               </p>
             )}
             {specialNote(item, item.form as VerbForm) && (
-              <p className="rounded-xl bg-accent/10 px-3 py-1.5 text-sm text-accent">⚠️ 特殊：{specialNote(item, item.form as VerbForm)}</p>
+              <p className="rounded-xl bg-due-soft px-3 py-1.5 text-sm text-due">特殊：{specialNote(item, item.form as VerbForm)}</p>
             )}
             <p className="text-left text-xs leading-relaxed text-muted" lang="ja">
               {item.mode === "group" ? "G1＝五段、G2＝一段（い段／え段＋る）、G3＝する・来る。〜る 結尾的 G1（帰る・入る・知る・走る・切る）要特別記。" : FORM_RULE[item.form as VerbForm]}
@@ -643,7 +646,7 @@ function VerbCard({ item, onDone }: { item: VerbItem; onDone: (p: Pending) => vo
             </div>
           ) : null
         ) : (
-          <button type="button" onClick={finish} className="w-full rounded-2xl bg-accent py-4 text-lg font-semibold text-white">
+          <button type="button" onClick={finish} className="w-full rounded-2xl bg-accent py-4 text-lg font-semibold text-on-accent">
             下一題
           </button>
         )}

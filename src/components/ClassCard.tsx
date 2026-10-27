@@ -1,14 +1,21 @@
 import { labelItem, parseClassTitle, splitLesson, splitNumbered, type NoteItem } from "@/lib/classNote";
 import type { TodayData } from "@/lib/types";
+import { Icon } from "./Icon";
 
 const SHOWN = 5;
+// 連絡、テスト予告加底色（不只靠顏色：前面有文字標籤）
 const KIND_STYLE: Record<NoteItem["kind"], string> = {
-  exam: "bg-accent/10 text-accent",
-  notice: "bg-bg",
+  exam: "bg-exam-soft",
+  notice: "bg-accent-soft",
   homework: "",
   normal: "",
 };
-const KIND_ICON: Record<NoteItem["kind"], string> = { exam: "🔔", notice: "📢", homework: "📝", normal: "" };
+const KIND_MARK: Record<NoteItem["kind"], [string, string] | null> = {
+  exam: ["テスト", "text-exam"],
+  notice: ["連絡", "text-accent"],
+  homework: null,
+  normal: null,
+};
 
 type Numbered = NoteItem & { n: number };
 
@@ -16,9 +23,13 @@ function NoteList({ items }: { items: NoteItem[] }) {
   // n＝筆記裡原本的編號（排序後仍顯示原編號）
   const row = (it: Numbered) => (
     <li key={it.n} className={`flex gap-2.5 rounded-xl px-2 py-1.5 ${KIND_STYLE[it.kind]}`}>
-      <span className="mt-0.5 w-5 shrink-0 text-center text-xs tabular-nums text-muted">{KIND_ICON[it.kind] || it.n}</span>
+      {KIND_MARK[it.kind] ? (
+        <span className={`mt-0.5 shrink-0 text-xs font-bold ${KIND_MARK[it.kind]![1]}`}>{it.label ?? KIND_MARK[it.kind]![0]}</span>
+      ) : (
+        <span className="mt-0.5 w-5 shrink-0 text-center text-xs tabular-nums text-muted">{it.n}</span>
+      )}
       <span className="min-w-0 text-sm leading-relaxed" lang="ja">
-        {it.label && <span className="mr-1.5 font-semibold">{it.label}</span>}
+        {it.label && !KIND_MARK[it.kind] && <span className="mr-1.5 font-semibold">{it.label}</span>}
         {it.body}
       </span>
     </li>
@@ -47,7 +58,7 @@ function Homework({ text }: { text: string }) {
   const { items, note } = splitNumbered(text);
   return (
     <div className="mt-3 rounded-xl border border-line px-3 py-2.5">
-      <div className="mb-1 text-xs font-semibold">📝 作業</div>
+      <div className="mb-1 flex items-center gap-1.5 text-sm font-bold"><Icon name="pencil" size={18} className="text-muted" />作業</div>
       <ul className="space-y-1 text-sm leading-relaxed" lang="ja">
         {items.map((h, i) => (
           <li key={i} className="flex gap-2">
@@ -67,7 +78,7 @@ function grammarHeading(title: string | null): string {
   return title;
 }
 
-/** 今日頁「🏫 今天的課」：下課後顯示課堂筆記，課前顯示預習頁 */
+/** 今日頁「今天的課」：下課後顯示課堂筆記，課前顯示預習頁 */
 export function ClassCard({ classNote, preview }: Pick<TodayData, "classNote" | "preview">) {
   if (classNote?.summary) {
     const t = parseClassTitle(classNote.title);
@@ -75,7 +86,7 @@ export function ClassCard({ classNote, preview }: Pick<TodayData, "classNote" | 
     return (
       <>
         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-          {t.lesson && <span className="shrink-0 rounded-md bg-ink px-1.5 py-0.5 text-xs font-semibold whitespace-nowrap text-bg">{t.lesson}</span>}
+          {t.lesson && <span className="tag shrink-0 bg-ink text-bg">{t.lesson}</span>}
           <span className="font-semibold" lang="ja">
             {t.topic}
           </span>
@@ -102,8 +113,8 @@ export function ClassCard({ classNote, preview }: Pick<TodayData, "classNote" | 
     return (
       <>
         <div className="flex items-baseline gap-2">
-          <span className="shrink-0 rounded-md bg-line px-1.5 py-0.5 text-xs font-semibold whitespace-nowrap">預習</span>
-          <span className="font-semibold" lang="ja">
+          <span className="tag shrink-0 bg-accent-soft text-accent">預習</span>
+          <span className="text-[15px] leading-snug font-bold" lang="ja">
             {lesson?.main ?? preview.title}
           </span>
         </div>
@@ -114,33 +125,37 @@ export function ClassCard({ classNote, preview }: Pick<TodayData, "classNote" | 
         )}
         {preview.grammar.length > 0 && (
           <>
-            <div className="mt-3 mb-1 text-xs font-semibold text-muted">{grammarHeading(preview.grammarTitle)}</div>
-            <ul className="space-y-1">
-              {preview.grammar.map((g) => {
+            <div className="label mt-3 mb-1.5">{grammarHeading(preview.grammarTitle)}</div>
+            <ol className="space-y-1.5">
+              {preview.grammar.map((g, i) => {
                 const [ja, zh] = g.split("\t");
                 return (
-                  <li key={g} className="text-sm">
-                    <span className="font-medium" lang="ja">
-                      {ja}
+                  <li key={g} className="flex gap-1.5">
+                    <span className="shrink-0 font-semibold text-accent">{"①②③④⑤⑥⑦⑧⑨⑩"[i] ?? `${i + 1}.`}</span>
+                    <span className="min-w-0">
+                      <span className="block text-base font-semibold" lang="ja">
+                        {ja.replace(/^[①-⑳\d.、．]+\s*/, "")}
+                      </span>
+                      {zh && <span className="block text-[13px] text-ink-2">{zh}</span>}
                     </span>
-                    {zh && <span className="block pl-5 text-xs text-muted">{zh}</span>}
                   </li>
                 );
               })}
-            </ul>
+            </ol>
           </>
         )}
         {preview.grammarNote && (
-          <details className="mt-2 rounded-xl bg-bg px-3 py-2 text-sm">
-            <summary className="cursor-pointer text-xs font-semibold text-muted">⚠️ 易混淆整理</summary>
+          <details className="mt-2 rounded-xl bg-card-2 px-3 py-2 text-sm">
+            <summary className="cursor-pointer text-xs font-semibold text-ink-2">易混淆整理</summary>
             <p className="mt-1 leading-relaxed" lang="ja">
               {preview.grammarNote.replace(/^易混淆總?整理[：:]\s*/, "")}
             </p>
           </details>
         )}
         {preview.exam && (
-          <p className="mt-3 rounded-xl bg-accent/10 px-3 py-2 text-sm text-accent" lang="ja">
-            🔔 {preview.exam}
+          <p className="mt-3 flex items-center gap-2 rounded-xl bg-exam-soft px-3 py-2.5 text-sm font-bold text-exam" lang="ja">
+            <Icon name="bell" size={18} stroke={2} className="shrink-0" />
+            {preview.exam}
           </p>
         )}
         <p className="mt-3 text-xs text-muted">下課後整理好筆記，這裡會換成課堂重點和作業</p>
