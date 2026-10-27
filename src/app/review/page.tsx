@@ -23,7 +23,7 @@ export default async function ReviewHub() {
           badge={queue === null ? "?" : queue.length}
           disabled={queue?.length === 0}
         />
-        <EntryCard href="/review/words" icon="cards" title="單字・漢字" detail="日文依課・英文・漢字依章｜翻卡自評" />
+        <EntryCard href="/review/words" icon="cards" title="單字・漢字" detail="日文依課・英文・漢字依章｜寫讀音和意思，AI 批改" />
         <EntryCard href="/review/questions" icon="pencil" title="題目練習" detail="題庫・動詞の形｜寫答案批改" />
         <EntryCard
           href="/review/exam"

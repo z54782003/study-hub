@@ -5,7 +5,7 @@ import { Chips, Field } from "@/components/Chips";
 import { FORMS, FORM_LABEL } from "@/lib/conjugate";
 import { GROUPS, LESSON_COUNT, LEVELS, QTYPES, sourceQuery } from "@/lib/reviewSource";
 
-// 依作答方式分兩格：單字・漢字（翻卡自評）／題目練習（寫答案、批改）
+// 依題型分兩格：單字・漢字（寫讀音和意思）／題目練習（題庫、動詞の形）；全部 AI 批改
 const TYPES = { words: ["日文", "英文", "漢字"], questions: ["題庫", "動詞の形"] } as const;
 type PracticeType = (typeof TYPES)[keyof typeof TYPES][number];
 const SOON: Partial<Record<PracticeType, string>> = {};
@@ -181,7 +181,7 @@ export function PracticeForm({
             )}
           </Field>
           {countField([10, 20, 30, 50], "字")}
-          <p className="mb-24 text-xs text-muted">看漢字 → 想音読み、訓読み和意思 → 翻卡自評。忘記的先出；結果寫回漢字庫的熟悉度和下次複習日。</p>
+          <p className="mb-24 text-xs text-muted">看漢字 → 寫一個讀音和中文意思 → AI 批改。忘記的先出；結果寫回漢字庫的熟悉度和下次複習日。</p>
         </>
       ) : type === "動詞の形" ? (
         <>
@@ -243,7 +243,7 @@ export function PracticeForm({
             <p className="mb-5 text-sm text-muted">英文單字庫還沒精通的字 {englishCount} 個（大多是從 TED 播放器加進來的）。</p>
           )}
           {countField([10, 20, 30, 50], "個")}
-          <p className="mb-24 text-xs text-muted">看字 → 想讀音和意思 → 翻卡自評。忘記的、學習中的先出；結果寫回單字庫熟悉度。</p>
+          <p className="mb-24 text-xs text-muted">看字 → 寫讀音和中文意思 → AI 批改。忘記的、學習中的先出；結果寫回單字庫熟悉度。</p>
         </>
       )}
 

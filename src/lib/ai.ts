@@ -19,6 +19,19 @@ const SYSTEM = `你是日本語學校的日文老師，批改一位中文母語�
 feedback 用繁體中文，最多兩句：對的話說明為什麼可以；錯的話具體指出錯在哪裡。
 suggestion 是學生答案改正後的日文（答對且已經很自然就留空字串）。`;
 
+// 單字・漢字・文型的記憶測驗（題目是「寫出讀音和意思」這類）
+const RECALL_SYSTEM = `你是日本語學校的日文老師，批改一位中文母語、程度約 N4–N3 的學生的單字／漢字／文型記憶測驗。
+
+判斷學生是否記得：
+- 讀音：必須正確。平假名或片假名都可以；長音、促音、濁音、拗音寫錯算錯。
+- 中文意思：意思相同或相近就算對（同義詞、簡體字、多寫一點說明都可以）；意思不同或太籠統算錯。
+- 漢字題：寫出任一個正確讀音（音読み或訓読み皆可）＋正確意思就算對。
+- 文型題：說對主要意思或用法就算對，不用一字不差；例句用法正確也算對。
+- 題目要求的部分（例如讀音）沒有寫，就算錯。
+
+feedback 用繁體中文，最多兩句：對的話簡短肯定；錯的話具體說錯在哪。
+suggestion 是簡短的完整正確答案（例：もくひょう／目標）。答對時留空字串。`;
+
 const SCHEMA = {
   type: "object",
   properties: {
@@ -36,6 +49,8 @@ export async function gradeWithAi(input: {
   reference: string;
   explanation: string;
   answer: string;
+  /** recall＝單字・漢字・文型記憶測驗；預設是題庫練習題 */
+  mode?: "exercise" | "recall";
 }): Promise<AiGrade> {
   if (!hasAi()) throw new Error("Vercel 沒有讀到 ANTHROPIC_API_KEY（設定或修改環境變數後要 Redeploy 才會生效）");
   client ??= new Anthropic();
@@ -44,7 +59,7 @@ export async function gradeWithAi(input: {
     .create({
       model: "claude-haiku-5-5",
       max_tokens: 2000,
-      system: SYSTEM,
+      system: input.mode === "recall" ? RECALL_SYSTEM : SYSTEM,
       output_config: { effort: "low", format: { type: "json_schema", schema: SCHEMA } },
       messages: [
         {

@@ -9,6 +9,7 @@ import { FORM_LABEL, FORM_RULE, GROUP_OF, checkConjugation, specialNote, type Ve
 import type { GradeMethod, GradeResult, KanjiItem, QuizItem, ReviewItem, ReviewSource, VerbItem, VocabItem } from "@/lib/types";
 import { Icon } from "@/components/Icon";
 import { charDiff } from "@/lib/diff";
+import { recallQuestion, type RecallItem } from "@/lib/recall";
 import { StatusMessage } from "@/components/StatusMessage";
 
 type Result = { item: ReviewItem; correct: boolean; answer?: string };
@@ -80,6 +81,9 @@ export function ReviewSession({ source }: { source: ReviewSource }) {
     send(p);
     setIndex((i) => i + 1);
   };
+
+  // AI 批改失敗時可以跳過：不記錄，直接下一題
+  const skip = () => setIndex((i) => i + 1);
 
   const finished = items !== null && index >= items.length;
 
@@ -209,11 +213,11 @@ export function ReviewSession({ source }: { source: ReviewSource }) {
       </div>
       {syncBar}
       {item.kind === "quiz" ? (
-        <QuizCard key={item.id} item={item} onDone={next} />
+        <QuizCard key={item.id} item={item} onDone={next} onSkip={skip} />
       ) : item.kind === "verb" ? (
         <VerbCard key={item.id} item={item} onDone={next} />
       ) : (
-        <FlipCard key={item.id} item={item} onDone={next} />
+        <RecallCard key={item.id} item={item} onDone={next} onSkip={skip} />
       )}
     </div>
   );
@@ -221,7 +225,7 @@ export function ReviewSession({ source }: { source: ReviewSource }) {
 
 // ── 題庫題：寫答案 → 自動比對／AI 批改 → 看結果（可改判）────────────────
 
-function QuizCard({ item, onDone }: { item: QuizItem; onDone: (p: Pending) => void }) {
+function QuizCard({ item, onDone, onSkip }: { item: QuizItem; onDone: (p: Pending) => void; onSkip: () => void }) {
   const [draft, setDraft] = useState("");
   const [grading, setGrading] = useState(false);
   const [result, setResult] = useState<GradeResult | null>(null);
@@ -385,14 +389,17 @@ function QuizCard({ item, onDone }: { item: QuizItem; onDone: (p: Pending) => vo
             </button>
           </div>
         ) : finalCorrect === null ? (
-          <div className="grid grid-cols-2 gap-3">
-            <button type="button" onClick={() => finish(false)} className="rounded-2xl bg-bad py-4 text-lg font-semibold text-on-accent">
-              ✗ 錯了
-            </button>
-            <button type="button" onClick={() => finish(true)} className="rounded-2xl bg-ok py-4 text-lg font-semibold text-on-accent">
-              ✓ 對了
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setResult(null);
+              void grade(draft, picked ?? undefined);
+            }}
+            disabled={grading}
+            className="btn-primary w-full"
+          >
+            {grading ? "批改中…" : "重新批改"}
+          </button>
         ) : (
           <button
             type="button"
@@ -403,106 +410,133 @@ function QuizCard({ item, onDone }: { item: QuizItem; onDone: (p: Pending) => vo
             {autoNext ? "答對了，下一題…" : "下一題"}
           </button>
         )}
-        {result && finalCorrect === null && (
-          <p className="mt-2 text-center text-xs text-muted">
-            AI 批改暫時無法使用，請自己判斷
-            {result.error && <span className="mt-0.5 block break-all text-bad">原因：{result.error}</span>}
-          </p>
-        )}
+        {result && finalCorrect === null && <AiFailed error={result.error} onSkip={onSkip} />}
       </div>
     </>
   );
 }
 
-// ── N3 單字／文型／單字庫：翻卡自評 ─────────────────────────
+// ── 單字・漢字・N3・文型：寫答案 → AI 批改 ─────────────────────────
 
-function FlipCard({ item, onDone }: { item: Exclude<ReviewItem, QuizItem | VerbItem>; onDone: (p: Pending) => void }) {
-  const [revealed, setRevealed] = useState(false);
-  // 背面可以滑：左滑＝會、右滑＝不會（超過 80px 才算）
-  const [drag, setDrag] = useState<{ x: number; dx: number } | null>(null);
-  const answer = (correct: boolean) => onDone({ item, correct, method: "自評" });
+function RecallCard({ item, onDone, onSkip }: { item: RecallItem; onDone: (p: Pending) => void; onSkip: () => void }) {
+  const q = recallQuestion(item);
+  const [draft, setDraft] = useState("");
+  const [grading, setGrading] = useState(false);
+  const [result, setResult] = useState<GradeResult | null>(null);
+  const [override, setOverride] = useState<boolean | null>(null);
+
+  const grade = async () => {
+    setGrading(true);
+    try {
+      const r = await fetch("/api/review/grade", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ id: item.id, answer: draft.trim(), recall: { question: q.question, reference: q.reference } }),
+      });
+      setResult(r.ok ? await r.json() : { correct: null, method: "AI", feedback: "", suggestion: "", error: `批改 API 回應 ${r.status}` });
+    } catch (e) {
+      setResult({ correct: null, method: "AI", feedback: "", suggestion: "", error: e instanceof Error ? e.message : "網路錯誤" });
+    } finally {
+      setGrading(false);
+    }
+  };
+  const giveUp = () => setResult({ correct: false, method: "自評", feedback: "", suggestion: "" });
+  const finalCorrect = override ?? result?.correct ?? null;
+  const failed = result !== null && result.correct === null;
+  const finish = (correct: boolean) =>
+    onDone({ item, correct, answer: draft.trim() || undefined, method: override !== null ? "自評" : (result?.method ?? "AI"), feedback: result?.feedback || undefined });
+
   return (
     <>
-      <article
-        key={revealed ? "back" : "front"}
-        onClick={() => !revealed && setRevealed(true)}
-        onPointerDown={(e) => revealed && !(e.target as HTMLElement).closest("a,button") && setDrag({ x: e.clientX, dx: 0 })}
-        onPointerMove={(e) => drag && setDrag({ ...drag, dx: e.clientX - drag.x })}
-        onPointerUp={() => {
-          if (drag && Math.abs(drag.dx) > 80) answer(drag.dx < 0);
-          setDrag(null);
-        }}
-        onPointerCancel={() => setDrag(null)}
-        style={drag ? { transform: `translateX(${drag.dx}px) rotate(${drag.dx / 30}deg)` } : undefined}
-        className={`card relative mt-2 flex-1 rounded-3xl p-5 ${revealed ? "flip-in touch-pan-y" : "cursor-pointer"} ${
-          drag && drag.dx < -40 ? "ring-2 ring-ok" : drag && drag.dx > 40 ? "ring-2 ring-bad" : ""
-        }`}
-      >
-        {drag && Math.abs(drag.dx) > 40 && (
-          <span className={`tag absolute top-4 ${drag.dx < 0 ? "right-4 bg-ok-soft text-ok" : "left-4 bg-bad-soft text-bad"}`}>{drag.dx < 0 ? "✓ 會" : "✕ 不會"}</span>
-        )}
-        <p
-          className={`py-6 text-center font-bold ${item.kind === "grammar" ? "text-3xl" : "text-5xl"}`}
-          lang={item.kind === "vocab" && item.lang === "en" ? "en" : "ja"}
-        >
-          {item.kind === "grammar" ? item.pattern : item.kind === "kanji" ? item.kanji : item.word}
+      <article className="card mt-2 flex-1 rounded-3xl p-5">
+        <p className={`pt-4 text-center font-bold ${item.kind === "grammar" ? "text-3xl" : "text-5xl"}`} lang={q.cueLang}>
+          {q.cue}
         </p>
-        {revealed && (
-          <div className="mt-2 border-t border-line pt-4">
-            {item.kind === "kanji" ? (
-              <KanjiDetail item={item} />
-            ) : item.kind === "vocab" ? (
-              <VocabDetail item={item} />
-            ) : item.kind === "n3" ? (
-              <div className="space-y-2 text-center">
-                <p className="flex items-center justify-center gap-1 text-2xl" lang="ja">
-                  {item.reading}
-                  <Speak text={speakableJa(item.reading, item.word)} />
-                </p>
-                <p className="text-xl font-semibold">{item.meaning}</p>
-                <p className="text-sm text-muted">{[item.pos, item.level, item.status].filter(Boolean).join("・")}</p>
-                {item.note && (
-                  <p className="text-sm whitespace-pre-wrap text-muted" lang="ja">
-                    {item.note}
+        <p className="mt-3 mb-1 text-center text-sm text-muted">{q.ask}</p>
+        {!result || failed ? (
+          <input
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && !e.nativeEvent.isComposing && draft.trim() && !grading && void grade()}
+            placeholder={q.placeholder}
+            autoFocus
+            enterKeyHint="send"
+            className="mt-3 w-full rounded-xl border border-line bg-bg p-3 text-lg outline-none focus:border-accent"
+          />
+        ) : (
+          <>
+            <GradeResultView result={result} answer={draft.trim()} finalCorrect={finalCorrect} overridden={override !== null} />
+            <div className="mt-4 border-t border-line pt-4">
+              {item.kind === "kanji" ? (
+                <KanjiDetail item={item} />
+              ) : item.kind === "vocab" ? (
+                <VocabDetail item={item} />
+              ) : item.kind === "n3" ? (
+                <div className="space-y-2 text-center">
+                  <p className="flex items-center justify-center gap-1 text-2xl" lang="ja">
+                    {item.reading}
+                    <Speak text={speakableJa(item.reading, item.word)} />
                   </p>
-                )}
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <p className="text-lg font-semibold">{item.meaning}</p>
-                {item.connection && (
-                  <p className="text-sm text-muted">
-                    接續：<span lang="ja">{item.connection}</span>
-                  </p>
-                )}
-                {item.confusable && (
-                  <p className="text-sm text-muted">
-                    易混淆：<span lang="ja">{item.confusable}</span>
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
+                  <p className="text-xl font-semibold">{item.meaning}</p>
+                  <p className="text-sm text-muted">{[item.pos, item.level, item.status].filter(Boolean).join("・")}</p>
+                  {item.note && (
+                    <p className="text-sm whitespace-pre-wrap text-muted" lang="ja">
+                      {item.note}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-lg font-semibold">{item.meaning}</p>
+                  {item.connection && (
+                    <p className="text-sm text-muted">
+                      接續：<span lang="ja">{item.connection}</span>
+                    </p>
+                  )}
+                  {item.confusable && (
+                    <p className="text-sm text-muted">
+                      易混淆：<span lang="ja">{item.confusable}</span>
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          </>
         )}
       </article>
+      {result && result.correct !== null && <Overrule key={item.id} aiSays={result.correct} onChange={setOverride} />}
+
       <div className="sticky bottom-24 mt-4">
-        {revealed ? (
-          <div className="grid grid-cols-2 gap-3">
-            <button type="button" onClick={() => answer(false)} className="rounded-2xl bg-bad py-4 text-lg font-semibold text-on-accent">
-              ✗ 不會
+        {!result || failed ? (
+          <div className="grid grid-cols-[1fr_2fr] gap-3">
+            <button type="button" onClick={giveUp} disabled={grading} className="rounded-2xl border border-line py-4 font-semibold text-muted">
+              不會
             </button>
-            <button type="button" onClick={() => answer(true)} className="rounded-2xl bg-ok py-4 text-lg font-semibold text-on-accent">
-              ✓ 會
+            <button type="button" onClick={() => void grade()} disabled={!draft.trim() || grading} className="btn-primary disabled:opacity-40">
+              {grading ? "批改中…" : failed ? "重新批改" : "送出批改"}
             </button>
           </div>
         ) : (
-          <button type="button" onClick={() => setRevealed(true)} className="btn-primary w-full">
-            看答案
+          <button type="button" onClick={() => finish(finalCorrect!)} className="btn-primary w-full">
+            下一題
           </button>
         )}
-        {revealed && <p className="mt-2 text-center text-xs text-muted">也可以左滑＝會、右滑＝不會</p>}
+        {failed && <AiFailed error={result.error} onSkip={onSkip} />}
       </div>
     </>
+  );
+}
+
+/** AI 批改失敗：說原因，可以重新批改或跳過（這題不記錄），不改成自評 */
+function AiFailed({ error, onSkip }: { error?: string; onSkip: () => void }) {
+  return (
+    <p className="mt-2 text-center text-xs text-muted">
+      AI 批改暫時失敗，按「重新批改」再試一次
+      {error && <span className="mt-0.5 block break-all text-bad">原因：{error}</span>}
+      <button type="button" onClick={onSkip} className="mt-1 h-9 font-semibold text-ink-2 underline underline-offset-4">
+        跳過這題（不記錄）
+      </button>
+    </p>
   );
 }
 
@@ -714,7 +748,7 @@ function GradeResultView({
         >
           <span className={`grid size-[22px] place-items-center rounded-full text-xs text-card ${finalCorrect ? "bg-ok" : "bg-bad"}`}>{finalCorrect ? "✓" : "✕"}</span>
           {finalCorrect ? "正確" : "錯誤"}
-          <span className="tag ml-auto bg-card text-muted">{overridden ? "已改判" : result.method === "AI" ? "AI 批改" : result.method}</span>
+          <span className="tag ml-auto bg-card text-muted">{overridden ? "已改判" : result.method === "AI" ? "AI 批改" : result.method === "自評" ? "不會" : result.method}</span>
         </div>
       )}
       {result.feedback && <p className="text-[15px] leading-relaxed">{result.feedback}</p>}

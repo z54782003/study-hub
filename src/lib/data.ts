@@ -683,6 +683,17 @@ export async function gradeQuiz(id: string, answer: string, choiceKey?: string):
   return { correct: ai.correct, method: "AI", feedback: ai.feedback, suggestion: ai.suggestion };
 }
 
+/** 單字・漢字・文型的記憶測驗：一律 AI 批改 */
+export async function gradeRecall(question: string, reference: string, answer: string): Promise<GradeResult> {
+  if (useMock()) {
+    // 預覽：答案裡有參考答案的任一段就算對
+    const ok = reference.split(/[／：]/).some((part) => part.trim().length > 1 && answer.includes(part.trim()));
+    return { correct: ok, method: "AI", feedback: ok ? "（預覽）答對了。" : "（預覽）讀音或意思不對。", suggestion: ok ? "" : reference };
+  }
+  const ai = await gradeWithAi({ question, reference, explanation: "", answer, mode: "recall" });
+  return { correct: ai.correct, method: "AI", feedback: ai.feedback, suggestion: ai.suggestion };
+}
+
 // 漢字庫沒有公式欄位，下次複習由 App 依熟悉度算
 const KANJI_INTERVAL: Record<string, number> = { 忘記: 1, 學習中: 3, 熟悉: 7, 精通: 30 };
 
