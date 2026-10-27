@@ -10,8 +10,11 @@ export async function GET() {
       const res = await notion().blocks.children.list({ block_id: "406097c5-7668-810e-ade7-e0954334c539", start_cursor: cursor, page_size: 100 });
       for (const b of res.results as { type: string; audio?: { type: string; name?: string; file?: { url: string } } }[]) {
         if (b.type !== "audio" || !b.audio?.file) continue;
-        const r = await fetch(b.audio.file.url, { method: "HEAD" });
-        out.push({ name: b.audio.name ?? "", bytes: Number(r.headers.get("content-length")) || null });
+        const url = b.audio.file.url;
+        const r = await fetch(url, { headers: { Range: "bytes=0-0" } });
+        const total = r.headers.get("content-range")?.split("/")[1];
+        await r.arrayBuffer();
+        out.push({ name: decodeURIComponent(new URL(url).pathname.split("/").pop() ?? ""), bytes: Number(total) || null });
       }
       cursor = res.has_more ? (res.next_cursor ?? undefined) : undefined;
     } while (cursor);
