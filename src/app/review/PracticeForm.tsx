@@ -250,9 +250,12 @@ export function PracticeForm({
       {!soon && (
         <div className="fixed inset-x-0 bottom-[calc(49px+env(safe-area-inset-bottom)+12px)] mx-auto max-w-xl px-4 md:max-w-[760px]">
           {empty ? (
-            <div aria-disabled className="btn-primary !bg-card-2 !text-muted !shadow-none">
-              這個條件沒有題目
-            </div>
+            <>
+              <div aria-disabled className="btn-primary !bg-card-2 !text-muted !shadow-none">
+                這個條件沒有題目
+              </div>
+              <p className="mt-1.5 text-center text-xs text-muted">換個課次或題型{type === "題庫" ? "，或把範圍改成「全部」" : ""}。</p>
+            </>
           ) : (
             <Link href={href} className="btn-primary">
               開始練習

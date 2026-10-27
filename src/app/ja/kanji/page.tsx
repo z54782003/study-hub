@@ -4,6 +4,7 @@ import Link from "next/link";
 import { KANJI_CHAPTERS } from "@/lib/config";
 import { getKanji, kanjiChapterCounts } from "@/lib/data";
 import { BackLink } from "@/components/BackLink";
+import { StatusMessage } from "@/components/StatusMessage";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "漢字表・Study Hub" };
@@ -21,7 +22,7 @@ export default async function KanjiTablePage({ searchParams }: { searchParams: P
       <h1 className="mt-1 mb-3 text-[28px] leading-[34px] font-bold">漢字表</h1>
 
       {chapters.length === 0 ? (
-        <p className="text-muted">漢字庫還沒有資料</p>
+        <StatusMessage title="漢字庫還沒有資料" body="在 Notion 漢字庫加入章節後，會出現在這裡。" />
       ) : (
         <nav className="-mx-4 mb-4 flex gap-1.5 overflow-x-auto px-4 pb-1">
           {chapters.map((c) => (

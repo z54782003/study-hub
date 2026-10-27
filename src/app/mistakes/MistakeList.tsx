@@ -2,13 +2,14 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { QuizItem } from "@/lib/types";
+import { StatusMessage } from "@/components/StatusMessage";
 
 export function MistakeList({ items }: { items: QuizItem[] }) {
   const types = useMemo(() => [...new Set(items.map((i) => i.qtype ?? "其他"))].sort(), [items]);
   const [filter, setFilter] = useState<string | null>(null);
   const shown = filter ? items.filter((i) => (i.qtype ?? "其他") === filter) : items;
 
-  if (items.length === 0) return <p className="mt-10 text-center text-muted">目前沒有錯題</p>;
+  if (items.length === 0) return <StatusMessage className="mt-4" title="錯題區是空的" body="答錯的題會放進來，答對一次就移出。" />;
 
   return (
     <>

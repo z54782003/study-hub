@@ -6,6 +6,7 @@ import { markWord, parseUsage } from "@/lib/usage";
 import { getLessonVocab } from "@/lib/data";
 import { LEVELS } from "@/lib/reviewSource";
 import { BackLink } from "@/components/BackLink";
+import { StatusMessage } from "@/components/StatusMessage";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "單字・Study Hub" };
@@ -31,7 +32,7 @@ export default async function LessonWordsPage({ searchParams }: { searchParams: 
       </h1>
       <p className="mt-0.5 mb-3.5 text-[13px] text-muted">{words.length} 個字・點一下展開用法和例句</p>
       {words.length === 0 ? (
-        <p className="text-muted">這課在單字庫裡還沒有字（「課次」欄還沒補）</p>
+        <StatusMessage title="這課在單字庫裡還沒有字" body="在 Notion 單字庫加入這課的字（填好「課次」）後，會出現在這裡。" />
       ) : (
         <ul className="mb-24 divide-y divide-line card overflow-hidden">
           {words.map((w) => {

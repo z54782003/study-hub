@@ -206,7 +206,7 @@ export default async function TodayPage() {
 
       {t.errors.length > 0 && (
         <details className="card p-4 text-sm md:col-span-2">
-          <summary className="cursor-pointer text-bad">有 {t.errors.length} 個資料來源讀取失敗</summary>
+          <summary className="cursor-pointer font-bold text-bad">有 {t.errors.length} 個資料來源讀取失敗</summary>
           <ul className="mt-2 list-disc space-y-1 pl-5 text-muted">
             {t.errors.map((e) => (
               <li key={e}>{e}</li>

@@ -4,6 +4,7 @@ import { getTadokuBooks, getTadokuLog, today } from "@/lib/data";
 import { TADOKU_LEVELS, TADOKU_URL, type TadokuLevel } from "@/lib/tadoku";
 import { BackLink } from "@/components/BackLink";
 import { Icon } from "@/components/Icon";
+import { StatusMessage } from "@/components/StatusMessage";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "多読書庫・Study Hub" };
@@ -40,13 +41,13 @@ export default async function TadokuPage({ searchParams }: { searchParams: Promi
       </p>
 
       {error && (
-        <p className="mb-3 rounded-2xl border border-bad/40 bg-card p-3 text-sm text-bad">
-          書單讀取失敗：{error}。可以直接到{" "}
-          <a href={TADOKU_URL} target="_blank" rel="noreferrer" className="underline">
-            多読網站
-          </a>
-          。
-        </p>
+        <StatusMessage
+          tone="error"
+          className="mb-3"
+          title="書單讀取失敗"
+          body={`可以先到原網站看書單。（原因：${error}）`}
+          action={{ label: "到多読網站", href: TADOKU_URL, external: true }}
+        />
       )}
 
       <nav className="-mx-4 mb-4 flex gap-1.5 overflow-x-auto px-4 pb-1">

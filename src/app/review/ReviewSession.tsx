@@ -9,6 +9,7 @@ import { FORM_LABEL, FORM_RULE, GROUP_OF, checkConjugation, specialNote, type Ve
 import type { GradeMethod, GradeResult, KanjiItem, QuizItem, ReviewItem, ReviewSource, VerbItem, VocabItem } from "@/lib/types";
 import { Icon } from "@/components/Icon";
 import { charDiff } from "@/lib/diff";
+import { StatusMessage } from "@/components/StatusMessage";
 
 type Result = { item: ReviewItem; correct: boolean; answer?: string };
 type Pending = { item: ReviewItem; correct: boolean; answer?: string; method?: GradeMethod; feedback?: string };
@@ -95,7 +96,7 @@ export function ReviewSession({ source }: { source: ReviewSource }) {
       .catch(() => setJournal("error"));
   }, [finished, journal, results.length, sync.pending]);
 
-  if (loadError) return <p className="mt-10 text-bad">讀取失敗：{loadError}</p>;
+  if (loadError) return <StatusMessage tone="error" className="mt-6" title="題目讀取失敗" body={`回複習再試一次。（原因：${loadError}）`} action={{ label: "回複習", href: "/review" }} />;
   if (!items) return <p className="mt-10 text-center text-muted">讀取題目中…</p>;
   if (items.length === 0)
     return (
@@ -106,16 +107,16 @@ export function ReviewSession({ source }: { source: ReviewSource }) {
         <p className="mt-3 text-lg font-semibold">
           {mode === "mistakes" ? "錯題區是空的" : mode === "due" ? "今天沒有到期的題目" : "這個條件沒有題目"}
         </p>
-        <div className="mt-6 flex justify-center gap-6">
-          <Link href="/review" className="text-accent">
-            回複習
-          </Link>
-          {mode === "due" && (
-            <Link href="/mistakes" className="text-accent">
-              看錯題區
-            </Link>
-          )}
-        </div>
+        <p className="mt-1 text-sm text-ink-2">
+          {mode === "mistakes"
+            ? "答錯的題會放進來，答對一次就移出。"
+            : mode === "due"
+              ? "可以到「題目練習」挑一課，或看錯題區。"
+              : "換個課次或題型，或把範圍改成「全部」。"}
+        </p>
+        <Link href={mode === "due" ? "/review/questions" : "/review"} className="mx-auto mt-5 flex h-12 max-w-60 items-center justify-center rounded-[14px] border border-line bg-card text-[15px] font-semibold">
+          {mode === "due" ? "題目練習" : "回複習"}
+        </Link>
       </div>
     );
 
