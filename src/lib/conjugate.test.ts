@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkConjugation, conjugate, parseVerb, type VerbClass, type VerbForm } from "./conjugate";
+import { checkConjugation, conjugate, formException, isIRowIchidan, looksLikeIchidan, parseVerb, specialNote, type VerbClass, type VerbForm } from "./conjugate";
 
 const v = (dict: string, reading: string, cls: VerbClass) => ({ dict, reading, cls });
 const word = (verb: ReturnType<typeof v>, form: VerbForm) => conjugate(verb, form)?.word;
@@ -100,5 +100,24 @@ describe("checkConjugation", () => {
     expect(checkConjugation("かこう", right)).toBe(true);
     expect(checkConjugation(" 書こう ", right)).toBe(true);
     expect(checkConjugation("書こ", right)).toBe(false);
+  });
+});
+
+describe("special verbs", () => {
+  const v = (reading: string, cls: VerbClass) => ({ reading, cls });
+  it("finds い段 G2 and G1 verbs that look like G2", () => {
+    expect(["みる", "おきる", "かりる", "いる", "きる", "できる"].map((r) => isIRowIchidan(v(r, "一段")))).toEqual([true, true, true, true, true, true]);
+    expect(isIRowIchidan(v("たべる", "一段"))).toBe(false);
+    expect(["かえる", "はいる", "しる", "はしる", "きる"].map((r) => looksLikeIchidan(v(r, "五段")))).toEqual([true, true, true, true, true]);
+    expect(looksLikeIchidan(v("つくる", "五段"))).toBe(false);
+  });
+  it("notes form exceptions", () => {
+    expect(formException(v("いく", "五段"), "て")).toContain("行って");
+    expect(formException(v("いく", "五段"), "意向")).toBeNull();
+    expect(formException(v("ある", "五段"), "ない")).toContain("ない");
+    expect(formException(v("かう", "五段"), "ない")).toContain("わ");
+    expect(specialNote(v("かえる", "五段"), "意向")).toBe("長得像 G2，其實是 G1");
+    expect(specialNote(v("みる", "一段"), "意向")).toBe("い段＋る 的 G2");
+    expect(specialNote(v("かく", "五段"), "意向")).toBeNull();
   });
 });

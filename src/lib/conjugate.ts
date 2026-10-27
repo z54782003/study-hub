@@ -225,3 +225,40 @@ export function checkConjugation(answer: string, right: Conjugated): boolean {
 export function formsFor(v: Pick<Verb, "reading">, forms: readonly VerbForm[]): VerbForm[] {
   return forms.filter((f) => f !== "尊敬" || Boolean(HONORIFIC[v.reading]));
 }
+
+// ── 分類提示：哪些動詞要特別記 ────────────────────────────
+
+const I_ROW = new Set([..."いきぎしじちぢにひびぴみりゐ"]);
+const E_ROW = new Set([..."えけげせぜてでねへべぺめれゑ"]);
+/** 「る」前面那個假名 */
+const beforeRu = (r: string) => (r.endsWith("る") ? r.at(-2) ?? "" : "");
+
+/** G2 裡「い段＋る」的（見る、起きる、借りる…）：比「え段＋る」少，要特別記 */
+export function isIRowIchidan(v: Pick<Verb, "reading" | "cls">): boolean {
+  return v.cls === "一段" && I_ROW.has(beforeRu(v.reading));
+}
+
+/** 看起來像 G2（い段／え段＋る）其實是 G1 的（帰る、入る、知る、走る、切る…） */
+export function looksLikeIchidan(v: Pick<Verb, "reading" | "cls">): boolean {
+  const k = beforeRu(v.reading);
+  return v.cls === "五段" && (I_ROW.has(k) || E_ROW.has(k));
+}
+
+/** 這個動詞在這個形有沒有例外；有的話回傳說明 */
+export function formException(v: Pick<Verb, "reading" | "cls">, form: VerbForm): string | null {
+  const r = v.reading;
+  if (v.cls !== "五段") return null;
+  if (r.endsWith("いく") && (form === "て" || form === "た")) return "行く的て形是「行って」，不是「行いて」";
+  if (r === "ある" && form === "ない") return "ある的ない形是「ない」";
+  if (/(いらっしゃる|おっしゃる|くださる|なさる|ござる)$/.test(r) && (form === "ます" || form === "命令"))
+    return "敬語動詞：る→い（いらっしゃいます／いらっしゃい）";
+  if (r.endsWith("う") && (form === "ない" || form === "受身")) return "う結尾：う→わ（買わない、言われる）";
+  return null;
+}
+
+/** 變化表與練習用：這個動詞要不要標「特殊」，以及原因 */
+export function specialNote(v: Pick<Verb, "reading" | "cls">, form: VerbForm): string | null {
+  if (looksLikeIchidan(v)) return "長得像 G2，其實是 G1";
+  if (isIRowIchidan(v)) return "い段＋る 的 G2";
+  return formException(v, form);
+}

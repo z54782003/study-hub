@@ -5,7 +5,7 @@ import { gradeChoice, parseChoices } from "@/lib/grading";
 import { sourceLabel, sourceQuery } from "@/lib/reviewSource";
 import { Speak } from "@/components/Speak";
 import { speakableJa } from "@/lib/speech";
-import { FORM_LABEL, FORM_RULE, GROUP_OF, checkConjugation, type VerbForm } from "@/lib/conjugate";
+import { FORM_LABEL, FORM_RULE, GROUP_OF, checkConjugation, specialNote, type VerbForm } from "@/lib/conjugate";
 import type { GradeMethod, GradeResult, KanjiItem, QuizItem, ReviewItem, ReviewSource, VerbItem, VocabItem } from "@/lib/types";
 
 type Result = { item: ReviewItem; correct: boolean; answer?: string };
@@ -614,6 +614,9 @@ function VerbCard({ item, onDone }: { item: VerbItem; onDone: (p: Pending) => vo
               <p className="text-muted" lang="ja">
                 {item.answer.reading}
               </p>
+            )}
+            {specialNote(item, item.form as VerbForm) && (
+              <p className="rounded-xl bg-accent/10 px-3 py-1.5 text-sm text-accent">⚠️ 特殊：{specialNote(item, item.form as VerbForm)}</p>
             )}
             <p className="text-left text-xs leading-relaxed text-muted" lang="ja">
               {item.mode === "group" ? "G1＝五段、G2＝一段（い段／え段＋る）、G3＝する・来る。〜る 結尾的 G1（帰る・入る・知る・走る・切る）要特別記。" : FORM_RULE[item.form as VerbForm]}

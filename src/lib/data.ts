@@ -397,6 +397,9 @@ export async function getVerbs(): Promise<Verb[]> {
       { id: "v-iku", dict: "行く", reading: "いく", cls: "五段", meaning: "去" },
       { id: "v-taberu", dict: "食べる", reading: "たべる", cls: "一段", meaning: "吃" },
       { id: "v-miru", dict: "見る", reading: "みる", cls: "一段", meaning: "看" },
+      { id: "v-okiru", dict: "起きる", reading: "おきる", cls: "一段", meaning: "起床" },
+      { id: "v-hairu", dict: "入る", reading: "はいる", cls: "五段", meaning: "進入" },
+      { id: "v-kau", dict: "買う", reading: "かう", cls: "五段", meaning: "買" },
       { id: "v-benkyou", dict: "勉強する", reading: "べんきょうする", cls: "サ変", meaning: "唸書" },
       { id: "v-kuru", dict: "来る", reading: "くる", cls: "カ変", meaning: "來" },
     ];
