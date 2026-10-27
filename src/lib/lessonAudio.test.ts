@@ -38,18 +38,18 @@ describe("parseTranscript", () => {
   it("splits sections, scenes and speaker lines", () => {
     const parts = parseTranscript([
       { type: "heading_2", text: "聞いてみよう" },
-      { type: "heading_3", text: "電話で" },
-      { type: "paragraph", text: "店員：はい、なごみ屋です。" },
+      { type: "heading_3", text: "場面" },
+      { type: "paragraph", text: "Ａ：もしもし。" },
       { type: "paragraph", text: "⋮" },
       { type: "heading_2", text: "話読聞書" },
-      { type: "paragraph", text: "はじめまして。" },
+      { type: "paragraph", text: "短文。" },
     ]);
     expect(parts).toEqual([
       {
         heading: "聞いてみよう",
-        scenes: [{ title: "電話で", lines: [{ speaker: "店員", text: "はい、なごみ屋です。" }, { speaker: null, text: "⋮" }] }],
+        scenes: [{ title: "場面", lines: [{ speaker: "Ａ", text: "もしもし。" }, { speaker: null, text: "⋮" }] }],
       },
-      { heading: "話読聞書", scenes: [{ title: null, lines: [{ speaker: null, text: "はじめまして。" }] }] },
+      { heading: "話読聞書", scenes: [{ title: null, lines: [{ speaker: null, text: "短文。" }] }] },
     ]);
   });
 });
