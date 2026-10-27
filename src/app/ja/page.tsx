@@ -40,6 +40,7 @@ export default async function JapanesePage() {
 
       <EntryGroup label="日文內容">
         <EntryCard inGroup href="/n3" icon="layers" title="N3 單字・今日文型" detail="今天這批的單字卡" />
+        <EntryCard inGroup href="/ja/audio" icon="headphones" title="課文音檔" detail="できる日本語 初中級・全文課文＋各場面" />
         <EntryCard inGroup href="/ja/tadoku" icon="book" title="多読書庫" detail="依級數的免費讀本，記錄讀過哪些" />
         <EntryCard inGroup href={NHK_EASY_URL} icon="news" title="NHK Easy" detail="NHK 網站・在新分頁開啟" external />
         <EntryCard inGroup href="/ja/kanji" icon="kanji" title="漢字表" detail="HSJⅠ 0–9章・HSJⅡ 1–8章" />

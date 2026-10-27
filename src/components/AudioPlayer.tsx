@@ -8,7 +8,7 @@ const RATES = [0.75, 0.9, 1, 1.25] as const;
 const mmss = (s: number) => (Number.isFinite(s) ? `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}` : "–:––");
 
 /** 朗讀音檔：播放鍵＋進度條＋速度切換；compact＝一列（速度改成點一下換） */
-export function AudioPlayer({ src, compact, label }: { src: string; compact?: boolean; label?: string }) {
+export function AudioPlayer({ src, compact, label, autoPlay }: { src: string; compact?: boolean; label?: string; autoPlay?: boolean }) {
   const ref = useRef<HTMLAudioElement>(null);
   const [rate, setRate] = useState<number>(1);
   const [playing, setPlaying] = useState(false);
@@ -32,6 +32,7 @@ export function AudioPlayer({ src, compact, label }: { src: string; compact?: bo
         ref={ref}
         src={src}
         preload="metadata"
+        autoPlay={autoPlay}
         onPlay={(e) => {
           e.currentTarget.playbackRate = rate;
           setPlaying(true);

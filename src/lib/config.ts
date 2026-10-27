@@ -16,6 +16,9 @@ export const DS = {
 // 「每日預習（W3）」父頁，底下一天一頁，標題「MM/DD（曜）預習｜L〇 ST〇」
 export const W3_PARENT_PAGE = process.env.W3_PARENT_PAGE ?? "3f2097c576688100bc56d2f56e4d80c7";
 
+// 📼 課文音檔（できる日本語 初中級）：底下是 001–124 mp3 和每課課文頁（第N課 …）
+export const LESSON_AUDIO_PAGE = process.env.LESSON_AUDIO_PAGE ?? "406097c5-7668-810e-ade7-e0954334c539";
+
 export const TZ = process.env.APP_TZ ?? "Asia/Tokyo";
 
 // 操作手冊 W2：每天最多 20 題

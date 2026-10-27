@@ -1,7 +1,7 @@
 import "server-only";
 import { unstable_cache } from "next/cache";
 import { isFullBlock } from "@notionhq/client";
-import { DS, EXAMS, GRAMMAR_ORDER, N3_BATCH_SAMPLE, N3_DUE_LIMIT, QUIZ_DAILY_LIMIT, TZ, W3_PARENT_PAGE } from "./config";
+import { DS, EXAMS, GRAMMAR_ORDER, LESSON_AUDIO_PAGE, N3_BATCH_SAMPLE, N3_DUE_LIMIT, QUIZ_DAILY_LIMIT, TZ, W3_PARENT_PAGE } from "./config";
 import { addDays, diffDays, formatJP, isWeekend, todayISO } from "./dates";
 import { gradeWithAi } from "./ai";
 import { autoGrade, gradeChoice, parseChoices } from "./grading";
@@ -10,6 +10,7 @@ import { byTime, eventsOnDay, nextEventDay, type CalendarEvent } from "./calenda
 import { GROUP_OF, VERB_CLASSES, conjugate, formsFor, parseVerb, type Verb, type VerbClass, type VerbForm } from "./conjugate";
 import { VOA_BASE, VOA_FEEDS, parseVoaArticle, parseVoaFeed, type VoaArticle, type VoaFeedKey, type VoaItem } from "./voa";
 import { TADOKU_URL, parseTadoku, parseTadokuBook, type TadokuBook, type TadokuDetail } from "./tadoku";
+import { lessonTitle, lessonTracks, parseTranscript, trackNumber, type Track, type TranscriptBlock, type TranscriptPart } from "./lessonAudio";
 import { pickPreviewPage, summarizePreview, type ChildPage, type SimpleBlock } from "./preview";
 import { date, getPage, hasNotion, notion, num, queryAll, relationIds, select, text, updatePage, w, type Page } from "./notion";
 import {
@@ -1056,4 +1057,75 @@ export async function getVoaFeed(key: VoaFeedKey): Promise<VoaItem[]> {
 export async function getVoaArticle(id: string): Promise<VoaArticle> {
   if (useMock()) return MOCK_VOA_ARTICLE;
   return cachedVoaArticle(id);
+}
+
+// ── できる日本語 課文音檔 ─────────────────────────────────
+
+const richText = (b: object): string => {
+  const v = (b as Record<string, { rich_text?: { plain_text: string }[] }>)[(b as { type: string }).type];
+  return (v?.rich_text ?? []).map((r) => r.plain_text).join("");
+};
+
+async function allChildren(id: string) {
+  const out = [];
+  let cursor: string | undefined;
+  do {
+    const res = await notion().blocks.children.list({ block_id: id, start_cursor: cursor, page_size: 100 });
+    out.push(...res.results.filter(isFullBlock));
+    cursor = res.has_more ? (res.next_cursor ?? undefined) : undefined;
+  } while (cursor);
+  return out;
+}
+
+// Notion 檔案網址一小時後失效，快取 30 分鐘
+const cachedLessonAudioIndex = unstable_cache(
+  async () => {
+    const urls: Record<number, string> = {};
+    const pages: { id: string; title: string }[] = [];
+    for (const b of await allChildren(LESSON_AUDIO_PAGE)) {
+      if (b.type === "audio" && b.audio.type === "file") {
+        const no = trackNumber(b.audio.file.url);
+        if (no) urls[no] = b.audio.file.url;
+      }
+      if (b.type === "child_page") pages.push({ id: b.id, title: b.child_page.title });
+    }
+    return { urls, pages };
+  },
+  ["lesson-audio-index"],
+  { revalidate: 1800 },
+);
+
+const cachedTranscript = unstable_cache(
+  async (pageId: string): Promise<TranscriptPart[]> =>
+    parseTranscript((await allChildren(pageId)).map((b): TranscriptBlock => ({ type: b.type, text: richText(b) }))),
+  ["lesson-transcript"],
+  { revalidate: 3600 },
+);
+
+export type LessonAudio = { n: number; title: string; tracks: (Track & { url: string | null })[]; transcript: TranscriptPart[] };
+
+export async function getLessonAudio(n: number): Promise<LessonAudio> {
+  const tracks = lessonTracks(n);
+  if (useMock())
+    return {
+      n,
+      title: lessonTitle(n),
+      tracks: tracks.map((t) => ({ ...t, url: null })),
+      transcript: parseTranscript([
+        { type: "heading_2", text: "聞いてみよう" },
+        { type: "heading_3", text: "（場面）" },
+        { type: "paragraph", text: "Ａ：（本機預覽用的假台詞）" },
+        { type: "paragraph", text: "Ｂ：課文從 Notion 的課文頁讀。" },
+        { type: "heading_2", text: "話読聞書" },
+        { type: "paragraph", text: "（本機預覽用的假短文）" },
+      ]),
+    };
+  const { urls, pages } = await cachedLessonAudioIndex();
+  const page = pages.find((p) => new RegExp(`^第${n}課`).test(p.title));
+  return {
+    n,
+    title: page?.title.replace(/^第\d+課\s*/, "") || lessonTitle(n),
+    tracks: tracks.map((t) => ({ ...t, url: urls[t.no] ?? null })),
+    transcript: page ? await cachedTranscript(page.id) : [],
+  };
 }
