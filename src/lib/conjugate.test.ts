@@ -132,3 +132,15 @@ describe("groupRule", () => {
     expect(groupRule("た", "G2")).toEqual(["て形的て→た、で→だ"]);
   });
 });
+
+describe("vocab cleanup cases (2026-10)", () => {
+  it("ignores a usage note in brackets", () => {
+    expect(parseVerb("かける（電話を）", "かける", "一段")).toEqual({ dict: "かける", reading: "かける", cls: "一段" });
+  });
+  it("skips forms a potential verb doesn't have", () => {
+    const v = { dict: "見られる", reading: "みられる", cls: "一段" as const, potential: true };
+    expect(conjugate(v, "可能")).toBeNull();
+    expect(conjugate(v, "受身")).toBeNull();
+    expect(conjugate(v, "ない")).toEqual({ word: "見られない", reading: "みられない" });
+  });
+});

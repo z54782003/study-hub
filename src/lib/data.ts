@@ -377,11 +377,12 @@ const cachedVerbs = unstable_cache(
     for (const p of pages) {
       const parsed = parseVerb(text(p, "單字"), text(p, "音標/假名"), select(p, "日文活用") as VerbClass);
       if (!parsed) continue;
-      // 同一個辭書形只留一筆（有中文翻譯的優先）
-      const key = parsed.reading + parsed.cls;
+      // 同一個辭書形只留一筆（有中文翻譯的優先）；掛ける／かける（電話を）這種寫法不同的分開
+      const key = parsed.dict + parsed.reading + parsed.cls;
       const prev = seen.get(key);
       const meaning = text(p, "中文翻譯");
-      if (!prev || (!prev.meaning && meaning)) seen.set(key, { id: p.id, ...parsed, meaning });
+      const potential = /可能形/.test(text(p, "備註"));
+      if (!prev || (!prev.meaning && meaning)) seen.set(key, { id: p.id, ...parsed, meaning, potential });
     }
     return [...seen.values()];
   },

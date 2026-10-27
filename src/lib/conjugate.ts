@@ -59,7 +59,12 @@ export type Verb = {
   reading: string;
   cls: VerbClass;
   meaning: string;
+  /** 本身就是可能形（見られる、聞き取れる）：沒有可能／受身／意向／命令形 */
+  potential?: boolean;
 };
+
+// 可能動詞不再變這幾個形（「見られられる」不自然）
+const NOT_FOR_POTENTIAL = new Set<string>(["可能", "受身", "意向", "命令"]);
 
 // ── 從單字庫的寫法取出辭書形 ─────────────────────────────
 
@@ -97,7 +102,9 @@ export function parseVerb(word: string, reading: string, cls: VerbClass): { dict
   // 「あそびます／あそぶ」：斜線後面是辭書形
   const lastPart = (x: string) => x.split(/[／/]/).map((t) => t.trim()).filter(Boolean).at(-1) ?? "";
   const inner = (m: RegExpMatchArray | null) => (m ? m[1].replace(/^[辭辞]書形[：:]\s*/, "").trim() : null);
-  const wIn = inner(word.match(BRACKET));
+  // 括號裡是辭書形（読みます（読む））才拿來用；「かける（電話を）」這種用法說明就忽略
+  const wInRaw = inner(word.match(BRACKET));
+  const wIn = wInRaw && /[うくぐすつぬぶむる]$/.test(wInRaw) ? wInRaw : null;
   const rIn = inner(reading.match(BRACKET));
   let w = (wIn ?? lastPart(word.replace(BRACKET, ""))).trim();
   let r = lastPart(reading.replace(BRACKET, ""));
@@ -209,7 +216,8 @@ const HONORIFIC: Record<string, { reading: string; word: string }> = {
 export type Conjugated = { word: string; reading: string };
 
 /** 某個動詞的某一形；沒有（例如沒有特別尊敬形）回傳 null */
-export function conjugate(v: Pick<Verb, "dict" | "reading" | "cls">, form: VerbForm): Conjugated | null {
+export function conjugate(v: Pick<Verb, "dict" | "reading" | "cls" | "potential">, form: VerbForm): Conjugated | null {
+  if (v.potential && NOT_FOR_POTENTIAL.has(form)) return null;
   if (form === "尊敬") return HONORIFIC[v.reading] ?? null;
   const r = conjugateKana(v.reading, v.cls, form);
   if (!r) return null;
