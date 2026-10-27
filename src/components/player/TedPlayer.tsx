@@ -5,12 +5,13 @@ import type { Cue } from "@/lib/subtitles";
 import type { TedTalk } from "@/lib/ted";
 import { WordSheet } from "./WordSheet";
 import { useRecorder } from "./useRecorder";
+import { Icon } from "../Icon";
 
 type Mode = "both" | "en" | "blind";
 const MODES: { id: Mode; label: string }[] = [
   { id: "both", label: "中英" },
   { id: "en", label: "英文" },
-  { id: "blind", label: "盲聽" },
+  { id: "blind", label: "隱藏" },
 ];
 const RATES = [0.5, 0.75, 0.9, 1, 1.25];
 const TED_DEFAULT_OFFSET = 3.75;
@@ -49,7 +50,18 @@ export function TedPlayer({ tedUrl, title, notionUrl }: { tedUrl: string; title:
   const [offset, setOffset] = useState(0);
   const [videoNote, setVideoNote] = useState<string | null>(null);
   const [revealed, setRevealed] = useState<Set<number>>(new Set());
-  const [sheet, setSheet] = useState<{ word: string; sentence: string } | null>(null);
+  const [sheet, setSheet] = useState<{ word: string; sentence: string; at: string } | null>(null);
+  const [time, setTime] = useState(0);
+  const [duration, setDuration] = useState(NaN);
+  // ≥768px（iPad）：字幕左欄、字典卡右欄常駐
+  const [wide, setWide] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 768px)");
+    const on = () => setWide(mq.matches);
+    on();
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, []);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const listRef = useRef<HTMLOListElement>(null);
@@ -185,11 +197,37 @@ export function TedPlayer({ tedUrl, title, notionUrl }: { tedUrl: string; title:
     } else v.pause();
   };
 
-  const record = async () => {
+  // 跟讀：按住錄本句、放開停止；很快放開（點一下）就一直錄到再點一次
+  const pressedAt = useRef(0);
+  const recordDown = async () => {
     if (recorder.recording) return recorder.stop();
+    pressedAt.current = Date.now();
     videoRef.current?.pause();
     await recorder.start(Math.max(active, 0));
   };
+  const recordUp = () => {
+    if (pressedAt.current && Date.now() - pressedAt.current > 400) recorder.stop();
+    pressedAt.current = 0;
+  };
+
+  // 外接鍵盤：空白鍵播放、←→ 上下句、R 重播、M 錄音
+  const keys = useRef({ togglePlay, playCue, active, cues, recordDown });
+  keys.current = { togglePlay, playCue, active, cues, recordDown };
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey || (e.target as HTMLElement).closest("input,textarea,[contenteditable]")) return;
+      const k = keys.current;
+      if (e.key === " ") k.togglePlay();
+      else if (e.key === "ArrowLeft") k.playCue(Math.max(k.active - 1, 0));
+      else if (e.key === "ArrowRight") k.playCue(Math.min(k.active + 1, k.cues.length - 1));
+      else if (e.key === "r" || e.key === "R") k.playCue(Math.max(k.active, 0));
+      else if (e.key === "m" || e.key === "M") void k.recordDown().then(() => (pressedAt.current = 0));
+      else return;
+      e.preventDefault();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   if (error)
     return (
@@ -203,31 +241,229 @@ export function TedPlayer({ tedUrl, title, notionUrl }: { tedUrl: string; title:
     );
 
   const current = cues[active];
+  const lastRecorded = recorder.takes[Math.max(active, 0)];
+
+  const subtitles = (
+    <ol
+      ref={listRef}
+      onTouchMove={() => (userScrolledAt.current = Date.now())}
+      onWheel={() => (userScrolledAt.current = Date.now())}
+      className="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-3 py-2"
+    >
+      {cues.map((c, i) => {
+        const isActive = i === active;
+        const hidden = mode === "blind" && !revealed.has(i);
+        return (
+          <li
+            key={i}
+            data-i={i}
+            aria-current={isActive || undefined}
+            onClick={() => playCue(i)}
+            className={`cursor-pointer rounded-[14px] px-2.5 py-2 transition-colors ${isActive ? "bg-accent-soft" : ""}`}
+          >
+            <p
+              lang="en"
+              className={`read leading-normal ${isActive ? "text-[19px] font-semibold" : "text-[17px]"} ${i < active ? "text-muted" : ""} ${hidden ? "blur-[5px] select-none" : ""}`}
+            >
+              {hidden
+                ? c.text
+                : tokens(c.text).map((t, k) =>
+                    t.word ? (
+                      <span
+                        key={k}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          videoRef.current?.pause();
+                          setSheet({ word: t.s, sentence: c.text, at: `${i}:${k}` });
+                        }}
+                        className={`-mx-0.5 rounded-[5px] px-0.5 ${sheet?.at === `${i}:${k}` ? "bg-accent-soft ring-1 ring-accent/30" : ""}`}
+                      >
+                        {t.s}
+                      </span>
+                    ) : (
+                      <span key={k}>{t.s}</span>
+                    ),
+                  )}
+            </p>
+            {hidden && isActive && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setRevealed((s) => new Set(s).add(i));
+                }}
+                className="mt-1 h-8 text-xs font-semibold text-accent"
+              >
+                看這句
+              </button>
+            )}
+            {mode === "both" && c.zh && <p className="mt-0.5 text-[13px] text-muted">{c.zh}</p>}
+            {recorder.takes[i] && (
+              <div className="mt-1.5 flex gap-2 text-sm" onClick={(e) => e.stopPropagation()}>
+                <button type="button" onClick={() => playCue(i, { once: true })} className="h-9 rounded-full border border-line bg-card px-3 font-semibold text-ink-2">
+                  ▶ 原音
+                </button>
+                <button type="button" onClick={() => recorder.play(i)} className="h-9 rounded-full bg-accent-soft px-3 font-semibold text-accent">
+                  ▶ 我的錄音
+                </button>
+              </div>
+            )}
+          </li>
+        );
+      })}
+    </ol>
+  );
+
+  const controls = (
+    <section
+      aria-label="播放控制"
+      className={`shrink-0 space-y-2 bg-card px-4 pt-2.5 pb-[max(env(safe-area-inset-bottom),0.75rem)] ${wide ? "card" : "rounded-t-[22px] shadow-sheet"}`}
+    >
+      <div className="flex items-center gap-2.5 text-xs text-muted tabular-nums">
+        <span>{fmt(time)}</span>
+        <input
+          type="range"
+          aria-label="播放進度"
+          min={0}
+          max={Number.isFinite(duration) ? duration : 0}
+          step={0.1}
+          value={time}
+          onChange={(e) => {
+            const v = videoRef.current;
+            const t = Number(e.target.value);
+            setTime(t);
+            if (v) v.currentTime = t;
+            playingCue.current = cueIndexAt(cues, t, offset);
+          }}
+          className="h-4 min-w-0 flex-1 accent-[var(--accent)]"
+        />
+        <span>{Number.isFinite(duration) ? fmt(duration) : "–:––"}</span>
+      </div>
+
+      <div className="flex items-center justify-between">
+        <button type="button" onClick={() => playCue(Math.max(active - 1, 0))} className="grid size-11 place-items-center text-ink" aria-label="上一句">
+          <Icon name="prev" size={22} />
+        </button>
+        <button type="button" onClick={() => playCue(Math.max(active, 0))} className="grid size-11 place-items-center text-ink" aria-label="重播這一句">
+          <Icon name="replay" size={22} />
+        </button>
+        <button
+          type="button"
+          onClick={togglePlay}
+          disabled={!talk?.video}
+          className="grid size-[60px] place-items-center rounded-full bg-accent text-on-accent disabled:opacity-40"
+          aria-label={playing ? "暫停" : "播放"}
+        >
+          {playing ? <Icon name="pause" size={24} stroke={3} /> : <Icon name="play" size={26} stroke={0} className="fill-current" />}
+        </button>
+        <button type="button" onClick={() => playCue(Math.min(active + 1, cues.length - 1))} className="grid size-11 place-items-center text-ink" aria-label="下一句">
+          <Icon name="next" size={22} />
+        </button>
+        <button
+          type="button"
+          onClick={() => setRate((r) => RATES[(RATES.indexOf(r) + 1) % RATES.length])}
+          className={`grid h-11 min-w-11 place-items-center text-sm font-bold tabular-nums ${rate !== 1 ? "text-accent" : "text-ink"}`}
+          aria-label={`播放速度 ${rate}×，點一下換`}
+        >
+          {rate}×
+        </button>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <div role="group" aria-label="字幕顯示" className="grid flex-1 grid-cols-3 gap-1 rounded-[14px] bg-card-2 p-1">
+          {MODES.map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              aria-pressed={mode === m.id}
+              onClick={() => {
+                setMode(m.id);
+                setRevealed(new Set());
+              }}
+              className={`h-10 rounded-[10px] text-[13px] ${mode === m.id ? "bg-card font-bold text-ink shadow-card" : "font-semibold text-ink-2"}`}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
+        <button
+          type="button"
+          onPointerDown={() => void recordDown()}
+          onPointerUp={recordUp}
+          onPointerLeave={recordUp}
+          onContextMenu={(e) => e.preventDefault()}
+          aria-label={recorder.recording ? "停止錄音" : "按住錄音跟讀"}
+          className={`flex h-[46px] items-center gap-1.5 rounded-xl px-3 text-sm font-bold whitespace-nowrap select-none ${
+            recorder.recording ? "bg-bad-soft text-bad" : lastRecorded ? "bg-accent-soft text-accent" : "bg-card-2 text-ink"
+          }`}
+        >
+          <Icon name="mic" size={18} />
+          {recorder.recording ? "錄音中" : "跟讀"}
+        </button>
+      </div>
+
+      <div className="flex items-center gap-1">
+        <span className="mr-1 text-xs whitespace-nowrap text-muted">字幕時間</span>
+        <button type="button" onClick={() => changeOffset(-1)} className="h-9 w-9 rounded-[10px] border border-line text-ink-2" aria-label="字幕提早 1 秒">
+          «
+        </button>
+        <button type="button" onClick={() => changeOffset(-0.25)} className="h-9 w-9 rounded-[10px] border border-line text-ink-2" aria-label="字幕提早 0.25 秒">
+          ‹
+        </button>
+        <button
+          type="button"
+          onClick={() => changeOffset("reset")}
+          className={`h-9 flex-1 text-[15px] font-bold whitespace-nowrap tabular-nums ${offset !== TED_DEFAULT_OFFSET ? "text-accent" : ""}`}
+          aria-label="字幕偏移（點一下回到預設）"
+        >
+          {offset > 0 ? "+" : ""}
+          {offset.toFixed(2)} 秒
+        </button>
+        <button type="button" onClick={() => changeOffset(0.25)} className="h-9 w-9 rounded-[10px] border border-line text-ink-2" aria-label="字幕延後 0.25 秒">
+          ›
+        </button>
+        <button type="button" onClick={() => changeOffset(1)} className="h-9 w-9 rounded-[10px] border border-line text-ink-2" aria-label="字幕延後 1 秒">
+          »
+        </button>
+        <span className="mx-1 h-5 w-px bg-line" />
+        <Toggle label="循環這句" icon="repeat" on={loop} onClick={() => setLoop((x) => !x)} />
+        <Toggle label="每句播完暫停" icon="pauseAfter" on={autoPause} onClick={() => setAutoPause((x) => !x)} />
+      </div>
+      {recorder.error && <p className="text-center text-xs text-bad">{recorder.error}</p>}
+      {current && recorder.recording && <p className="text-center text-xs text-bad">錄音中：跟讀「{current.text.slice(0, 30)}…」</p>}
+    </section>
+  );
 
   return (
-    <div className="fixed inset-0 z-40 mx-auto flex max-w-2xl flex-col bg-bg pt-[max(env(safe-area-inset-top),0.75rem)]">
-      <header className="flex items-center gap-2 px-4 pb-2">
-        <Link href="/" className="text-2xl leading-none text-muted" aria-label="回今日">
-          ‹
+    <div className="fixed inset-0 z-40 mx-auto flex max-w-2xl flex-col bg-bg pt-[max(env(safe-area-inset-top),0.75rem)] md:max-w-[1024px] md:px-4">
+      <header className="flex items-center gap-1 px-1 pb-1">
+        <Link href="/en" className="grid size-11 place-items-center text-accent" aria-label="返回英文">
+          <Icon name="back" stroke={2.2} />
         </Link>
-        <div className="min-w-0 flex-1">
-          <h1 className="truncate font-semibold">{talk?.title || title}</h1>
-          {talk?.speaker && <p className="truncate text-xs text-muted">{talk.speaker}</p>}
+        <div className="min-w-0 flex-1 text-center">
+          <h1 className="read truncate text-[15px] font-bold" lang="en">
+            {talk?.title || title}
+          </h1>
+          {talk?.speaker && <p className="truncate text-[11px] text-muted">{talk.speaker}</p>}
         </div>
-        {notionUrl && notionUrl !== "#" && (
-          <a href={notionUrl} target="_blank" rel="noreferrer" className="text-sm text-accent">
+        {notionUrl && notionUrl !== "#" ? (
+          <a href={notionUrl} target="_blank" rel="noreferrer" className="grid h-11 place-items-center px-2 text-sm font-semibold text-accent">
             筆記 ↗
           </a>
+        ) : (
+          <span className="w-11" />
         )}
       </header>
 
-      <div className="relative aspect-video w-full shrink-0 bg-black">
+      <div className="relative aspect-video max-h-[45vh] w-full shrink-0 bg-[#0e0f12] md:max-h-[40vh] md:overflow-hidden md:rounded-2xl">
         <video
           ref={videoRef}
           playsInline
           controls={false}
           onPlay={() => setPlaying(true)}
           onPause={() => setPlaying(false)}
+          onTimeUpdate={(e) => setTime(e.currentTarget.currentTime)}
+          onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
           onClick={togglePlay}
           className="h-full w-full"
         />
@@ -242,167 +478,41 @@ export function TedPlayer({ tedUrl, title, notionUrl }: { tedUrl: string; title:
         <p className="px-4 pt-2 text-xs text-muted">這支沒有中文字幕，只顯示英文。</p>
       )}
 
-      <ol
-        ref={listRef}
-        onTouchMove={() => (userScrolledAt.current = Date.now())}
-        onWheel={() => (userScrolledAt.current = Date.now())}
-        className="flex-1 space-y-1 overflow-y-auto px-3 py-3"
-      >
-        {cues.map((c, i) => {
-          const isActive = i === active;
-          const hidden = mode === "blind" && !revealed.has(i);
-          return (
-            <li
-              key={i}
-              data-i={i}
-              onClick={() => playCue(i)}
-              className={`cursor-pointer rounded-xl px-3 py-2 transition-colors ${isActive ? "bg-accent-soft" : ""}`}
-            >
-              <div className="flex gap-2">
-                <span className={`pt-1 text-[11px] tabular-nums ${isActive ? "text-accent" : "text-muted"}`}>{fmt(c.start)}</span>
-                <div className="min-w-0 flex-1">
-                  <p
-                    lang="en"
-                    className={`text-[17px] leading-relaxed ${isActive ? "font-medium" : "text-ink/80"} ${hidden ? "blur-[5px] select-none" : ""}`}
-                  >
-                    {hidden
-                      ? c.text
-                      : tokens(c.text).map((t, k) =>
-                          t.word ? (
-                            <span
-                              key={k}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                videoRef.current?.pause();
-                                setSheet({ word: t.s, sentence: c.text });
-                              }}
-                              className="rounded active:bg-accent-soft"
-                            >
-                              {t.s}
-                            </span>
-                          ) : (
-                            <span key={k}>{t.s}</span>
-                          ),
-                        )}
-                  </p>
-                  {hidden && isActive && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setRevealed((s) => new Set(s).add(i));
-                      }}
-                      className="mt-1 text-xs text-accent"
-                    >
-                      看這句
-                    </button>
-                  )}
-                  {mode === "both" && c.zh && <p className="mt-0.5 text-sm text-muted">{c.zh}</p>}
-                  {recorder.takes[i] && (
-                    <div className="mt-1.5 flex gap-2 text-sm" onClick={(e) => e.stopPropagation()}>
-                      <button type="button" onClick={() => playCue(i, { once: true })} className="rounded-full border border-line px-3 py-1">
-                        ▶ 原音
-                      </button>
-                      <button type="button" onClick={() => recorder.play(i)} className="rounded-full border border-accent px-3 py-1 text-accent">
-                        ▶ 我的錄音
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </li>
-          );
-        })}
-      </ol>
-
-      <div className="shrink-0 border-t border-line bg-card px-3 pt-2 pb-[max(env(safe-area-inset-bottom),0.5rem)]">
-        <div className="flex items-center justify-between text-xs">
-          <div className="flex gap-1">
-            {MODES.map((m) => (
-              <button
-                key={m.id}
-                type="button"
-                onClick={() => {
-                  setMode(m.id);
-                  setRevealed(new Set());
-                }}
-                className={`rounded-full px-2.5 py-1 ${mode === m.id ? "bg-ink text-bg" : "text-muted"}`}
-              >
-                {m.label}
-              </button>
-            ))}
-          </div>
-          <div className="flex items-center text-muted">
-            <span className="mr-0.5">字幕</span>
-            <button type="button" onClick={() => changeOffset(-1)} className="px-1.5 py-1" aria-label="字幕提早 1 秒">
-              «
-            </button>
-            <button type="button" onClick={() => changeOffset(-0.25)} className="px-1.5 py-1" aria-label="字幕提早 0.25 秒">
-              ‹
-            </button>
-            <button
-              type="button"
-              onClick={() => changeOffset("reset")}
-              className={`w-11 text-center tabular-nums ${offset !== TED_DEFAULT_OFFSET ? "text-accent" : ""}`}
-              aria-label="字幕偏移（點一下回到預設）"
-            >
-              {offset > 0 ? "+" : ""}
-              {offset.toFixed(2)}
-            </button>
-            <button type="button" onClick={() => changeOffset(0.25)} className="px-1.5 py-1" aria-label="字幕延後 0.25 秒">
-              ›
-            </button>
-            <button type="button" onClick={() => changeOffset(1)} className="px-1.5 py-1" aria-label="字幕延後 1 秒">
-              »
-            </button>
+      {wide ? (
+        <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_340px] gap-4 pt-3">
+          <div className="flex min-h-0 flex-col">{subtitles}</div>
+          <div className="flex min-h-0 flex-col gap-3 overflow-y-auto pb-[max(env(safe-area-inset-bottom),0.75rem)]">
+            {sheet ? (
+              <WordSheet docked word={sheet.word} sentence={sheet.sentence} onClose={() => setSheet(null)} />
+            ) : (
+              <div className="card p-5 text-sm text-muted">點字幕裡的單字查字典</div>
+            )}
+            {controls}
+            <p className="text-center text-[11px] text-muted">空白鍵 播放・← → 上下句・R 重播・M 錄音</p>
           </div>
         </div>
-
-        <div className="mt-2 flex items-center justify-between">
-          <Ctl label="循環" on={loop} onClick={() => setLoop((x) => !x)} icon="🔁" />
-          <Ctl label="跟讀停" on={autoPause} onClick={() => setAutoPause((x) => !x)} icon="⏸︎" />
-          <button type="button" onClick={() => playCue(Math.max(active - 1, 0))} className="px-2 text-2xl" aria-label="上一句">
-            ⏮
-          </button>
-          <button
-            type="button"
-            onClick={togglePlay}
-            disabled={!talk?.video}
-            className="grid size-14 place-items-center rounded-full bg-accent text-2xl text-on-accent disabled:opacity-40"
-            aria-label={playing ? "暫停" : "播放"}
-          >
-            {playing ? "❚❚" : "▶"}
-          </button>
-          <button type="button" onClick={() => playCue(Math.min(active + 1, cues.length - 1))} className="px-2 text-2xl" aria-label="下一句">
-            ⏭
-          </button>
-          <Ctl label={`${rate}x`} on={rate !== 1} onClick={() => setRate((r) => RATES[(RATES.indexOf(r) + 1) % RATES.length])} icon="⏱" />
-          <Ctl
-            label={recorder.recording ? "停止" : "錄音"}
-            on={recorder.recording}
-            onClick={record}
-            icon={recorder.recording ? "⏺" : "🎤"}
-            danger={recorder.recording}
-          />
-        </div>
-        {recorder.error && <p className="mt-1 text-center text-xs text-bad">{recorder.error}</p>}
-        {current && recorder.recording && <p className="mt-1 text-center text-xs text-bad">錄音中：跟讀「{current.text.slice(0, 30)}…」</p>}
-      </div>
-
-      {sheet && <WordSheet word={sheet.word} sentence={sheet.sentence} onClose={() => setSheet(null)} />}
+      ) : (
+        <>
+          {subtitles}
+          {controls}
+          {sheet && <WordSheet word={sheet.word} sentence={sheet.sentence} onClose={() => setSheet(null)} />}
+        </>
+      )}
     </div>
   );
 }
 
-function Ctl({ label, icon, on, onClick, danger }: { label: string; icon: string; on: boolean; onClick: () => void; danger?: boolean }) {
+function Toggle({ label, icon, on, onClick }: { label: string; icon: "repeat" | "pauseAfter"; on: boolean; onClick: () => void }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`flex w-12 flex-col items-center rounded-xl py-1 text-[10px] ${danger ? "text-bad" : on ? "text-accent" : "text-muted"}`}
+      aria-pressed={on}
+      aria-label={label}
+      title={label}
+      className={`grid size-9 shrink-0 place-items-center rounded-[10px] ${on ? "bg-accent-soft text-accent" : "text-muted"}`}
     >
-      <span className="text-lg leading-tight">{icon}</span>
-      {label}
+      <Icon name={icon} size={18} />
     </button>
   );
 }

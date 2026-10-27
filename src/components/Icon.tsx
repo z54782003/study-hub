@@ -111,6 +111,41 @@ const PATHS = {
     </>
   ),
   play: <path d="M8 5.5v13l10.5-6.5z" />,
+  pause: (
+    <>
+      <path d="M8 5v14M16 5v14" />
+    </>
+  ),
+  prev: (
+    <>
+      <path d="M6 5v14" />
+      <path d="M18 6l-9 6 9 6z" />
+    </>
+  ),
+  next: (
+    <>
+      <path d="M18 5v14" />
+      <path d="M6 6l9 6-9 6z" />
+    </>
+  ),
+  replay: (
+    <>
+      <path d="M4 12a8 8 0 1 0 2.3-5.6" />
+      <path d="M4 4v4h4" />
+    </>
+  ),
+  mic: (
+    <>
+      <rect x="9" y="3" width="6" height="11" rx="3" />
+      <path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" />
+    </>
+  ),
+  pauseAfter: (
+    <>
+      <path d="M4 12h9" />
+      <path d="M16 7v10M20 7v10" />
+    </>
+  ),
   speaker: (
     <>
       <path d="M4 10v4h4l5 4V6L8 10H4z" />

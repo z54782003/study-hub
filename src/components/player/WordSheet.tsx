@@ -45,7 +45,18 @@ async function lookup(word: string): Promise<Entry | null> {
   };
 }
 
-export function WordSheet({ word: raw, sentence, onClose }: { word: string; sentence: string; onClose: () => void }) {
+export function WordSheet({
+  word: raw,
+  sentence,
+  onClose,
+  docked,
+}: {
+  word: string;
+  sentence: string;
+  onClose: () => void;
+  /** iPad 版：常駐在右欄，不蓋住畫面 */
+  docked?: boolean;
+}) {
   const word = raw.replace(/[’']s$/i, "").toLowerCase();
   const [entry, setEntry] = useState<Entry | null | "loading">("loading");
   const [saved, setSaved] = useState<"idle" | "saving" | "created" | "exists" | "error">("idle");
@@ -77,36 +88,41 @@ export function WordSheet({ word: raw, sentence, onClose }: { word: string; sent
   const [drag, setDrag] = useState<{ start: number; dy: number } | null>(null);
   // 打開時鎖住背景捲動，閱讀位置不動
   useEffect(() => {
+    if (docked) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = prev;
     };
-  }, []);
+  }, [docked]);
   const hit = new RegExp(`(\\b${word.replace(/[^a-z'-]/g, "")}\\w*)`, "i");
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end">
-      <button type="button" aria-label="關閉字典卡" onClick={onClose} className="absolute inset-0 bg-[rgba(10,12,18,0.32)]" />
-      <section
-        role="dialog"
-        aria-label={`字典：${word}`}
-        className="relative mx-auto w-full max-w-xl touch-none rounded-t-[24px] bg-card px-5 pt-2 pb-[max(env(safe-area-inset-bottom),1.25rem)] shadow-sheet"
-        style={{ transform: drag ? `translateY(${drag.dy}px)` : undefined, transition: drag ? "none" : "transform 200ms" }}
-        onPointerDown={(e) => {
+  const sheetProps = docked
+    ? { "aria-label": `字典：${word}`, className: "card p-5" }
+    : {
+        role: "dialog",
+        "aria-label": `字典：${word}`,
+        className: "relative mx-auto w-full max-w-xl touch-none rounded-t-[24px] bg-card px-5 pt-2 pb-[max(env(safe-area-inset-bottom),1.25rem)] shadow-sheet",
+        style: { transform: drag ? `translateY(${drag.dy}px)` : undefined, transition: drag ? "none" : "transform 200ms" },
+        onPointerDown: (e: React.PointerEvent) => {
           if ((e.target as HTMLElement).closest("a,button")) return;
           setDrag({ start: e.clientY, dy: 0 });
-        }}
-        onPointerMove={(e) => drag && setDrag({ ...drag, dy: Math.max(0, e.clientY - drag.start) })}
-        onPointerUp={() => {
+        },
+        onPointerMove: (e: React.PointerEvent) => drag && setDrag({ ...drag, dy: Math.max(0, e.clientY - drag.start) }),
+        onPointerUp: () => {
           if (drag && drag.dy > 80) onClose();
           setDrag(null);
-        }}
-        onPointerCancel={() => setDrag(null)}
-      >
-        <div className="flex justify-center py-1">
-          <span className="h-[5px] w-10 rounded-full bg-line" />
-        </div>
+        },
+        onPointerCancel: () => setDrag(null),
+      };
+
+  const card = (
+      <section {...sheetProps}>
+        {!docked && (
+          <div className="flex justify-center py-1">
+            <span className="h-[5px] w-10 rounded-full bg-line" />
+          </div>
+        )}
         <div className="mt-1 flex items-center gap-1">
           <h2 className="read text-3xl font-bold" lang="en">
             {word}
@@ -168,6 +184,12 @@ export function WordSheet({ word: raw, sentence, onClose }: { word: string; sent
           </button>
         </div>
       </section>
+  );
+  if (docked) return card;
+  return (
+    <div className="fixed inset-0 z-50 flex items-end">
+      <button type="button" aria-label="關閉字典卡" onClick={onClose} className="absolute inset-0 bg-[rgba(10,12,18,0.32)]" />
+      {card}
     </div>
   );
 }
