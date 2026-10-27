@@ -34,13 +34,13 @@ export default async function VoaArticlePage({ params, searchParams }: { params:
       ) : (
         <>
           <div className="mt-1 mb-3 flex items-start justify-between gap-3">
-            <h1 className="text-2xl leading-tight font-bold" lang="en">
+            <h1 className="read text-[26px] leading-tight font-bold" lang="en">
               {a.title}
             </h1>
             <VoaDone id={id} />
           </div>
           {a.audio ? (
-            <div className="sticky top-0 z-10 -mx-4 mb-4 bg-bg/95 px-4 pt-[env(safe-area-inset-top)] pb-2 backdrop-blur">
+            <div className="sticky top-0 z-10 -mx-4 mb-4 border-b border-line bg-bg px-4 pt-[env(safe-area-inset-top)] pb-2.5">
               <AudioPlayer src={a.audio} />
             </div>
           ) : (
@@ -49,13 +49,15 @@ export default async function VoaArticlePage({ params, searchParams }: { params:
           <VoaText paragraphs={a.paragraphs} />
 
           {a.words.length > 0 && (
-            <section className="mt-6 card p-4">
-              <h2 className="mb-2 font-semibold">Words in This Story</h2>
-              <ul className="space-y-1.5 text-sm" lang="en">
+            <section className="card mt-6 px-4 py-3.5">
+              <h2 className="label mb-1" lang="en">
+                Words in This Story
+              </h2>
+              <ul lang="en">
                 {a.words.map((w) => (
-                  <li key={w.term} className="flex items-start gap-1">
-                    <span className="flex-1">
-                      <span className="font-semibold">{w.term}</span> — {w.def}
+                  <li key={w.term} className="flex items-start gap-1 border-t border-line py-1.5">
+                    <span className="read flex-1 pt-2 text-[15px] leading-normal">
+                      <b>{w.term}</b> – {w.def}
                     </span>
                     <Speak text={w.term} lang="en" />
                   </li>

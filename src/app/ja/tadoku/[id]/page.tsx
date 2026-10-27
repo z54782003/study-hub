@@ -52,7 +52,9 @@ export default async function TadokuBookPage({ params }: { params: Promise<{ id:
       {detail?.audio && (
         <section className="mb-4">
           <h2 className="mb-1.5 text-sm font-semibold text-muted">只聽朗讀</h2>
-          <AudioPlayer src={detail.audio} />
+          <div className="card p-3">
+            <AudioPlayer src={detail.audio} />
+          </div>
         </section>
       )}
 

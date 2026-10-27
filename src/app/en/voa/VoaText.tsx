@@ -6,15 +6,19 @@ const tokens = (text: string) => text.split(/([A-Za-z][A-Za-z'’-]*)/).filter(B
 
 /** 文章內文：點單字查字典、加入單字庫（例句帶入那一段） */
 export function VoaText({ paragraphs }: { paragraphs: string[] }) {
-  const [sheet, setSheet] = useState<{ word: string; sentence: string } | null>(null);
+  const [sheet, setSheet] = useState<{ word: string; sentence: string; at: string } | null>(null);
   return (
     <>
-      <div className="space-y-4 text-[17px] leading-relaxed" lang="en">
+      <div className="read space-y-3 text-[17px] leading-[1.65]" lang="en">
         {paragraphs.map((p, i) => (
           <p key={i}>
             {tokens(p).map((t, j) =>
               t.word ? (
-                <span key={j} onClick={() => setSheet({ word: t.s, sentence: p })} className="cursor-pointer rounded active:bg-accent-soft">
+                <span
+                  key={j}
+                  onClick={() => setSheet({ word: t.s, sentence: p, at: `${i}:${j}` })}
+                  className={`-mx-0.5 cursor-pointer rounded-[5px] px-0.5 ${sheet?.at === `${i}:${j}` ? "bg-accent-soft" : ""}`}
+                >
                   {t.s}
                 </span>
               ) : (
