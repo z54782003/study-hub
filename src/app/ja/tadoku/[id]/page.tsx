@@ -41,50 +41,51 @@ export default async function TadokuBookPage({ params }: { params: Promise<{ id:
 
       {detail === null && <p className="mb-3 text-sm text-bad">讀不到這本書的頁面，請到多読網站閱讀。</p>}
 
-      {readable && (
+      {detail?.youtube && (
+        <details className="group card mb-3 overflow-hidden">
+          <summary className="flex min-h-12 cursor-pointer list-none items-center gap-2 px-4 text-[15px] font-semibold">
+            <Icon name="play" size={18} className="text-accent" />
+            看朗讀影片（書頁＋聲音）
+            <Icon name="chevron" size={16} stroke={2.4} className="ml-auto text-muted transition-transform group-open:rotate-90" />
+          </summary>
+          <div className="aspect-video">
+            <YouTubeEmbed id={detail.youtube} title={book.title} />
+          </div>
+        </details>
+      )}
+
+      {readable ? (
         <div className="mb-5">
           <PdfReader src={pdfProxyPath(readable)!} original={readable} title={book.title} />
         </div>
+      ) : (
+        detail?.pdf[0] && (
+          <a href={detail.pdf[0]} target="_blank" rel="noreferrer" className="card mb-5 flex min-h-14 items-center gap-3 px-4 text-[15px] font-semibold">
+            <Icon name="book" className="text-accent" />
+            <span className="flex-1">開啟 PDF</span>
+            <Icon name="external" size={18} stroke={2} className="text-muted" label="外部連結" />
+          </a>
+        )
       )}
 
-      {detail?.youtube && (
-        <div className="-mx-4 mb-3 aspect-video md:mx-0 md:overflow-hidden md:rounded-2xl">
-          <YouTubeEmbed id={detail.youtube} title={book.title} />
-        </div>
-      )}
-      {detail?.youtube && <p className="mb-4 text-xs text-muted">影片是書頁＋朗讀，可以開字幕、調速度。影片和下面的朗讀一次只播一個。</p>}
+      <a href={book.url} target="_blank" rel="noreferrer" className="mb-2 inline-flex h-11 items-center gap-1 text-sm font-semibold text-accent">
+        在多読網站上看這本書
+        <Icon name="external" size={14} stroke={2} />
+      </a>
 
       {detail?.audio && (
-        <section className="mb-4">
-          <h2 className="mb-1.5 text-sm font-semibold text-muted">只聽朗讀</h2>
-          <div className="card p-3">
-            <AudioPlayer src={detail.audio} />
+        <>
+          <div className="h-16" aria-hidden />
+          <div className="fixed inset-x-0 bottom-[calc(49px+env(safe-area-inset-bottom))] z-20 border-t border-line bg-card px-4 py-2">
+            <div className="mx-auto flex max-w-xl items-center gap-2 md:max-w-[760px]">
+              <span className="shrink-0 text-xs font-bold text-muted">朗讀</span>
+              <div className="min-w-0 flex-1">
+                <AudioPlayer src={detail.audio} compact label="朗讀音檔" />
+              </div>
+            </div>
           </div>
-        </section>
+        </>
       )}
-
-      <section className="mb-6 space-y-2">
-        {[...(detail?.pdf ?? [])]
-          .sort((x, y) => Number(pdfKind(x) !== "screen") - Number(pdfKind(y) !== "screen"))
-          .map((u) => {
-            const kind = pdfKind(u);
-            return (
-              <a key={u} href={u} target="_blank" rel="noreferrer" className="card flex min-h-14 items-center gap-3 px-4 py-2.5">
-                <Icon name="book" className="shrink-0 text-accent" />
-                <span className="flex-1">
-                  <span className="block text-[15px] font-semibold">{kind === "screen" ? "PDF・電子版" : kind === "print" ? "PDF・列印版" : "PDF"}</span>
-                  {kind && <span className="block text-xs text-muted">{kind === "screen" ? "在手機或平板上一頁一頁看" : "印出來看的版面；在手機上看用電子版就好"}</span>}
-                </span>
-                <Icon name="external" size={18} stroke={2} className="shrink-0 text-muted" label="外部連結" />
-              </a>
-            );
-          })}
-        <a href={book.url} target="_blank" rel="noreferrer" className="card flex min-h-14 items-center gap-3 px-4 text-[15px] font-semibold">
-          <Icon name="news" className="text-accent" />
-          <span className="flex-1">在多読網站上看這本書</span>
-          <Icon name="external" size={18} stroke={2} className="text-muted" label="外部連結" />
-        </a>
-      </section>
 
       <p className="mb-4 text-xs leading-relaxed text-muted">
         © NPO 多言語多読「無料の読みもの」，CC BY-NC-ND 4.0。內容與朗讀直接來自多読網站和 YouTube，未經修改。

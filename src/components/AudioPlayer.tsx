@@ -7,8 +7,8 @@ const RATES = [0.75, 0.9, 1, 1.25] as const;
 
 const mmss = (s: number) => (Number.isFinite(s) ? `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}` : "–:––");
 
-/** 朗讀音檔：播放鍵＋進度條＋速度切換 */
-export function AudioPlayer({ src }: { src: string }) {
+/** 朗讀音檔：播放鍵＋進度條＋速度切換；compact＝一列（速度改成點一下換） */
+export function AudioPlayer({ src, compact, label }: { src: string; compact?: boolean; label?: string }) {
   const ref = useRef<HTMLAudioElement>(null);
   const [rate, setRate] = useState<number>(1);
   const [playing, setPlaying] = useState(false);
@@ -27,7 +27,7 @@ export function AudioPlayer({ src }: { src: string }) {
     else a.pause();
   };
   return (
-    <div className="space-y-2">
+    <div className="space-y-2" aria-label={label}>
       <audio
         ref={ref}
         src={src}
@@ -72,10 +72,20 @@ export function AudioPlayer({ src }: { src: string }) {
           className="h-4 min-w-0 flex-1 accent-[var(--accent)]"
         />
         <span className="shrink-0 text-xs text-muted tabular-nums">
-          {mmss(time)} / {mmss(duration)}
+          {compact ? mmss(time) : `${mmss(time)} / ${mmss(duration)}`}
         </span>
+        {compact && (
+          <button
+            type="button"
+            onClick={() => pick(RATES[(RATES.indexOf(rate as (typeof RATES)[number]) + 1) % RATES.length])}
+            aria-label={`播放速度 ${rate}×，點一下換`}
+            className={`grid h-11 min-w-12 shrink-0 place-items-center rounded-full text-[13px] font-bold tabular-nums ${rate !== 1 ? "bg-accent-soft text-accent" : "text-ink-2"}`}
+          >
+            {rate}×
+          </button>
+        )}
       </div>
-      <div role="group" aria-label="速度" className="flex gap-1.5">
+      {!compact && <div role="group" aria-label="速度" className="flex gap-1.5">
         {RATES.map((r) => (
           <button
             key={r}
@@ -87,7 +97,7 @@ export function AudioPlayer({ src }: { src: string }) {
             {r}×
           </button>
         ))}
-      </div>
+      </div>}
     </div>
   );
 }

@@ -86,8 +86,8 @@ export function PdfReader({ src, original, title }: { src: string; original: str
       {status.state === "ready" && (
         <>
           {/* 頁碼浮在 PDF 右上角，不佔版面 */}
-          <div className="sticky top-[max(env(safe-area-inset-top),0.5rem)] z-10 flex h-0 justify-end">
-            <span className="mt-2 rounded-full bg-ink/75 px-2.5 py-1 text-xs font-semibold text-bg tabular-nums">
+          <div className="sticky top-[max(env(safe-area-inset-top),0.5rem)] z-10 flex h-0 items-start justify-end">
+            <span className="mt-2 rounded-full bg-card/90 px-3 py-1.5 text-[13px] font-bold text-ink tabular-nums shadow-card backdrop-blur">
               {current} / {status.pages} 頁
             </span>
           </div>
