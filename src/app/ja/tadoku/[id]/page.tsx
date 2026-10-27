@@ -45,7 +45,8 @@ export default async function TadokuBookPage({ params }: { params: Promise<{ id:
         <p className="mb-3 rounded-[14px] bg-card-2 px-4 py-3 text-sm text-ink-2">這本書的朗讀還在準備中（多読網站上還沒有），現在只能看 PDF。</p>
       )}
 
-      {detail?.youtube && (
+      {/* 有 mp3 就用底部的朗讀列；沒有 mp3 才放 YouTube 影片 */}
+      {detail?.youtube && !detail.audio && (
         <details className="group card mb-3 overflow-hidden">
           <summary className="flex min-h-12 cursor-pointer list-none items-center gap-2 px-4 text-[15px] font-semibold">
             <Icon name="play" size={18} className="text-accent" />
