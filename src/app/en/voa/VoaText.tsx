@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { WordSheet } from "@/components/player/WordSheet";
+import { Icon } from "@/components/Icon";
 
 const tokens = (text: string) => text.split(/([A-Za-z][A-Za-z'’-]*)/).filter(Boolean).map((s) => ({ word: /^[A-Za-z]/.test(s), s }));
 
@@ -58,25 +59,32 @@ export function VoaDone({ id }: { id: string }) {
     <button
       type="button"
       onClick={toggle}
-      className={`shrink-0 rounded-full border px-3 py-1.5 text-sm whitespace-nowrap ${done ? "border-ok bg-ok-soft text-ok" : "border-line"}`}
-     
+      aria-pressed={done}
+      className={`h-9 shrink-0 rounded-full border px-3 text-sm font-semibold whitespace-nowrap ${done ? "border-ok-soft bg-ok-soft text-ok" : "border-line bg-card text-ink-2"}`}
     >
       {done ? "✓ 讀完" : "讀完了"}
     </button>
   );
 }
 
-/** 列表上的「已讀」記號 */
-export function VoaReadMark({ id }: { id: string }) {
+/** 列表上的標題：讀過的變灰、右上打 ✓ */
+export function VoaTitle({ id, title }: { id: string; title: string }) {
   const [read, setRead] = useState(false);
   useEffect(() => {
     try {
       setRead((JSON.parse(localStorage.getItem("voa-read") ?? "[]") as string[]).includes(id));
     } catch {}
   }, [id]);
-  return read ? (
-    <span className="text-ok">
-      ✓
+  return (
+    <span className="flex items-start gap-2">
+      <span className={`read flex-1 text-[17px] leading-snug font-bold ${read ? "text-muted" : ""}`} lang="en">
+        {title}
+      </span>
+      {read && (
+        <span className="grid size-6 shrink-0 place-items-center rounded-full bg-ok-soft text-ok" role="img" aria-label="已讀">
+          <Icon name="check" size={14} stroke={3} />
+        </span>
+      )}
     </span>
-  ) : null;
+  );
 }

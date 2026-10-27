@@ -1,5 +1,6 @@
 "use client";
-import { useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
+import { announcePlay, onOtherPlay } from "@/lib/exclusiveMedia";
 import { Icon } from "./Icon";
 
 const RATES = [0.75, 0.9, 1, 1.25] as const;
@@ -13,6 +14,8 @@ export function AudioPlayer({ src }: { src: string }) {
   const [playing, setPlaying] = useState(false);
   const [time, setTime] = useState(0);
   const [duration, setDuration] = useState(NaN);
+  const id = useId();
+  useEffect(() => onOtherPlay(id, () => ref.current?.pause()), [id]);
   const pick = (r: number) => {
     setRate(r);
     if (ref.current) ref.current.playbackRate = r;
@@ -32,6 +35,7 @@ export function AudioPlayer({ src }: { src: string }) {
         onPlay={(e) => {
           e.currentTarget.playbackRate = rate;
           setPlaying(true);
+          announcePlay(id);
         }}
         onPause={() => setPlaying(false)}
         onTimeUpdate={(e) => setTime(e.currentTarget.currentTime)}

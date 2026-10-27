@@ -1,6 +1,7 @@
 import { EntryCard } from "@/components/EntryCard";
 import { Icon } from "@/components/Icon";
 import { getEnglishHub } from "@/lib/data";
+import { TedChecklist } from "./TedChecklist";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "英文・Study Hub" };
@@ -12,17 +13,13 @@ export default async function EnglishPage() {
   const done = h.ted.length - current.length;
   return (
     <>
-      <h1 className="mb-4 text-[28px] leading-[34px] font-bold">英文</h1>
+      <h1 className="mb-3.5 text-[28px] leading-[34px] font-bold">英文</h1>
 
       <h2 className="mb-2 flex items-center gap-2 text-lg font-bold"><Icon name="headphones" className="text-muted" />TED</h2>
       {current.length === 0 ? (
         <p className="text-sm text-muted">TED Log 裡沒有待做的 talk</p>
       ) : (
-        <div className="space-y-2.5">
-          {current.slice(0, 6).map((t) => (
-            <EntryCard key={t.id} href={`/ted/${t.id}`} icon="play" title={t.title} detail={t.progress ?? undefined} />
-          ))}
-        </div>
+        <TedChecklist talks={current.slice(0, 6)} />
       )}
       {done > 0 && <p className="mt-2 text-xs text-muted">已完成 {done} 個 talk</p>}
 

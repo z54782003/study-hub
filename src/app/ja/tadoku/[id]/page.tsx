@@ -4,6 +4,7 @@ import { AudioPlayer } from "@/components/AudioPlayer";
 import { getTadokuBooks, getTadokuDetail, getTadokuLog } from "@/lib/data";
 import { BackLink } from "@/components/BackLink";
 import { Icon } from "@/components/Icon";
+import { YouTubeEmbed } from "@/components/YouTubeEmbed";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "多読・Study Hub" };
@@ -38,16 +39,10 @@ export default async function TadokuBookPage({ params }: { params: Promise<{ id:
 
       {detail?.youtube && (
         <div className="-mx-4 mb-3 aspect-video md:mx-0 md:overflow-hidden md:rounded-2xl">
-          <iframe
-            src={`https://www.youtube-nocookie.com/embed/${detail.youtube}?playsinline=1&rel=0`}
-            title={book.title}
-            allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
-            allowFullScreen
-            className="h-full w-full border-0"
-          />
+          <YouTubeEmbed id={detail.youtube} title={book.title} />
         </div>
       )}
-      {detail?.youtube && <p className="mb-4 text-xs text-muted">影片是書頁＋朗讀；可以開字幕、調速度（⚙️）。</p>}
+      {detail?.youtube && <p className="mb-4 text-xs text-muted">影片是書頁＋朗讀，可以開字幕、調速度。影片和下面的朗讀一次只播一個。</p>}
 
       {detail?.audio && (
         <section className="mb-4">

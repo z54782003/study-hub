@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { VoaReadMark } from "./VoaText";
+import { VoaTitle } from "./VoaText";
 import { getVoaFeed } from "@/lib/data";
 import { VOA_FEEDS, type VoaFeedKey } from "@/lib/voa";
 import { BackLink } from "@/components/BackLink";
@@ -35,19 +35,19 @@ export default async function VoaPage({ searchParams }: { searchParams: Promise<
           </Link>
         ))}
       </nav>
-      <p className="mb-3 text-sm text-muted">{feed.note}</p>
+      <p className="mb-3 text-sm text-ink-2">
+        <span className="font-semibold" lang="en">
+          {feed.title}
+        </span>
+        ・{feed.note}
+      </p>
 
       {error && <p className="text-sm text-bad">讀取失敗：{error}</p>}
       <ul className="space-y-2.5">
         {items.map((it) => (
           <li key={it.id}>
             <Link href={`/en/voa/${it.id}?feed=${feed.key}`} className="block card px-4 py-3">
-              <span className="flex items-baseline gap-2">
-                <span className="flex-1 font-semibold" lang="en">
-                  {it.title}
-                </span>
-                <VoaReadMark id={it.id} />
-              </span>
+              <VoaTitle id={it.id} title={it.title} />
               {it.description && (
                 <span className="mt-0.5 line-clamp-2 block text-sm text-muted" lang="en">
                   {it.description}

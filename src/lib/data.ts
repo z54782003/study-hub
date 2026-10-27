@@ -488,6 +488,14 @@ export async function getLessonVocab(level: string, lesson: number): Promise<Voc
   return pages.map(toVocab);
 }
 
+export const VOCAB_STATUSES = ["未學", "忘記", "學習中", "熟悉", "精通"] as const;
+
+/** 單字詳情卡：直接設定熟悉度（點一下就存） */
+export async function setVocabStatus(id: string, status: (typeof VOCAB_STATUSES)[number]): Promise<void> {
+  if (useMock()) return;
+  await updatePage(id, { 熟悉度: w.status(status) });
+}
+
 /** 題庫練習選課畫面：課堂筆記有哪些課（題目都掛在課堂筆記上） */
 export async function noteLessons(): Promise<Record<string, number[]>> {
   if (useMock()) return { 初級: Array.from({ length: 15 }, (_, i) => i + 1), 初中級: [1, 2, 3] };

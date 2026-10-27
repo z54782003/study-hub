@@ -94,6 +94,9 @@ export default async function LessonWordsPage({ searchParams }: { searchParams: 
                         <Speak text={e.ja} label={`播放例句${i + 1}`} />
                       </div>
                     ))}
+                    <Link href={`/ja/words/${w.id}?${new URLSearchParams({ level, lesson: String(lesson) })}`} className="inline-block py-1 text-sm font-semibold text-accent">
+                      完整單字卡 ›
+                    </Link>
                   </div>
                 </details>
               </li>
