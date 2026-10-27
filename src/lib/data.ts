@@ -429,7 +429,7 @@ async function verbQuiz(s: Extract<ReviewSource, { src: "verb" }>): Promise<Verb
 
 /** 單字測驗選課畫面：每課有幾個字 */
 // 要讀上千筆，快取一小時
-const cachedVocabLessonCounts = unstable_cache(
+const cachedVocabLessonStats = unstable_cache(
   async () => {
     const pages = await queryAll(
       DS.vocab,
@@ -437,20 +437,38 @@ const cachedVocabLessonCounts = unstable_cache(
       undefined,
       5000,
     );
-    const counts: Record<string, number> = {};
+    // 課次 → 熟悉度 → 字數（沒填熟悉度算未學）
+    const stats: Record<string, Record<string, number>> = {};
     for (const p of pages) {
       const l = select(p, "課次");
-      if (l) counts[l] = (counts[l] ?? 0) + 1;
+      if (!l) continue;
+      const st = select(p, "熟悉度") ?? "未學";
+      (stats[l] ??= {})[st] = (stats[l][st] ?? 0) + 1;
     }
-    return counts;
+    return stats;
   },
-  ["vocab-lesson-counts"],
+  ["vocab-lesson-stats"],
   { revalidate: 3600 },
 );
 
+export const FAMILIARITY = ["未學", "忘記", "學習中", "熟悉", "精通"] as const;
+
+/** 每一課各熟悉度的字數（日文首頁的課次色條） */
+export async function vocabLessonStats(): Promise<Record<string, Record<string, number>>> {
+  if (useMock())
+    return {
+      "初級 L1": { 熟悉: 10, 精通: 21 },
+      "初級 L2": { 學習中: 30, 熟悉: 27, 精通: 20 },
+      "初中級 L1": { 未學: 4, 忘記: 2, 學習中: 9, 熟悉: 10, 精通: 8 },
+      "初中級 L2": { 未學: 20, 忘記: 5, 學習中: 20, 熟悉: 10 },
+      "初中級 L3": { 未學: 30, 忘記: 3, 學習中: 15, 熟悉: 7, 精通: 3 },
+    };
+  return cachedVocabLessonStats();
+}
+
 export async function vocabLessonCounts(): Promise<Record<string, number>> {
-  if (useMock()) return { "初級 L1": 31, "初級 L2": 77, "初中級 L1": 33, "初中級 L2": 55, "初中級 L3": 58 };
-  return cachedVocabLessonCounts();
+  const stats = await vocabLessonStats();
+  return Object.fromEntries(Object.entries(stats).map(([l, st]) => [l, Object.values(st).reduce((a, b) => a + b, 0)]));
 }
 
 export async function englishVocabCount(): Promise<number> {
