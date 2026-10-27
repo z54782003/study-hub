@@ -105,3 +105,16 @@ export function eventsOnDay(ics: string, day: string, tz: string): CalendarEvent
   }
   return out.sort((a, b) => Number(b.allDay) - Number(a.allDay) || a.sortKey - b.sortKey);
 }
+
+/** 從 day 的隔天起，最多往後 days 天，找第一個有行程的日子（多個行事曆合併） */
+export function nextEventDay(icsList: string[], day: string, tz: string, days = 14): { date: string; events: CalendarEvent[] } | null {
+  for (let i = 1; i <= days; i++) {
+    const d = addDays(day, i);
+    const events = icsList.flatMap((ics) => eventsOnDay(ics, d, tz)).sort(byTime);
+    if (events.length) return { date: d, events };
+  }
+  return null;
+}
+
+/** 全天事件在前，其餘依開始時間 */
+export const byTime = (a: CalendarEvent, b: CalendarEvent) => Number(b.allDay) - Number(a.allDay) || a.sortKey - b.sortKey;

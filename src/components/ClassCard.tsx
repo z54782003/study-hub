@@ -61,6 +61,12 @@ function Homework({ text }: { text: string }) {
   );
 }
 
+/** 文法區標題：「L3 全課文法快速複習（今天沒有新文法…）」照原文顯示；一般新課顯示「今天的文法」 */
+function grammarHeading(title: string | null): string {
+  if (!title || /^文法點?解說/.test(title)) return "今天的文法";
+  return title;
+}
+
 /** 今日頁「🏫 今天的課」：下課後顯示課堂筆記，課前顯示預習頁 */
 export function ClassCard({ classNote, preview }: Pick<TodayData, "classNote" | "preview">) {
   if (classNote?.summary) {
@@ -108,15 +114,29 @@ export function ClassCard({ classNote, preview }: Pick<TodayData, "classNote" | 
         )}
         {preview.grammar.length > 0 && (
           <>
-            <div className="mt-3 mb-1 text-xs font-semibold text-muted">今天的文法</div>
+            <div className="mt-3 mb-1 text-xs font-semibold text-muted">{grammarHeading(preview.grammarTitle)}</div>
             <ul className="space-y-1">
-              {preview.grammar.map((g) => (
-                <li key={g} className="text-sm font-medium" lang="ja">
-                  {g}
-                </li>
-              ))}
+              {preview.grammar.map((g) => {
+                const [ja, zh] = g.split("\t");
+                return (
+                  <li key={g} className="text-sm">
+                    <span className="font-medium" lang="ja">
+                      {ja}
+                    </span>
+                    {zh && <span className="block pl-5 text-xs text-muted">{zh}</span>}
+                  </li>
+                );
+              })}
             </ul>
           </>
+        )}
+        {preview.grammarNote && (
+          <details className="mt-2 rounded-xl bg-bg px-3 py-2 text-sm">
+            <summary className="cursor-pointer text-xs font-semibold text-muted">⚠️ 易混淆整理</summary>
+            <p className="mt-1 leading-relaxed" lang="ja">
+              {preview.grammarNote.replace(/^易混淆總?整理[：:]\s*/, "")}
+            </p>
+          </details>
         )}
         {preview.exam && (
           <p className="mt-3 rounded-xl bg-accent/10 px-3 py-2 text-sm text-accent" lang="ja">

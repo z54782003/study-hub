@@ -51,4 +51,9 @@ describe("splitLesson", () => {
       main: "できる日本語 初中級 第3課「私の目標」",
       detail: "接續 10/23 已教完的 ST3-1",
     }));
+  it("also cuts at a dash", () =>
+    expect(splitLesson("できる日本語 初中級 第3課「私の目標」——今天是 L3 最終日（星合先生）。")).toEqual({
+      main: "できる日本語 初中級 第3課「私の目標」",
+      detail: "今天是 L3 最終日（星合先生）。",
+    }));
 });

@@ -67,8 +67,9 @@ export function parseClassTitle(title: string): ClassTitle {
   return { lesson, topic, points, pages };
 }
 
-/** 預習頁的「今日課次」很長：第一個「，」之前是課，後面是補充 */
+/** 預習頁的「今日課次」很長：第一個「，」「——」「。」之前是課，後面是補充 */
 export function splitLesson(text: string): { main: string; detail: string | null } {
-  const i = text.search(/[，,]/);
-  return i > 0 ? { main: text.slice(0, i).trim(), detail: text.slice(i + 1).trim() || null } : { main: text.trim(), detail: null };
+  const m = text.match(/[，,。]|——|—/);
+  if (!m || m.index === undefined || m.index === 0) return { main: text.trim(), detail: null };
+  return { main: text.slice(0, m.index).trim(), detail: text.slice(m.index + m[0].length).trim() || null };
 }

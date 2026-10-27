@@ -11,16 +11,41 @@ export function mockToday(day: string): TodayData {
     weekend: isWeekend(day),
     exams: EXAMS.map((e) => ({ ...e, daysLeft: diffDays(day, e.date) })).filter((e) => e.daysLeft >= 0 && e.daysLeft <= 7),
     homework: [{ text: "文法ノート 練習8–10（p.19–22）", due: "2026-10-28", url: "#", daysLeft: 1 }],
-    calendar: [
-      { title: "ISI 上課", allDay: false, start: "13:00", end: "16:10", location: "ISI 307", sortKey: 2 },
-      { title: "牙醫", allDay: false, start: "09:30", end: "10:30", location: "新宿", sortKey: 1 },
-    ].sort((a, b) => a.sortKey - b.sortKey),
+    // MOCK_EMPTY_CAL=1 看「今天沒有行程→顯示下一個」的樣子
+    calendar: process.env.MOCK_EMPTY_CAL
+      ? []
+      : [
+          { title: "ISI 上課", allDay: false, start: "13:00", end: "16:10", location: "ISI 307", sortKey: 2 },
+          { title: "牙醫", allDay: false, start: "09:30", end: "10:30", location: "新宿", sortKey: 1 },
+        ].sort((a, b) => a.sortKey - b.sortKey),
+    nextCalendar: process.env.MOCK_EMPTY_CAL
+      ? {
+          date: addDays(day, 3),
+          events: [
+            { title: "校外学習（大工体験）", allDay: false, start: "12:30", end: "16:00", location: "練馬", sortKey: 1 },
+            { title: "ハロウィン", allDay: true, start: null, end: null, location: null, sortKey: 0 },
+          ],
+        }
+      : null,
+    // 2026-10-27 預習頁實際解析結果（複習日：文法是表格＋易混淆整理）
     preview: {
-      title: "10/27（火）預習｜L3 ST2",
+      title: "10/27（火）預習｜L3",
       url: "#",
-      lesson: "できる日本語 初中級 第3課「私の目標」，今天預期進入 ST3-2「夢に向かって」（本冊 p.48–51）。",
-      exam: "10/27（二）動詞の形テスト：意向形。",
-      grammar: ["① Nのために／V辞書形ために、〜", "② 〜んですか／〜んです", "③ 〜なければなりません"],
+      lesson: "できる日本語 初中級 第3課「私の目標」——今天是 L3 最終日（星合先生）。ST3-1「これからの計画」、ST3-2「夢に向かって」的文法與ことば已全部教完。",
+      exam: "動詞の形テスト（意向形）——グループ1・2・3的意向形變化規則（10/26課堂最後老師已口頭複習過）。",
+      grammarTitle: "L3 全課文法快速複習（今天沒有新文法，考試前掃一遍）",
+      grammar: [
+        "① 〜たら、〜\t如果・…的話就",
+        "② 〜（よ）うと思っています\t打算、正考慮",
+        "③ 〜つもりです／〜ないつもりです\t打算／不打算",
+        "④ 疑問詞＋普通形か、〜\t（還在想）要…呢",
+        "⑤ 普通形かどうか、〜\t是否…（還不確定）",
+        "⑥ Nの・V辞書形ために、〜\t為了…（目的）",
+        "⑦ 普通形んです／んですが\t說明理由／確認情況",
+        "⑧ Vナイ形—なければなりません\t不得不、必須",
+      ],
+      grammarNote:
+        "易混淆總整理：②③都是「打算做」，但②較婉轉像是正在思考、③是已經決定；⑥的「〜ために」是自己設定的目的，跟⑧「なければなりません」的「不得不做」語感不同——⑥是主動追求的目標，⑧是被迫的義務。",
     },
     n3: { count: 38, grammar: [{ name: "〜たばかり", url: "#" }] },
     // MOCK_CLASS=preview 看課前（只有預習頁）的樣子

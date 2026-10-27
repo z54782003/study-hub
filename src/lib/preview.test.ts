@@ -46,10 +46,55 @@ describe("summarizePreview", () => {
     expect(summarizePreview(blocks)).toEqual({
       lesson: "できる日本語 初中級 第3課「私の目標」，今天預期進入 ST3-2「夢に向かって」（本冊 p.48–51）。",
       exam: "10/27（二）動詞の形テスト：意向形。11/4（三）アチーブテスト（1〜3課語彙・文法）。",
+      grammarTitle: "文法點解說（ポイント27–29）",
       grammar: ["① Nのために／V辞書形ために、〜", "② 〜んですか／〜んです", "③ 〜なければなりません"],
+      grammarNote: null,
     });
   });
   it("copes with pages that have none of these", () => {
-    expect(summarizePreview([{ type: "paragraph", boldStart: false, text: "hi" }])).toEqual({ lesson: null, exam: null, grammar: [] });
+    expect(summarizePreview([{ type: "paragraph", boldStart: false, text: "hi" }])).toEqual({
+      lesson: null,
+      exam: null,
+      grammarTitle: null,
+      grammar: [],
+      grammarNote: null,
+    });
+  });
+  // 2026-10-27 預習頁：第一個 callout 是修正說明；考試寫成「⚠️ 今日考試」；文法是複習表格＋易混淆總整理
+  it("reads the review-day layout", () => {
+    const r = summarizePreview([
+      { type: "callout", boldStart: false, text: "（修正說明：這頁原本因排程時區換算誤差被標成「10/26」…）" },
+      {
+        type: "callout",
+        boldStart: true,
+        text:
+          "今日課次：できる日本語 初中級 第3課「私の目標」——今天是 L3 最終日（星合先生）。\n" +
+          "Can-do（課）：自分の目標や計画を話したり…\n" +
+          "⚠️ 今日考試：動詞の形テスト（意向形）——グループ1・2・3的意向形變化規則。\n" +
+          "⚠️ 漏教內容確認：…",
+      },
+      { type: "heading_2", boldStart: false, text: "今天的任務／教材（推估，可能是總複習）" },
+      { type: "paragraph", boldStart: true, text: "できる！＋話読聞書（p.52，CD A44）：任務是…" },
+      { type: "heading_2", boldStart: false, text: "L3 全課文法快速複習（今天沒有新文法，考試前掃一遍）" },
+      {
+        type: "table",
+        boldStart: false,
+        text: "",
+        rows: [
+          ["文法點", "句型", "中文", "易混淆提醒"],
+          ["① 〜たら、〜", "V普通形た＋ら", "如果・…的話就", "…"],
+          ["⑧ Vナイ形—なければなりません", "V否定形（去ない）＋なければなりません", "不得不、必須", "…"],
+        ],
+      },
+      { type: "paragraph", boldStart: true, text: "⚠️易混淆總整理：②③都是「打算做」，但②較婉轉…" },
+      { type: "heading_2", boldStart: false, text: "單字（今日/課末補充，共4語）" },
+    ]);
+    expect(r).toEqual({
+      lesson: "できる日本語 初中級 第3課「私の目標」——今天是 L3 最終日（星合先生）。",
+      exam: "動詞の形テスト（意向形）——グループ1・2・3的意向形變化規則。",
+      grammarTitle: "L3 全課文法快速複習（今天沒有新文法，考試前掃一遍）",
+      grammar: ["① 〜たら、〜\t如果・…的話就", "⑧ Vナイ形—なければなりません\t不得不、必須"],
+      grammarNote: "易混淆總整理：②③都是「打算做」，但②較婉轉…",
+    });
   });
 });

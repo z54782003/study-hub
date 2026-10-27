@@ -10,7 +10,11 @@ export type TodayData = {
   homework: { text: string; due: string; url: string; daysLeft: number }[];
   /** null = 沒有設定 ICAL_URLS */
   calendar: CalendarEvent[] | null;
-  preview: (Link & { lesson: string | null; exam: string | null; grammar: string[] }) | null;
+  /** 今天沒有行程時，往後 14 天內下一個有行程的日子 */
+  nextCalendar: { date: string; events: CalendarEvent[] } | null;
+  preview:
+    | (Link & { lesson: string | null; exam: string | null; grammarTitle: string | null; grammar: string[]; grammarNote: string | null })
+    | null;
   n3: { count: number; grammar: { name: string; url: string | null }[] } | null;
   classNote: (Link & { status: string | null; summary: string; homework: string }) | null;
   review: { quiz: number; n3: number; grammar: number };

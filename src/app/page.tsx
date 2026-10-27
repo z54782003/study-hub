@@ -1,7 +1,9 @@
 import { ClassCard } from "@/components/ClassCard";
 import { TaskItem } from "@/components/TaskItem";
 import { NHK_EASY_URL } from "@/lib/config";
+import type { CalendarEvent } from "@/lib/calendar";
 import { getToday } from "@/lib/data";
+import { diffDays, formatJP } from "@/lib/dates";
 import { hasNotion } from "@/lib/notion";
 
 export const dynamic = "force-dynamic";
@@ -19,6 +21,22 @@ function Section({ title, href, children }: { title: string; href?: string; chil
       </div>
       {children}
     </section>
+  );
+}
+
+function EventList({ events }: { events: CalendarEvent[] }) {
+  return (
+    <ul className="divide-y divide-line">
+      {events.map((e, i) => (
+        <li key={i} className="flex gap-3 py-2 first:pt-0 last:pb-0">
+          <span className="w-24 shrink-0 text-sm tabular-nums text-muted">{e.allDay ? "全天" : `${e.start}–${e.end}`}</span>
+          <span className="min-w-0">
+            <span className="font-medium">{e.title}</span>
+            {e.location && <span className="block truncate text-xs text-muted">{e.location}</span>}
+          </span>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -63,23 +81,18 @@ export default async function TodayPage() {
         </section>
       )}
 
-      <Section title="📅 今天的行程">
+      <Section title={t.calendar?.length || !t.nextCalendar ? "📅 今天的行程" : `📅 下一個行程・${formatJP(t.nextCalendar.date)}`}>
         {t.calendar === null ? (
           <p className="text-sm text-muted">還沒連結行事曆（設定 ICAL_URLS，見 README）。</p>
-        ) : t.calendar.length === 0 ? (
-          <p className="text-sm text-muted">今天沒有行程</p>
+        ) : t.calendar.length > 0 ? (
+          <EventList events={t.calendar} />
+        ) : t.nextCalendar ? (
+          <>
+            <p className="mb-2 text-xs text-muted">今天沒有行程，{diffDays(t.date, t.nextCalendar.date) === 1 ? "明天" : `${diffDays(t.date, t.nextCalendar.date)} 天後`}：</p>
+            <EventList events={t.nextCalendar.events} />
+          </>
         ) : (
-          <ul className="divide-y divide-line">
-            {t.calendar.map((e, i) => (
-              <li key={i} className="flex gap-3 py-2 first:pt-0 last:pb-0">
-                <span className="w-24 shrink-0 text-sm tabular-nums text-muted">{e.allDay ? "全天" : `${e.start}–${e.end}`}</span>
-                <span className="min-w-0">
-                  <span className="font-medium">{e.title}</span>
-                  {e.location && <span className="block truncate text-xs text-muted">{e.location}</span>}
-                </span>
-              </li>
-            ))}
-          </ul>
+          <p className="text-sm text-muted">今天和接下來 14 天都沒有行程</p>
         )}
       </Section>
 

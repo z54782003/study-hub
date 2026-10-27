@@ -6,7 +6,7 @@ import { addDays, diffDays, formatJP, isWeekend, todayISO } from "./dates";
 import { gradeWithAi } from "./ai";
 import { autoGrade, gradeChoice, parseChoices } from "./grading";
 import { mockAnswer, mockHistory, mockJournal, mockReview, mockToday, mockVocab } from "./mock";
-import { eventsOnDay, type CalendarEvent } from "./calendar";
+import { byTime, eventsOnDay, nextEventDay, type CalendarEvent } from "./calendar";
 import { GROUP_OF, VERB_CLASSES, conjugate, formsFor, parseVerb, type Verb, type VerbClass, type VerbForm } from "./conjugate";
 import { VOA_BASE, VOA_FEEDS, parseVoaArticle, parseVoaFeed, type VoaArticle, type VoaFeedKey, type VoaItem } from "./voa";
 import { TADOKU_URL, parseTadoku, parseTadokuBook, type TadokuBook, type TadokuDetail } from "./tadoku";
@@ -495,26 +495,41 @@ async function findPreviewPage(day: string) {
 
   // 讀預習頁的第一層區塊，抓課次、考試預告、文法點
   const res = await notion().blocks.children.list({ block_id: hit.id, page_size: 100 });
-  const blocks: SimpleBlock[] = res.results.filter(isFullBlock).map((b) => {
-    const rich = (b as unknown as Record<string, { rich_text?: { plain_text: string; annotations: { bold: boolean } }[] }>)[b.type]
-      ?.rich_text ?? [];
-    return { type: b.type, text: rich.map((r) => r.plain_text).join(""), boldStart: Boolean(rich[0]?.annotations.bold) };
-  });
+  const plain = (rich: { plain_text: string }[]) => rich.map((r) => r.plain_text).join("").trim();
+  const blocks: SimpleBlock[] = await Promise.all(
+    res.results.filter(isFullBlock).map(async (b) => {
+      if (b.type === "table") {
+        // 文法整理常做成表格：讀出每一列的儲存格
+        const rows = await notion().blocks.children.list({ block_id: b.id, page_size: 100 });
+        return {
+          type: "table",
+          text: "",
+          boldStart: false,
+          rows: rows.results.filter(isFullBlock).flatMap((r) => (r.type === "table_row" ? [r.table_row.cells.map(plain)] : [])),
+        };
+      }
+      const rich = (b as unknown as Record<string, { rich_text?: { plain_text: string; annotations: { bold: boolean } }[] }>)[b.type]
+        ?.rich_text ?? [];
+      return { type: b.type, text: rich.map((r) => r.plain_text).join(""), boldStart: Boolean(rich[0]?.annotations.bold) };
+    }),
+  );
   return { title: hit.title, url: `https://www.notion.so/${hit.id.replace(/-/g, "")}`, ...summarizePreview(blocks) };
 }
 
-/** 環境變數 ICAL_URLS：一個或多個 iCalendar 連結（空白或逗號分隔，webcal:// 也可以） */
-async function calendarEvents(day: string): Promise<CalendarEvent[] | null> {
+/** 環境變數 ICAL_URLS：一個或多個 iCalendar 連結（空白或逗號分隔，webcal:// 也可以）。
+ *  回傳今天的行程；今天沒有的話，再找 14 天內下一個有行程的日子。 */
+async function calendarEvents(day: string): Promise<{ today: CalendarEvent[]; next: { date: string; events: CalendarEvent[] } | null } | null> {
   const urls = (process.env.ICAL_URLS ?? "").split(/[\s,]+/).filter(Boolean);
   if (!urls.length) return null;
-  const all = await Promise.all(
+  const icsList = await Promise.all(
     urls.map(async (u) => {
       const res = await fetch(u.replace(/^webcal:/i, "https:"), { next: { revalidate: 300 } });
       if (!res.ok) throw new Error(`行事曆讀取失敗（${res.status}）`);
-      return eventsOnDay(await res.text(), day, TZ);
+      return res.text();
     }),
   );
-  return all.flat().sort((a, b) => Number(b.allDay) - Number(a.allDay) || a.sortKey - b.sortKey);
+  const todays = icsList.flatMap((ics) => eventsOnDay(ics, day, TZ)).sort(byTime);
+  return { today: todays, next: todays.length ? null : nextEventDay(icsList, day, TZ) };
 }
 
 export async function getToday(): Promise<TodayData> {
@@ -578,7 +593,8 @@ export async function getToday(): Promise<TodayData> {
       .map((p) => ({ text: text(p, "作業"), due: date(p, "作業截止")!, url: p.url, daysLeft: diffDays(day, date(p, "作業截止")!) }))
       .filter((h) => h.text)
       .sort((a, b) => a.daysLeft - b.daysLeft),
-    calendar,
+    calendar: calendar?.today ?? null,
+    nextCalendar: calendar?.next ?? null,
     preview,
     n3: n3BatchRange(day)
       ? {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { eventsOnDay } from "./calendar";
+import { eventsOnDay, nextEventDay } from "./calendar";
 
 // 仿 iCloud 匯出的格式：VTIMEZONE + TZID 事件 + 重複事件 + 例外
 const ICS = `BEGIN:VCALENDAR
@@ -72,4 +72,16 @@ describe("eventsOnDay", () => {
   it("stops after UNTIL", () => {
     expect(titles("2026-12-21")).toEqual([]);
   });
+});
+
+describe("nextEventDay", () => {
+  it("finds the next day with events", () => {
+    // 10/30（金）有課 → 10/31 是京都旅行（全天，到 11/1）
+    expect(nextEventDay([ICS], "2026-10-30", "Asia/Tokyo")).toMatchObject({ date: "2026-10-31", events: [{ title: "京都旅行", allDay: true }] });
+    // 11/1 之後：11/2（月）的課
+    const next = nextEventDay([ICS], "2026-11-01", "Asia/Tokyo");
+    expect(next?.date).toBe("2026-11-02");
+    expect(next?.events.map((e) => e.title)).toEqual(["ISI 上課"]);
+  });
+  it("returns null when nothing is coming", () => expect(nextEventDay([ICS], "2027-03-01", "Asia/Tokyo", 7)).toBeNull());
 });
