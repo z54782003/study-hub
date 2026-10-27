@@ -1,23 +1,29 @@
 import Link from "next/link";
-import { getHistory } from "@/lib/data";
-import { formatJP } from "@/lib/dates";
-import { heatmap, level, streak } from "@/lib/history";
+import { getHistory, today } from "@/lib/data";
+import { Icon } from "@/components/Icon";
+import { MonthSwipe } from "./MonthSwipe";
+import { diffDays, formatJP } from "@/lib/dates";
+import { heatmap, level, monthGrid, shiftMonth, streak } from "@/lib/history";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "紀錄・Study Hub" };
 
-const WEEKS = 12;
 const SHADES = ["bg-card-2", "bg-h1", "bg-h2", "bg-h3", "bg-h4"];
+const WEEKDAYS = ["一", "二", "三", "四", "五", "六", "日"];
 
-export default async function HistoryPage({ searchParams }: { searchParams: Promise<{ d?: string }> }) {
-  const { today, attempts } = await getHistory(WEEKS * 7);
-  const { d } = await searchParams;
-  const selected = d && /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : today;
+export default async function HistoryPage({ searchParams }: { searchParams: Promise<{ d?: string; m?: string; k?: string }> }) {
+  const q = await searchParams;
+  const now = today();
+  const thisMonth = now.slice(0, 7);
+  const month = q.m && /^\d{4}-\d{2}$/.test(q.m) && q.m <= thisMonth ? q.m : thisMonth;
+  // 讀到這個月 1 號（最多一年多）
+  const { attempts } = await getHistory(Math.min(diffDays(`${month}-01`, now) + 1, 430));
+  const selected = q.d && /^\d{4}-\d{2}-\d{2}$/.test(q.d) ? q.d : month === thisMonth ? now : `${month}-01`;
 
   const counts: Record<string, number> = {};
   for (const a of attempts) counts[a.day] = (counts[a.day] ?? 0) + 1;
-  const grid = heatmap(today, counts, WEEKS);
-  const thisWeek = new Set(grid.at(-1)!.map((c) => c.day));
+  const grid = monthGrid(month, now, counts);
+  const thisWeek = new Set(heatmap(now, counts, 1)[0].map((c) => c.day));
   const week = attempts.filter((a) => thisWeek.has(a.day));
   const pct = (xs: typeof attempts) => (xs.length ? Math.round((xs.filter((a) => a.correct).length / xs.length) * 100) : 0);
   const dayItems = attempts.filter((a) => a.day === selected);
@@ -29,7 +35,16 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
       return m;
     }, {}),
   );
-  const wrong = dayItems.filter((a) => !a.correct);
+  const kind = byKind.some(([k]) => k === q.k) ? q.k : null;
+  const wrong = dayItems.filter((a) => !a.correct && (!kind || (a.kind || "其他") === kind));
+  const url = (p: { m?: string; d?: string; k?: string | null }) => {
+    const sp = new URLSearchParams({ m: p.m ?? month, d: p.d ?? selected });
+    if (p.k) sp.set("k", p.k);
+    return `/history?${sp}`;
+  };
+  const prev = url({ m: shiftMonth(month, -1), d: `${shiftMonth(month, -1)}-01` });
+  const next = month < thisMonth ? url({ m: shiftMonth(month, 1), d: `${shiftMonth(month, 1)}-01` }) : null;
+  const [y, mo] = month.split("-").map(Number);
 
   return (
     <>
@@ -37,7 +52,7 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
 
       <section className="mb-4 grid grid-cols-3 gap-2 text-center">
         {[
-          { label: "連續天數", value: `${streak(today, counts)} 天` },
+          { label: "連續天數", value: `${streak(now, counts)} 天` },
           { label: "這週作答", value: `${week.length} 題` },
           { label: "這週正確率", value: week.length ? `${pct(week)}%` : "—" },
         ].map((s) => (
@@ -48,35 +63,60 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
         ))}
       </section>
 
-      <section className="mb-5 card p-4">
-        <h2 className="mb-3 text-sm font-semibold">最近 {WEEKS} 週</h2>
-        <div className="flex gap-1">
-          <div className="mr-1 grid grid-rows-7 gap-1 text-[10px] leading-none text-muted">
-            {["一", "", "三", "", "五", "", "日"].map((w, i) => (
-              <span key={i} className="flex h-full items-center">
-                {w}
-              </span>
+      <section className="card mb-5 p-4">
+        <div className="mb-3 flex items-center">
+          <Link href={prev} scroll={false} aria-label="上個月" className="grid size-11 place-items-center text-accent">
+            <Icon name="back" stroke={2.2} />
+          </Link>
+          <h2 className="flex-1 text-center text-[17px] font-bold tabular-nums">
+            {y} 年 {mo} 月
+          </h2>
+          {next ? (
+            <Link href={next} scroll={false} aria-label="下個月" className="grid size-11 place-items-center text-accent">
+              <Icon name="chevron" stroke={2.2} />
+            </Link>
+          ) : (
+            <span className="size-11" />
+          )}
+        </div>
+        <MonthSwipe prev={prev} next={next}>
+          <div className="grid grid-cols-7 gap-1.5 text-center text-[11px] font-semibold text-muted">
+            {WEEKDAYS.map((w) => (
+              <span key={w}>{w}</span>
             ))}
           </div>
-          {grid.map((col) => (
-            <div key={col[0].day} className="grid flex-1 grid-rows-7 gap-1">
-              {col.map((c) =>
-                c.future ? (
-                  <span key={c.day} className="aspect-square" />
-                ) : (
-                  <Link
-                    key={c.day}
-                    href={`/history?d=${c.day}`}
-                    scroll={false}
-                    aria-label={`${c.day} ${c.count} 題`}
-                    className={`aspect-square rounded-[3px] ${SHADES[level(c.count)]} ${c.day === selected ? "ring-2 ring-ink" : ""}`}
-                  />
-                ),
-              )}
-            </div>
+          <div className="mt-1.5 grid grid-cols-7 gap-1.5">
+            {grid.flat().map((c, i) =>
+              !c ? (
+                <span key={i} />
+              ) : c.future ? (
+                <span key={c.day} className="grid aspect-square place-items-center rounded-lg text-[13px] text-muted/60 tabular-nums">
+                  {Number(c.day.slice(8))}
+                </span>
+              ) : (
+                <Link
+                  key={c.day}
+                  href={url({ d: c.day })}
+                  scroll={false}
+                  aria-label={`${c.day} ${c.count} 題`}
+                  aria-current={c.day === selected ? "date" : undefined}
+                  className={`grid aspect-square place-items-center rounded-lg text-[13px] font-semibold tabular-nums ${SHADES[level(c.count)]} ${
+                    level(c.count) >= 4 ? "text-on-accent" : "text-ink"
+                  } ${c.day === selected ? "ring-2 ring-ink ring-offset-1 ring-offset-card" : ""} ${c.day === now ? "underline underline-offset-2" : ""}`}
+                >
+                  {Number(c.day.slice(8))}
+                </Link>
+              ),
+            )}
+          </div>
+        </MonthSwipe>
+        <div className="mt-3 flex items-center justify-end gap-1 text-[11px] text-muted">
+          0
+          {SHADES.map((s) => (
+            <span key={s} className={`size-3 rounded-[3px] ${s}`} />
           ))}
+          40+ 題
         </div>
-        <p className="mt-2 text-xs text-muted">點格子看那一天</p>
       </section>
 
       <section>
@@ -87,31 +127,47 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
           </span>
         </h2>
         {byKind.length > 0 && (
-          <ul className="mb-3 flex flex-wrap gap-2 text-sm">
+          <nav aria-label="類型" className="mb-3 flex flex-wrap gap-1.5">
+            <Link
+              href={url({ k: null })}
+              scroll={false}
+              className={`flex h-9 items-center rounded-full border px-3 text-sm font-semibold ${!kind ? "border-ink bg-ink text-bg" : "border-line bg-card text-ink-2"}`}
+            >
+              全部
+            </Link>
             {byKind.map(([k, v]) => (
-              <li key={k} className="rounded-full border border-line bg-card px-3 py-1">
-                {k} {v.ok}/{v.n}
-              </li>
+              <Link
+                key={k}
+                href={url({ k })}
+                scroll={false}
+                className={`flex h-9 items-center rounded-full border px-3 text-sm font-semibold ${kind === k ? "border-ink bg-ink text-bg" : "border-line bg-card text-ink-2"}`}
+              >
+                {k} <span className="ml-1 tabular-nums opacity-70">{v.ok}/{v.n}</span>
+              </Link>
             ))}
-          </ul>
+          </nav>
         )}
+        {dayItems.length > 0 && wrong.length === 0 && <p className="text-sm text-muted">{kind ? `${kind}沒有錯題` : "這天沒有錯題"}</p>}
         {wrong.length > 0 && (
-          <ul className="space-y-2">
+          <ul className="card divide-y divide-line overflow-hidden">
             {wrong.map((a) => (
               <li key={a.id}>
-                <a href={a.url} target="_blank" rel="noreferrer" className="block rounded-xl border border-line bg-card px-3 py-2 text-sm">
-                  <span className="mr-2 text-xs text-muted">{a.kind}</span>
-                  <span lang="ja">{a.title}</span>
-                  {a.answer && (
-                    <span className="block text-bad" lang="ja">
-                      ✗ {a.answer}
-                    </span>
-                  )}
-                  {a.reference && (
-                    <span className="block text-ok" lang="ja">
-                      ✓ {a.reference}
-                    </span>
-                  )}
+                <a href={a.url} target="_blank" rel="noreferrer" className="flex items-start gap-2 px-4 py-3 text-sm">
+                  <span className="min-w-0 flex-1">
+                    <span className="tag mr-2 bg-card-2 text-ink-2">{a.kind}</span>
+                    <span lang="ja">{a.title}</span>
+                    {a.answer && (
+                      <span className="mt-1 block text-bad" lang="ja">
+                        ✗ {a.answer}
+                      </span>
+                    )}
+                    {a.reference && (
+                      <span className="block text-ok" lang="ja">
+                        ✓ {a.reference}
+                      </span>
+                    )}
+                  </span>
+                  <Icon name="external" size={16} stroke={2} className="mt-0.5 shrink-0 text-muted" label="在 Notion 開啟" />
                 </a>
               </li>
             ))}

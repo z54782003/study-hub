@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { heatmap, level, streak } from "./history";
+import { heatmap, level, monthGrid, shiftMonth, streak } from "./history";
 
 describe("heatmap", () => {
   it("ends in the week containing today, Monday first", () => {
@@ -21,4 +21,23 @@ describe("streak", () => {
 
 describe("level", () => {
   it("buckets counts", () => expect([0, 1, 10, 25, 60].map(level)).toEqual([0, 1, 2, 3, 4]));
+});
+
+describe("monthGrid", () => {
+  it("lays out October 2026 starting on Thursday, Monday first", () => {
+    const g = monthGrid("2026-10", "2026-10-27", { "2026-10-27": 12 });
+    expect(g).toHaveLength(5);
+    expect(g[0].slice(0, 3)).toEqual([null, null, null]);
+    expect(g[0][3]).toEqual({ day: "2026-10-01", count: 0, future: false });
+    expect(g[4][1]).toEqual({ day: "2026-10-27", count: 12, future: false });
+    expect(g[4][2]?.future).toBe(true);
+    expect(g[4][6]).toBeNull();
+  });
+});
+
+describe("shiftMonth", () => {
+  it("crosses years", () => {
+    expect(shiftMonth("2026-01", -1)).toBe("2025-12");
+    expect(shiftMonth("2026-12", 1)).toBe("2027-01");
+  });
 });

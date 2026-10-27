@@ -34,3 +34,27 @@ export function level(count: number): number {
   if (count < 40) return 3;
   return 4;
 }
+
+/** 月曆格子：一列一週（週一在前），前後補 null；month 是 "YYYY-MM" */
+export function monthGrid(month: string, today: string, counts: Record<string, number>): (DayCell | null)[][] {
+  const first = `${month}-01`;
+  const [y, m] = month.split("-").map(Number);
+  const days = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const lead = (weekday(first) + 6) % 7;
+  const cells: (DayCell | null)[] = [
+    ...Array.from({ length: lead }, () => null),
+    ...Array.from({ length: days }, (_, i) => {
+      const day = addDays(first, i);
+      return { day, count: counts[day] ?? 0, future: day > today };
+    }),
+  ];
+  while (cells.length % 7) cells.push(null);
+  return Array.from({ length: cells.length / 7 }, (_, w) => cells.slice(w * 7, w * 7 + 7));
+}
+
+/** "YYYY-MM" 加減幾個月 */
+export function shiftMonth(month: string, delta: number): string {
+  const [y, m] = month.split("-").map(Number);
+  const d = new Date(Date.UTC(y, m - 1 + delta, 1));
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+}
