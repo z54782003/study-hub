@@ -1,7 +1,7 @@
 import { ClassCard } from "@/components/ClassCard";
 import { Icon, type IconName } from "@/components/Icon";
 import { TaskList, type TaskRow } from "@/components/TaskList";
-import { EXAMS, JLPT, NHK_EASY_URL } from "@/lib/config";
+import { COUNTDOWN, EXAMS, NHK_EASY_URL } from "@/lib/config";
 import type { CalendarEvent } from "@/lib/calendar";
 import { getToday } from "@/lib/data";
 import { diffDays, formatJP } from "@/lib/dates";
@@ -51,9 +51,9 @@ export default async function TodayPage() {
   const t = await getToday();
   const reviewTotal = t.review.quiz + t.review.n3 + t.review.grammar;
   const [, m, d] = t.date.split("-").map(Number);
-  // 倒數：左＝最近一場學校考試，右＝JLPT
+  // 倒數：左＝最近一場學校考試，右＝N3 單字背完
   const exam = EXAMS.map((e) => ({ ...e, daysLeft: diffDays(t.date, e.date) })).find((e) => e.daysLeft >= 0);
-  const jlptDays = diffDays(t.date, JLPT.date);
+  const countdownDays = diffDays(t.date, COUNTDOWN.date);
 
   const rows: TaskRow[] = [
     ...(!t.weekend
@@ -121,12 +121,12 @@ export default async function TodayPage() {
           <div className="card rounded-2xl px-3.5 py-3 text-sm text-muted">這一期沒有接下來的考試</div>
         )}
         <div className="card rounded-2xl px-3.5 py-3">
-          <div className="text-xs font-bold text-ink-2">{JLPT.name}</div>
+          <div className="text-xs font-bold text-ink-2">{COUNTDOWN.name}</div>
           <div className="flex items-baseline gap-1">
-            <span className="text-[28px] leading-9 font-bold tabular-nums">{jlptDays}</span>
+            <span className="text-[28px] leading-9 font-bold tabular-nums">{countdownDays}</span>
             <span className="text-sm font-semibold text-ink-2">天</span>
           </div>
-          <div className="text-[13px] text-ink-2">{JLPT.date.replaceAll("-", "/")}（日）</div>
+          <div className="text-[13px] text-ink-2">{formatJP(COUNTDOWN.date)}</div>
         </div>
       </section>
 

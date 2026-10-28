@@ -90,7 +90,7 @@ export async function gradeWithAi(input: {
   return parsed;
 }
 
-const DETAIL_SYSTEM = `你是日本語學校的日文老師，替一位中文母語、程度約 N4–N3、正在準備 JLPT N3 的學生寫單字或文型的詳解卡。
+const DETAIL_SYSTEM = `你是日本語學校的日文老師，替一位中文母語、程度約 N4–N3、正在背 N3 單字和文型的學生寫單字或文型的詳解卡。
 
 - 說明一律用繁體中文（台灣用語），簡短具體，不要客套。
 - usage：意思和用法重點，2–4 句（何時用、語感、正式或口語、常見錯誤）。

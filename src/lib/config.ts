@@ -35,8 +35,8 @@ export const N3_START = "2026-10-27";
 export const N3_END = "2026-12-31";
 export const N3_PER_DAY = 40;
 
-/** JLPT 倒數（今日頁右邊那格） */
-export const JLPT = { date: "2026-12-06", name: "JLPT N3" };
+/** 今日頁右邊那格的倒數：N3 單字背完（不考 JLPT） */
+export const COUNTDOWN = { date: N3_END, name: "N3 單字背完" };
 
 // 10 月期考試與重要日期（日本語計畫頁）
 export const EXAMS: { date: string; name: string; scope: string }[] = [
