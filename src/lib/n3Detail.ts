@@ -34,9 +34,14 @@ export function parseDetail(blocks: { type: string; text: string }[]): N3Detail 
   const start = blocks.findIndex((b) => b.type.startsWith("heading") && b.text.trim().startsWith(DETAIL_HEADING));
   if (start < 0) return null;
   const d: N3Detail = { usage: "", forms: [], collocations: [], examples: [], compare: "" };
+  // 一段一項；Notion AI 有時把全部塞在同一段、用換行分開，也要讀得到
+  const lines: string[] = [];
   for (const b of blocks.slice(start + 1)) {
     if (b.type.startsWith("heading")) break;
-    const m = /^(用法|接續|搭配|例句|比較)[：:]\s*(.*)$/s.exec(b.text.trim());
+    lines.push(...b.text.split("\n"));
+  }
+  for (const line of lines) {
+    const m = /^(用法|接續|搭配|例句|比較)[：:]\s*(.*)$/s.exec(line.trim());
     if (!m) continue;
     const [, label, body] = m;
     if (label === "用法") d.usage = d.usage ? `${d.usage}\n${body}` : body;

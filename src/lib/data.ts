@@ -1279,7 +1279,7 @@ export async function probeDetails(kind: "word" | "grammar", lo: number, hi: num
       if (d.collocations.some((c) => !c.zh)) issues.push("搭配缺中文");
       if (kind === "grammar" && d.forms.length === 0) issues.push("沒有接續");
       const start = blocks.findIndex((b) => b.type.startsWith("heading") && b.text.trim().startsWith(DETAIL_HEADING));
-      const stray = blocks.slice(start + 1).filter((b) => b.text.trim() && !b.type.startsWith("heading") && !/^(用法|接續|搭配|例句|比較)[：:]/.test(b.text.trim()));
+      const stray = blocks.slice(start + 1).flatMap((b) => b.text.split("\n")).filter((t) => t.trim() && !/^(用法|接續|搭配|例句|比較)[：:]/.test(t.trim())).map((text) => ({ text }));
       if (stray.length) issues.push(`讀不到的段落 ${stray.length}：${stray[0].text.slice(0, 30)}`);
     }
     if (issues.length) problems.push({ name, issue: issues.join("、") });

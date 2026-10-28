@@ -32,6 +32,10 @@ describe("n3 detail", () => {
     expect(d?.forms).toEqual(["動詞た形＋ばかり", "名詞＋の＋ばかり"]);
     expect(d?.usage).toBe("");
   });
+  it("reads items put in one paragraph with line breaks", () => {
+    const d = parseDetail([{ type: "heading_3", text: DETAIL_HEADING }, { type: "paragraph", text: detailLines(sample).join("\n") }]);
+    expect(d).toEqual(sample);
+  });
   it("returns null without the heading", () => {
     expect(parseDetail([{ type: "paragraph", text: "用法：…" }])).toBeNull();
   });
