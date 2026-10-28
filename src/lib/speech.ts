@@ -33,9 +33,11 @@ function pickVoice(lang: SpeechLang): SpeechSynthesisVoice | undefined {
 }
 
 /** 念一段文字；再按一次會從頭念（先停掉正在念的） */
-/** 例句裡的振り仮名「面接（めんせつ）」不唸括號，不然會唸兩次 */
+/** 例句裡的振り仮名「通（かよ）って」：把漢字換成標好的讀音再唸，不讓語音自己猜（通って→とおって）；也不會唸兩次 */
 export function stripReadings(text: string): string {
-  return text.replace(/[（(][\u3040-\u30ffー・\s]+[）)]/g, "");
+  return text
+    .replace(/[\u4e00-\u9fff々〆ヶ]+[（(]([\u3040-\u30ffー・\s]+)[）)]/g, "$1")
+    .replace(/[（(][\u3040-\u30ffー・\s]+[）)]/g, "");
 }
 
 export function speak(text: string, lang: SpeechLang, rate = lang === "ja" ? 0.9 : 0.95) {

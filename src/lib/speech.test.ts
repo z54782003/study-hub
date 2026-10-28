@@ -13,9 +13,12 @@ describe("speakableJa", () => {
 });
 
 describe("stripReadings", () => {
-  it("drops kana readings in brackets so the word is read once", () => {
-    expect(stripReadings("明日は大事な面接（めんせつ）があるので、今日美容院で髪を切りました。")).toBe("明日は大事な面接があるので、今日美容院で髪を切りました。");
-    expect(stripReadings("目標（もくひょう）を立（た）てる")).toBe("目標を立てる");
+  it("reads marked kanji by their furigana, once", () => {
+    expect(stripReadings("明日は大事な面接（めんせつ）があるので、今日美容院で髪を切りました。")).toBe("明日は大事なめんせつがあるので、今日美容院で髪を切りました。");
+    expect(stripReadings("弟（おとうと）は小学校（しょうがっこう）に通（かよ）っています。")).toBe("おとうとはしょうがっこうにかよっています。");
+  });
+  it("drops a stray reading that does not follow kanji", () => {
+    expect(stripReadings("たばこをやめる（たばこをやめる）")).toBe("たばこをやめる");
   });
   it("keeps brackets that are not readings", () => {
     expect(stripReadings("駅（東口）で会いましょう。")).toBe("駅（東口）で会いましょう。");
