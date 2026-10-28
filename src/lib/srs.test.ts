@@ -58,6 +58,11 @@ describe("vocab familiarity", () => {
     expect(vocabUpdate("學習中", 1, 0, true).status).toBe("學習中");
     expect(vocabUpdate("學習中", 2, 0, true).status).toBe("熟悉");
   });
+  it("熟悉 needs 6 correct in total to become 精通", () => {
+    expect(vocabUpdate("熟悉", 4, 0, true).status).toBe("熟悉");
+    expect(vocabUpdate("熟悉", 5, 0, true).status).toBe("精通");
+    expect(vocabUpdate("精通", 9, 0, true).status).toBe("精通");
+  });
 });
 
 describe("N3", () => {

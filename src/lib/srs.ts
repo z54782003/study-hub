@@ -25,13 +25,14 @@ export function quizUpdate(today: string, lastTested: string | null, nextReview:
 }
 
 // ── 📖 單字庫（W2 第 4 步／W2-B 第 4 步）────────────────────
-// 錯→熟悉度=忘記、答錯次數+1；對→答對次數+1（忘記→學習中；學習中且答對累計 ≧3 → 熟悉）
+// 錯→熟悉度=忘記、答錯次數+1；對→答對次數+1（忘記→學習中；學習中且答對累計 ≧3 → 熟悉；熟悉且答對累計 ≧6 → 精通）
 export function vocabUpdate(status: string | null, rightCount: number, wrongCount: number, correct: boolean) {
   if (!correct) return { status: "忘記", rightCount, wrongCount: wrongCount + 1 };
   const right = rightCount + 1;
   let next = status ?? "學習中";
   if (next === "忘記" || next === "未學") next = "學習中";
   else if (next === "學習中" && right >= 3) next = "熟悉";
+  else if (next === "熟悉" && right >= 6) next = "精通";
   return { status: next, rightCount: right, wrongCount };
 }
 

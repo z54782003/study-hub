@@ -7,60 +7,30 @@ import { speakableJa } from "@/lib/speech";
 import { markWord, parseUsage } from "@/lib/usage";
 import type { VocabItem } from "@/lib/types";
 
-const LEVELS = ["未學", "忘記", "學習中", "熟悉", "精通"] as const;
+const STATUS_TAG: Record<string, string> = {
+  忘記: "bg-due-soft text-due",
+  學習中: "bg-accent-soft text-accent",
+  熟悉: "bg-accent-soft text-accent",
+  精通: "bg-accent text-on-accent",
+};
 
-/** 熟悉度點一下就存 */
-function Familiarity({ w, status, onChange }: { w: VocabItem; status: string; onChange: (s: string) => void }) {
-  const [save, setSave] = useState<"idle" | "saving" | "saved" | "error">("idle");
-  const pick = async (s: (typeof LEVELS)[number]) => {
-    const before = status;
-    onChange(s);
-    setSave("saving");
-    try {
-      const r = await fetch("/api/vocab/status", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ id: w.id, status: s }) });
-      if (!r.ok) throw new Error();
-      setSave("saved");
-    } catch {
-      onChange(before);
-      setSave("error");
-    }
-  };
+/** 熟悉度只看不改：「練習這課」答題時自動更新（錯→忘記；答對累計 3 次→熟悉、6 次→精通） */
+function Familiarity({ w }: { w: VocabItem }) {
+  const status = w.status ?? "未學";
   return (
-    <section className="space-y-2 border-t border-line pt-3">
-      <div className="label">
-        熟悉度（點一下就存）
-        {save === "saving" && "・儲存中…"}
-        {save === "saved" && "・已存"}
-        {save === "error" && <span className="text-bad">・沒存成功，再點一次</span>}
-      </div>
-      <div role="radiogroup" aria-label="熟悉度" className="grid grid-cols-5 gap-1.5">
-        {LEVELS.map((l) => {
-          const on = l === status;
-          const forgot = l === "忘記";
-          return (
-            <button
-              key={l}
-              type="button"
-              role="radio"
-              aria-checked={on}
-              onClick={() => !on && void pick(l)}
-              className={`h-11 rounded-[12px] border text-sm font-bold ${
-                on ? (forgot ? "border-due bg-due text-card" : "border-accent bg-accent text-on-accent") : `border-line bg-card ${forgot ? "text-due" : "text-ink-2"}`
-              }`}
-            >
-              {l}
-            </button>
-          );
-        })}
-      </div>
+    <section className="flex items-center gap-2 border-t border-line pt-3 text-[13px] text-muted">
+      <span className={`tag ${STATUS_TAG[status] ?? "bg-card-2 text-ink-2"}`}>{status}</span>
+      <span className="tabular-nums">
+        答對 {w.right}・答錯 {w.wrong}
+      </span>
+      <span className="ml-auto">練習時自動更新</span>
     </section>
   );
 }
 
-/** できる日本語一課的單字：一張一張看（上一個／下一個、左右滑、一覽跳字） */
+/** できる日本語一課的單字：一張一張看（上一個／下一個、左右滑、一覽跳字）；熟悉度在練習時自動更新 */
 export function LessonCards({ words, practice }: { words: VocabItem[]; practice: string }) {
   const [i, setI] = useState(0);
-  const [status, setStatus] = useState<Record<string, string>>({});
   const [drag, setDrag] = useState<{ x: number; dx: number } | null>(null);
   const w = words[i];
   const go = (k: number) => setI(Math.max(0, Math.min(words.length - 1, k)));
@@ -155,7 +125,7 @@ export function LessonCards({ words, practice }: { words: VocabItem[]; practice:
             ))}
           </section>
         )}
-        <Familiarity key={w.id} w={w} status={status[w.id] ?? w.status ?? "未學"} onChange={(s) => setStatus((m) => ({ ...m, [w.id]: s }))} />
+        <Familiarity w={w} />
       </article>
 
       <div className="fixed inset-x-0 bottom-[calc(49px+env(safe-area-inset-bottom))] z-20 mx-auto grid max-w-xl grid-cols-[1fr_auto_1fr] items-center gap-2 border-t border-line bg-bg px-4 py-2.5 md:max-w-[760px]">

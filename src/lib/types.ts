@@ -72,6 +72,8 @@ export type VocabItem = {
   lesson: string | null;
   lang: "ja" | "en";
   status: string | null;
+  right: number;
+  wrong: number;
 };
 
 /** 動詞の形：conj＝寫出某一形，group＝判斷是 G1／G2／G3 */

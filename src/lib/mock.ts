@@ -161,6 +161,8 @@ export function mockVocab(): VocabItem[] {
       lesson: "初中級 L3",
       lang: "ja",
       status: "學習中",
+      right: 2,
+      wrong: 1,
     },
     {
       kind: "vocab",
@@ -174,6 +176,8 @@ export function mockVocab(): VocabItem[] {
       lesson: "初中級 L3",
       lang: "ja",
       status: "未學",
+      right: 2,
+      wrong: 1,
     },
   ];
 }
