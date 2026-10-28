@@ -1242,3 +1242,49 @@ export async function getLessonAudio(n: number): Promise<LessonAudio> {
     transcript: page ? await cachedTranscript(page.id).catch(() => []) : [],
   };
 }
+
+// 暫時：檢查 Notion 內文的詳解格式（測完刪掉）
+export async function probeDetails(kind: "word" | "grammar", lo: number, hi: number) {
+  let pages: Page[];
+  if (kind === "grammar") pages = await queryAll(DS.n3Grammar);
+  else {
+    const nos = await cachedN3Numbers();
+    pages = await queryAll(
+      DS.n3Words,
+      {
+        and: [
+          { property: "編號 / 번호", number: { greater_than: lo > 0 ? nos[lo - 1] : 0 } },
+          { property: "編號 / 번호", number: { less_than_or_equal_to: nos[Math.min(hi, nos.length) - 1] } },
+          N3_LEVEL_FILTER,
+        ],
+      },
+      [{ property: "編號 / 번호", direction: "ascending" }],
+    );
+  }
+  const problems: { name: string; issue: string }[] = [];
+  let ok = 0;
+  const check = async (p: Page) => {
+    const name = kind === "grammar" ? text(p, "文型 / 문형") : text(p, "單字 / 단어");
+    const blocks = (await allChildren(p.id)).map((b) => ({ type: b.type, text: richText(b) }));
+    const heads = blocks.filter((b) => b.type.startsWith("heading") && b.text.trim().startsWith(DETAIL_HEADING)).length;
+    const d = parseDetail(blocks);
+    const issues: string[] = [];
+    if (!d) issues.push("沒有詳解");
+    else {
+      if (heads > 1) issues.push(`詳解標題 ${heads} 個`);
+      if (!d.usage) issues.push("缺用法");
+      if (d.examples.length < 2) issues.push(`例句 ${d.examples.length} 句`);
+      if (d.examples.some((e) => !e.kana || !e.zh)) issues.push("例句欄位不齊");
+      if (kind === "word" && d.collocations.length === 0) issues.push("沒有搭配");
+      if (d.collocations.some((c) => !c.zh)) issues.push("搭配缺中文");
+      if (kind === "grammar" && d.forms.length === 0) issues.push("沒有接續");
+      const start = blocks.findIndex((b) => b.type.startsWith("heading") && b.text.trim().startsWith(DETAIL_HEADING));
+      const stray = blocks.slice(start + 1).filter((b) => b.text.trim() && !b.type.startsWith("heading") && !/^(用法|接續|搭配|例句|比較)[：:]/.test(b.text.trim()));
+      if (stray.length) issues.push(`讀不到的段落 ${stray.length}：${stray[0].text.slice(0, 30)}`);
+    }
+    if (issues.length) problems.push({ name, issue: issues.join("、") });
+    else ok++;
+  };
+  for (let i = 0; i < pages.length; i += 8) await Promise.all(pages.slice(i, i + 8).map(check));
+  return { total: pages.length, ok, problems };
+}
