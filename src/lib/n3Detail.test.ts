@@ -36,6 +36,15 @@ describe("n3 detail", () => {
     const d = parseDetail([{ type: "heading_3", text: DETAIL_HEADING }, { type: "paragraph", text: detailLines(sample).join("\n") }]);
     expect(d).toEqual(sample);
   });
+  it("treats unlabeled lines as more of the previous item", () => {
+    const d = parseDetail([
+      { type: "heading_3", text: DETAIL_HEADING },
+      { type: "paragraph", text: "搭配：経験を積む＝累積經驗\n経験がある＝有經驗" },
+      { type: "paragraph", text: "例句：A。｜a。｜甲。\nB。｜b。｜乙。" },
+    ]);
+    expect(d?.collocations).toEqual(sample.collocations);
+    expect(d?.examples.map((e) => e.zh)).toEqual(["甲。", "乙。"]);
+  });
   it("returns null without the heading", () => {
     expect(parseDetail([{ type: "paragraph", text: "用法：…" }])).toBeNull();
   });

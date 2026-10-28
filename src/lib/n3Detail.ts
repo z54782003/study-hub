@@ -40,10 +40,16 @@ export function parseDetail(blocks: { type: string; text: string }[]): N3Detail 
     if (b.type.startsWith("heading")) break;
     lines.push(...b.text.split("\n"));
   }
+  // 沒寫標籤的行算上一項的延續（「搭配：A＝甲」換行「B＝乙」）
+  let last: string | null = null;
   for (const line of lines) {
-    const m = /^(用法|接續|搭配|例句|比較)[：:]\s*(.*)$/s.exec(line.trim());
-    if (!m) continue;
-    const [, label, body] = m;
+    const t = line.trim();
+    if (!t) continue;
+    const m = /^(用法|接續|搭配|例句|比較)[：:]\s*(.*)$/s.exec(t);
+    if (m) last = m[1];
+    if (!last) continue;
+    const label = last;
+    const body = m ? m[2] : t;
     if (label === "用法") d.usage = d.usage ? `${d.usage}\n${body}` : body;
     else if (label === "比較") d.compare = d.compare ? `${d.compare}\n${body}` : body;
     else if (label === "接續") d.forms.push(body);
