@@ -33,11 +33,16 @@ function pickVoice(lang: SpeechLang): SpeechSynthesisVoice | undefined {
 }
 
 /** 念一段文字；再按一次會從頭念（先停掉正在念的） */
+/** 例句裡的振り仮名「面接（めんせつ）」不唸括號，不然會唸兩次 */
+export function stripReadings(text: string): string {
+  return text.replace(/[（(][\u3040-\u30ffー・\s]+[）)]/g, "");
+}
+
 export function speak(text: string, lang: SpeechLang, rate = lang === "ja" ? 0.9 : 0.95) {
   if (!canSpeak() || !text.trim()) return;
   const synth = window.speechSynthesis;
   synth.cancel();
-  const u = new SpeechSynthesisUtterance(text);
+  const u = new SpeechSynthesisUtterance(lang === "ja" ? stripReadings(text) : text);
   u.lang = lang === "ja" ? "ja-JP" : "en-US";
   const voice = pickVoice(lang);
   if (voice) u.voice = voice;
