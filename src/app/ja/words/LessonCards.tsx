@@ -30,9 +30,21 @@ function Familiarity({ w }: { w: VocabItem }) {
 }
 
 /** できる日本語一課的單字：一張一張看（上一個／下一個、左右滑、一覽跳字）；熟悉度在練習時自動更新 */
-export function LessonCards({ groups, practice }: { groups: { title: string; words: VocabItem[] }[]; practice: string }) {
-  // 課本順序攤平；每張卡記得自己在哪一段
+export function LessonCards({
+  groups: all,
+  practice: lessonPractice,
+  sectionPractice,
+}: {
+  groups: { title: string; words: VocabItem[] }[];
+  practice: string;
+  /** 小節名稱 → 只練這一小節的網址 */
+  sectionPractice: Record<string, string>;
+}) {
+  // 選 ST：全部／1-1／1-2／補…；課本順序攤平，每張卡記得自己在哪一段
+  const [sec, setSec] = useState<string | null>(null);
+  const groups = sec === null ? all : all.filter((g) => g.title === sec);
   const words = groups.flatMap((g) => g.words.map((w) => ({ ...w, section: g.title })));
+  const practice = sec === null ? lessonPractice : (sectionPractice[sec] ?? lessonPractice);
   const [i, setI] = useState(0);
   const [drag, setDrag] = useState<{ x: number; dx: number } | null>(null);
   const w = words[i];
@@ -42,8 +54,36 @@ export function LessonCards({ groups, practice }: { groups: { title: string; wor
   }, [i]);
   const usage = parseUsage(w.usage);
 
+  const pick = (t: string | null) => {
+    setSec(t);
+    setI(0);
+  };
+  const named = all.filter((g) => g.title);
+
   return (
     <div className="pb-24">
+      {named.length > 1 && (
+        <div className="-mx-4 mb-3 flex gap-1.5 overflow-x-auto px-4 pb-1" role="tablist" aria-label="課本小節">
+          {[null, ...named.map((g) => g.title)].map((t) => {
+            const on = t === sec;
+            const n = t === null ? all.reduce((a, g) => a + g.words.length, 0) : all.find((g) => g.title === t)!.words.length;
+            return (
+              <button
+                key={t ?? "all"}
+                type="button"
+                role="tab"
+                aria-selected={on}
+                onClick={() => pick(t)}
+                className={`shrink-0 rounded-full border px-3 py-1.5 text-[13px] font-semibold whitespace-nowrap ${on ? "border-accent bg-accent text-on-accent" : "border-line bg-card text-ink-2"}`}
+                lang="ja"
+              >
+                {t === null ? "全部" : t}
+                <span className="ml-1 font-normal opacity-70">{n}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
       <div className="mb-2 flex items-baseline justify-between gap-3">
         <details className="min-w-0 flex-1">
           <summary className="cursor-pointer text-sm font-semibold text-accent">
@@ -78,7 +118,7 @@ export function LessonCards({ groups, practice }: { groups: { title: string; wor
           </div>
         </details>
         <Link href={practice} className="shrink-0 text-sm font-semibold text-accent">
-          練習這課 ›
+          {sec === null ? "練習這課" : "練習這段"} ›
         </Link>
       </div>
 
@@ -167,7 +207,7 @@ export function LessonCards({ groups, practice }: { groups: { title: string; wor
           </button>
         ) : (
           <Link href={practice} className="flex h-12 items-center justify-center rounded-[14px] bg-accent font-bold text-on-accent">
-            練習這課
+            {sec === null ? "練習這課" : "練習這段"}
           </Link>
         )}
       </div>

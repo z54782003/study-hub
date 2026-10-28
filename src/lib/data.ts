@@ -313,8 +313,14 @@ async function vocabQuiz(s: Extract<ReviewSource, { src: "vocab" }>): Promise<Vo
     and.push({ or: lessons.map((n) => ({ property: "課次", select: { equals: `${s.level} L${n}` } })) });
   }
   const pages = await queryAll(DS.vocab, (s.lang === "en" ? ENGLISH_NOT_MASTERED : { and }) as never, undefined, 600);
+  let items = pages.map(toVocab);
+  // 只練課本的某一小節（ST1／ST2／補…）
+  if (s.section && s.level && s.lessons.length === 1) {
+    const groups = groupBySection(items, await cachedLessonSections(s.level, s.lessons[0]).catch(() => [] as IndexSection[]));
+    items = groups.find((g) => g.title === s.section)?.words ?? [];
+  }
   // 忘記 → 學習中 → 未學 → 熟悉 → 精通，同一級隨機
-  return shuffle(pages.map(toVocab))
+  return shuffle(items)
     .sort((a, b) => (VOCAB_RANK[a.status ?? "未學"] ?? 2) - (VOCAB_RANK[b.status ?? "未學"] ?? 2))
     .slice(0, s.count);
 }
@@ -562,7 +568,7 @@ const cachedLessonSections = unstable_cache(
 
 /** 一課的單字，照課本索引的順序分段（ST1／ST2／補…；表裡沒有的放最後） */
 export async function getLessonVocab(level: string, lesson: number): Promise<{ title: string; words: VocabItem[] }[]> {
-  if (useMock()) return groupBySection(mockVocab(), [{ title: "1-1 アルバイトを探す", words: mockVocab().map((w) => w.word) }]);
+  if (useMock()) return groupBySection(mockVocab(), mockVocab().map((w, i) => ({ title: i ? "1-2 新しい友達" : "1-1 アルバイトを探す", words: [w.word] })));
   const [pages, sections] = await Promise.all([
     queryAll(
       DS.vocab,

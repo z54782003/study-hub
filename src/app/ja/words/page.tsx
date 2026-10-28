@@ -1,5 +1,5 @@
 import { getLessonVocab } from "@/lib/data";
-import { LEVELS } from "@/lib/reviewSource";
+import { LEVELS, sourceQuery } from "@/lib/reviewSource";
 import { BackLink } from "@/components/BackLink";
 import { StatusMessage } from "@/components/StatusMessage";
 import { LessonCards } from "./LessonCards";
@@ -23,7 +23,14 @@ export default async function LessonWordsPage({ searchParams }: { searchParams: 
       {count === 0 ? (
         <StatusMessage title="這課在單字庫裡還沒有字" body="在 Notion 單字庫加入這課的字（填好「課次」）後，會出現在這裡。" />
       ) : (
-        <LessonCards key={`${level}-${lesson}`} groups={groups} practice={practice} />
+        <LessonCards
+          key={`${level}-${lesson}`}
+          groups={groups}
+          practice={practice}
+          sectionPractice={Object.fromEntries(
+            groups.map((g) => [g.title, `/review/session?${sourceQuery({ src: "vocab", lang: "ja", level, lessons: [lesson], count: 50, section: g.title })}`]),
+          )}
+        />
       )}
     </>
   );
