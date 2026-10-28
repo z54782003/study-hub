@@ -1,5 +1,5 @@
 "use client";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/Icon";
 import { Speak } from "@/components/Speak";
@@ -53,7 +53,9 @@ function Head({ card }: { card: Card }) {
 /** 一張一張看：上一個／下一個（也可以左右滑），詳解看到哪張才去讀 Notion（順便先讀後面兩張） */
 export function N3Study({ cards }: { cards: Card[] }) {
   const router = useRouter();
-  const [i, setI] = useState(0);
+  // 看到哪張記在網址（?card=頁面id），重新整理回到同一張
+  const params = useSearchParams();
+  const [i, setI] = useState(() => Math.max(0, cards.findIndex((c) => c.id === params.get("card"))));
   const [loaded, setLoaded] = useState<Record<string, Loaded>>({});
   const asked = useRef(new Set<string>());
   const [drag, setDrag] = useState<{ x: number; dx: number } | null>(null);
@@ -80,6 +82,13 @@ export function N3Study({ cards }: { cards: Card[] }) {
   useEffect(() => {
     window.scrollTo({ top: 0 });
   }, [i]);
+
+  useEffect(() => {
+    if (!card) return;
+    const url = new URL(window.location.href);
+    url.searchParams.set("card", card.id);
+    window.history.replaceState(window.history.state, "", url);
+  }, [card]);
 
   if (!card) return null;
   const go = (k: number) => setI(Math.max(0, Math.min(cards.length - 1, k)));
