@@ -1271,3 +1271,51 @@ export async function getLessonAudio(n: number): Promise<LessonAudio> {
     transcript: page ? await cachedTranscript(page.id).catch(() => []) : [],
   };
 }
+
+// 暫時：檢查 Notion 內文的詳解和振り仮名（只讀；測完刪掉）
+export async function probeDetails(kind: string, lo: number, hi: number) {
+  let pages: Page[];
+  let nameOf: (p: Page) => string;
+  if (kind === "grammar") {
+    pages = (await queryAll(DS.n3Grammar)).slice(lo, hi);
+    nameOf = (p) => toGrammar(p).pattern;
+  } else if (kind === "kanji") {
+    pages = (await queryAll(DS.kanji, undefined, [{ timestamp: "created_time", direction: "ascending" }], 2000)).slice(lo, hi);
+    nameOf = (p) => text(p, "漢字");
+  } else {
+    const nos = await cachedN3Numbers();
+    pages = await queryAll(
+      DS.n3Words,
+      {
+        and: [
+          { property: "編號 / 번호", number: { greater_than: lo > 0 ? nos[lo - 1] : 0 } },
+          { property: "編號 / 번호", number: { less_than_or_equal_to: nos[Math.min(hi, nos.length) - 1] } },
+          N3_LEVEL_FILTER,
+        ],
+      },
+      [{ property: "編號 / 번호", direction: "ascending" }],
+    );
+    nameOf = (p) => text(p, "單字 / 단어");
+  }
+  const KANJI = /[一-鿿々]/;
+  const problems: { name: string; issue: string }[] = [];
+  let ok = 0;
+  const check = async (p: Page) => {
+    const d = parseDetail((await allChildren(p.id)).map((b) => ({ type: b.type, text: richText(b) })));
+    const issues: string[] = [];
+    if (!d) issues.push("沒有詳解");
+    else {
+      if (d.examples.length < 2) issues.push(`例句 ${d.examples.length} 句`);
+      if (d.examples.some((e) => !e.zh)) issues.push("例句缺中文");
+      const jas = [...d.examples.map((e) => e.ja), ...d.collocations.map((c) => c.ja)];
+      const bare = d.examples.filter((e) => KANJI.test(e.ja) && !/[（(][぀-ヿー]+[）)]/.test(e.ja)).length;
+      if (bare) issues.push(`${bare} 句例句沒讀音`);
+      const misplaced = jas.flatMap((t) => [...t.matchAll(/(.)[（(][぀-ヿー・]+[）)]/g)].filter((m) => !KANJI.test(m[1])).map((m) => m[0]));
+      if (misplaced.length) issues.push(`讀音位置：${misplaced.slice(0, 2).join(" ")}`);
+    }
+    if (issues.length) problems.push({ name: nameOf(p), issue: issues.join("、") });
+    else ok++;
+  };
+  for (let i = 0; i < pages.length; i += 8) await Promise.all(pages.slice(i, i + 8).map(check));
+  return { total: pages.length, ok, problems };
+}
