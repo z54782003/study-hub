@@ -77,10 +77,22 @@ function TrackRow({ t, active, onPick }: { t: Row; active: boolean; onPick: () =
   );
 }
 
+type Tab = "full" | "st1" | "st1task" | "st2" | "st2task" | "read";
+const TABS: { id: Tab; label: string }[] = [
+  { id: "full", label: "全文" },
+  { id: "st1", label: "ST1 チャレンジ" },
+  { id: "st1task", label: "ST1 やってみよう" },
+  { id: "st2", label: "ST2 チャレンジ" },
+  { id: "st2task", label: "ST2 やってみよう" },
+  { id: "read", label: "話読聞書" },
+];
+const inTab = (t: Track, tab: Tab) =>
+  tab === "full" ? t.kind === "full" : tab === "read" ? t.kind === "read" : `st${t.st}${t.kind === "task" ? "task" : ""}` === tab;
+
 export function LessonAudioView({ tracks, transcript, st }: { tracks: Row[]; transcript: TranscriptPart[]; st: [string, string] | null }) {
   const [current, setCurrent] = useState<number | null>(null);
-  // 全部／只看 ST1／只看 ST2
-  const [only, setOnly] = useState<0 | 1 | 2>(0);
+  // 一次看一段：全文／ST1 チャレンジ／ST1 やってみよう／ST2 チャレンジ／ST2 やってみよう／話読聞書
+  const [tab, setTab] = useState<Tab>("full");
   const playing = tracks.find((t) => t.no === current);
   const row = (t: Row) => <TrackRow key={t.no} t={t} active={t.no === current} onPick={() => setCurrent(t.no)} />;
   const part = (name: string) => transcript.find((p) => p.heading.includes(name));
@@ -96,22 +108,23 @@ export function LessonAudioView({ tracks, transcript, st }: { tracks: Row[]; tra
   return (
     <>
       <div className="mb-24 space-y-3">
-        <div className="flex gap-1.5" role="tablist" aria-label="範圍">
-          {([0, 1, 2] as const).map((n) => (
+        <div className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1" role="tablist" aria-label="段落">
+          {TABS.filter((t) => tracks.some((r) => inTab(r, t.id))).map((t) => (
             <button
-              key={n}
+              key={t.id}
               type="button"
               role="tab"
-              aria-selected={only === n}
-              onClick={() => setOnly(n)}
-              className={`rounded-full border px-3.5 py-1.5 text-[13px] font-semibold ${only === n ? "border-accent bg-accent text-on-accent" : "border-line bg-card text-ink-2"}`}
+              aria-selected={tab === t.id}
+              onClick={() => setTab(t.id)}
+              className={`shrink-0 rounded-full border px-3.5 py-1.5 text-[13px] font-semibold whitespace-nowrap ${tab === t.id ? "border-accent bg-accent text-on-accent" : "border-line bg-card text-ink-2"}`}
+              lang="ja"
             >
-              {n ? `ST${n}` : "全部"}
+              {t.label}
             </button>
           ))}
         </div>
 
-        {only === 0 && full.length > 0 && (
+        {tab === "full" && full.length > 0 && (
           <div className="card overflow-hidden">
             {full.map(row)}
             {listen ? (
@@ -124,8 +137,8 @@ export function LessonAudioView({ tracks, transcript, st }: { tracks: Row[]; tra
           </div>
         )}
 
-        {([1, 2] as const).filter((n) => !only || n === only).map((n) => {
-          const list = tracks.filter((t) => t.st === n);
+        {([1, 2] as const).map((n) => {
+          const list = tracks.filter((t) => t.st === n && inTab(t, tab));
           if (!list.length) return null;
           return (
             <section key={n} className="card overflow-hidden">
@@ -151,7 +164,7 @@ export function LessonAudioView({ tracks, transcript, st }: { tracks: Row[]; tra
           );
         })}
 
-        {only === 0 && read.length > 0 && (
+        {tab === "read" && read.length > 0 && (
           <div className="card overflow-hidden">
             {read.map(row)}
             {story && (
