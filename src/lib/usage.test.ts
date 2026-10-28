@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { markWord, parseUsage } from "./usage";
+import { glossParts, markWord, parseUsage } from "./usage";
 
 describe("parseUsage", () => {
   it("splits phrases and their meanings", () => {
@@ -20,6 +20,17 @@ describe("parseUsage", () => {
       { ja: "〜を楽（たの）しむ", zh: "享受〜" },
       { ja: "相關：楽（たの）しい（い形）", zh: "", note: true },
       { ja: "直接稱呼時用「先生」", zh: "", note: true },
+    ]);
+  });
+});
+
+describe("glossParts", () => {
+  it("separates Chinese notes in brackets from readings", () => {
+    expect(glossParts("落（お）ちる（自）・歯医者（はいしゃ）（牙醫）")).toEqual([
+      { text: "落（お）ちる", zh: false },
+      { text: "（自）", zh: true },
+      { text: "・歯医者（はいしゃ）", zh: false },
+      { text: "（牙醫）", zh: true },
     ]);
   });
 });

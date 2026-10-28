@@ -4,7 +4,7 @@ import { Fragment, useEffect, useState } from "react";
 import { Icon } from "@/components/Icon";
 import { Speak } from "@/components/Speak";
 import { speakableJa } from "@/lib/speech";
-import { parseUsage } from "@/lib/usage";
+import { glossParts, parseUsage } from "@/lib/usage";
 import { Ruby } from "@/components/Ruby";
 import type { VocabItem } from "@/lib/types";
 
@@ -14,6 +14,28 @@ const STATUS_TAG: Record<string, string> = {
   熟悉: "bg-accent-soft text-accent",
   精通: "bg-accent text-on-accent",
 };
+
+/** 「・⚠️」提醒：「相關：」那種把日文和括號裡的中文補充分開顏色，其他（多半是中文說明）照原樣 */
+function Note({ text }: { text: string }) {
+  const rel = text.match(/^相關[：:]\s*(.+)$/);
+  if (!rel) return <>⚠️ <Ruby text={text} /></>;
+  return (
+    <>
+      <span className="tag mr-2 bg-card-2 text-ink-2">相關</span>
+      {glossParts(rel[1]).map((p, i) =>
+        p.zh ? (
+          <span key={i} className="text-sm text-muted">
+            {p.text}
+          </span>
+        ) : (
+          <span key={i} className="text-[15px] font-semibold text-ink" lang="ja">
+            <Ruby text={p.text} />
+          </span>
+        ),
+      )}
+    </>
+  );
+}
 
 /** 熟悉度只看不改：「練習這課」答題時自動更新（錯→忘記；答對累計 3 次→熟悉、6 次→精通） */
 function Familiarity({ w }: { w: VocabItem }) {
@@ -163,8 +185,8 @@ export function LessonCards({
             <dl className="grid grid-cols-[auto_1fr] gap-x-3.5 gap-y-1.5 pt-1.5 text-[15px] leading-loose">
               {usage.map((u, k) =>
                 u.note ? (
-                  <dd key={k} className="col-span-2 text-sm leading-relaxed text-ink-2" lang="ja">
-                    ⚠️ <Ruby text={u.ja} />
+                  <dd key={k} className="col-span-2 text-sm leading-loose text-ink-2">
+                    <Note text={u.ja} />
                   </dd>
                 ) : (
                 <Fragment key={k}>

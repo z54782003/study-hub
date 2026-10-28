@@ -20,6 +20,14 @@ export function parseUsage(s: string): Usage[] {
     });
 }
 
+/** 提醒「相關：落（お）ちる（自）」：括號裡不是讀音（有假名以外的字）的是中文補充，分出來好用不同顏色 */
+export function glossParts(text: string): { text: string; zh: boolean }[] {
+  return text
+    .split(/([（(][^）)]*[^\u3040-\u30ffー・（()）][^）)]*[）)])/)
+    .filter(Boolean)
+    .map((t) => ({ text: t, zh: /^[（(]/.test(t) && !/^[（(][\u3040-\u30ffー・]+[）)]$/.test(t) }));
+}
+
 /** 例句裡把單字本身標出來；找不到就整句一段 */
 export function markWord(sentence: string, word: string): { text: string; hit: boolean }[] {
   let w = word.replace(/[（(].*$/, "").trim();
