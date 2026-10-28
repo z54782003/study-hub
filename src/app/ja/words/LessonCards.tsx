@@ -161,7 +161,12 @@ export function LessonCards({
           <section className="space-y-2">
             <div className="label">搭配與用法</div>
             <dl className="grid grid-cols-[auto_1fr] gap-x-3.5 gap-y-1.5 pt-1.5 text-[15px] leading-loose">
-              {usage.map((u, k) => (
+              {usage.map((u, k) =>
+                u.note ? (
+                  <dd key={k} className="col-span-2 text-sm leading-relaxed text-ink-2" lang="ja">
+                    ⚠️ <Ruby text={u.ja} />
+                  </dd>
+                ) : (
                 <Fragment key={k}>
                   <dt className="font-semibold" lang="ja">
                     <Ruby text={u.ja} />
@@ -170,7 +175,8 @@ export function LessonCards({
                     <Ruby text={u.zh} />
                   </dd>
                 </Fragment>
-              ))}
+                ),
+              )}
             </dl>
           </section>
         )}

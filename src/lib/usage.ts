@@ -1,5 +1,6 @@
 // 單字庫「搭配・用法」欄：「目標を立てる：訂目標／目標を達成する：達成目標」→ 一列一個搭配
-export type Usage = { ja: string; zh: string };
+// 「・⚠️畑 單獨讀 はたけ…」這種提醒整行一列（note），不拆日文／中文
+export type Usage = { ja: string; zh: string; note?: true };
 
 export function parseUsage(s: string): Usage[] {
   return s
@@ -12,7 +13,8 @@ export function parseUsage(s: string): Usage[] {
         .replace(/^搭配[：:]\s*/, ""),
     )
     .filter(Boolean)
-    .map((x) => {
+    .map((x): Usage => {
+      if (/^⚠️?/.test(x)) return { ja: x.replace(/^⚠️?\s*/, ""), zh: "", note: true };
       const m = x.match(/^(.+?)\s*(?:[：:＝=]|——|\s[-–—]\s)\s*(.+)$/);
       return m ? { ja: m[1], zh: m[2] } : { ja: x, zh: "" };
     });

@@ -15,6 +15,13 @@ describe("parseUsage", () => {
       { ja: "目標（もくひょう）を立（た）てる", zh: "訂立目標" },
     ]);
   });
+  it("keeps ⚠️ reminders whole, colons included", () => {
+    expect(parseUsage("・搭配：〜を楽（たの）しむ：享受〜\n・⚠️相關：楽（たの）しい（い形）\n・搭配：⚠️ 直接稱呼時用「先生」")).toEqual([
+      { ja: "〜を楽（たの）しむ", zh: "享受〜" },
+      { ja: "相關：楽（たの）しい（い形）", zh: "", note: true },
+      { ja: "直接稱呼時用「先生」", zh: "", note: true },
+    ]);
+  });
 });
 
 describe("markWord", () => {
