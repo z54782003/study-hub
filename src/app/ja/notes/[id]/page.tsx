@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { BackLink } from "@/components/BackLink";
 import { getClassNote } from "@/lib/data";
 import { formatJP } from "@/lib/dates";
-import type { GrammarPoint, Seg } from "@/lib/noteGrammar";
+import { keyPoints, type GrammarPoint, type Seg } from "@/lib/noteGrammar";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "課堂筆記・Study Hub" };
@@ -12,23 +12,40 @@ function Text({ segs }: { segs: Seg[] }) {
 }
 
 /** 一行就一段，多行就條列 */
-function Lines({ label, lines, warn }: { label: string; lines: Seg[][]; warn?: boolean }) {
+function List({ lines }: { lines: Seg[][] }) {
+  return lines.length === 1 ? (
+    <p lang="ja">
+      <Text segs={lines[0]} />
+    </p>
+  ) : (
+    <ul className="list-disc space-y-1 pl-5" lang="ja">
+      {lines.map((l, i) => (
+        <li key={i}>
+          <Text segs={l} />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** short：只放重點（筆記的粗體），完整內容收在「看完整」 */
+function Lines({ label, lines, warn, short }: { label: string; lines: Seg[][]; warn?: boolean; short?: boolean }) {
   if (!lines.length) return null;
+  const key = short ? keyPoints(lines) : lines;
   return (
     <div className="text-[15px] leading-relaxed">
       <div className={`label ${warn ? "text-due" : ""}`}>{label}</div>
-      {lines.length === 1 ? (
-        <p lang="ja">
-          <Text segs={lines[0]} />
-        </p>
-      ) : (
-        <ul className="list-disc space-y-1 pl-5" lang="ja">
-          {lines.map((l, i) => (
-            <li key={i}>
-              <Text segs={l} />
-            </li>
-          ))}
-        </ul>
+      <List lines={key} />
+      {key !== lines && (
+        <details className="group mt-1">
+          <summary className="cursor-pointer list-none text-[13px] font-semibold text-accent">
+            <span className="group-open:hidden">看完整 ▾</span>
+            <span className="hidden group-open:inline">收起 ▴</span>
+          </summary>
+          <div className="mt-1 text-[14px] text-ink-2">
+            <List lines={lines} />
+          </div>
+        </details>
       )}
     </div>
   );
@@ -45,7 +62,7 @@ function Point({ g }: { g: GrammarPoint }) {
       </summary>
       <div className="space-y-3 border-t border-line px-4 py-3">
         <Lines label="句型" lines={g.pattern} />
-        <Lines label="說明" lines={g.explain} />
+        <Lines label="說明" lines={g.explain} short />
         {g.examples.length > 0 && (
           <div className="text-[15px] leading-relaxed">
             <div className="label">例句</div>
@@ -61,7 +78,7 @@ function Point({ g }: { g: GrammarPoint }) {
             </ol>
           </div>
         )}
-        <Lines label="⚠️ 易錯" lines={g.mistakes} warn />
+        <Lines label="⚠️ 易錯" lines={g.mistakes} warn short />
       </div>
     </details>
   );

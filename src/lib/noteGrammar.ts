@@ -103,3 +103,12 @@ export function parseNoteGrammar(blocks: NoteBlock[]): GrammarPoint[] {
   for (const p of out) p.examples = p.examples.slice(0, EXAMPLES);
   return out;
 }
+
+/** 重點＝筆記裡的粗體：每行只留粗體片段（太短的像「な」「ので」是句中強調，略過）；整段都沒粗體就原樣 */
+export function keyPoints(lines: Seg[][]): Seg[][] {
+  const out = lines.flatMap((l) => {
+    const bold = l.filter((s) => s.bold && s.text.trim().length >= 3).map((s) => s.text.trim().replace(/[。，、]$/, ""));
+    return bold.length ? [[{ text: bold.join("；"), bold: false }]] : [];
+  });
+  return out.length ? out : lines;
+}

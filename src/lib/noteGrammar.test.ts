@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseNoteGrammar, type NoteBlock, type Seg } from "./noteGrammar";
+import { keyPoints, parseNoteGrammar, type NoteBlock, type Seg } from "./noteGrammar";
 
 const segs = (...parts: (string | [string])[]): Seg[] => parts.map((x) => (typeof x === "string" ? { text: x, bold: false } : { text: x[0], bold: true }));
 const p = (type: string, ...parts: (string | [string])[]): NoteBlock => ({ type, segs: segs(...parts) });
@@ -53,5 +53,15 @@ describe("class note grammar", () => {
     const q = parseNoteGrammar([p("heading_2", "文法"), p("paragraph", "① x"), p("bulleted_list_item", "例："), table(true, ["問", "答"], ["—", "只有答。"], ["問。", "答。"])]);
     expect(q[0].examples.map((e) => text(e.ja))).toEqual(["問。 → 答。", "只有答。"]);
     expect(g[2].examples).toEqual([{ ja: segs("金曜日までに出してください。"), note: "最晚星期五" }]);
+  });
+});
+
+describe("keyPoints", () => {
+  it("keeps the bold parts of each line and skips one- or two-character highlights", () => {
+    const lines = [segs("接續：「ん」前面接", ["普通形"], "。", ["な形容詞要把「だ」→「な」"], "（病気", ["な"], "んですが）。"), segs("沒有粗體的一行"), segs("①", ["×広いと → ○広くて"], "。")];
+    expect(keyPoints(lines).map(text)).toEqual(["普通形；な形容詞要把「だ」→「な」", "×広いと → ○広くて"]);
+  });
+  it("falls back to the full text when nothing is bold", () => {
+    expect(keyPoints([segs("全部普通。")]).map(text)).toEqual(["全部普通。"]);
   });
 });
