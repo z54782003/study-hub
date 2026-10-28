@@ -1,5 +1,5 @@
 import "server-only";
-import { unstable_cache } from "next/cache";
+import { revalidateTag, unstable_cache } from "next/cache";
 import { isFullBlock } from "@notionhq/client";
 import { DS, EXAMS, GRAMMAR_ORDER, LESSON_AUDIO_PAGE, TEXTBOOK_INDEX_PARENT, N3_BATCH_SAMPLE, N3_DUE_LIMIT, QUIZ_DAILY_LIMIT, TZ, W3_PARENT_PAGE } from "./config";
 import { addDays, diffDays, formatJP, isWeekend, todayISO } from "./dates";
@@ -81,6 +81,9 @@ const N3_LEVEL_FILTER = {
   ],
 };
 
+// N3 文法補強只有 52 筆、很少變：快取一小時，複習答題改了熟悉度就清掉
+const cachedGrammarAll = unstable_cache(() => queryAll(DS.n3Grammar), ["n3-grammar-all"], { revalidate: 3600, tags: ["n3-grammar"] });
+
 // N3／N2+ 字的編號（排序好）：把「第幾個字」換算成編號範圍。資料庫前段多是 N5，直接用編號切會很不平均
 const cachedN3Numbers = unstable_cache(
   async () =>
@@ -133,7 +136,7 @@ function todaysGrammarNames(day: string): string[] {
 const grammarBase = (s: string | null) => (s ? s.split(" / ")[0] : null);
 
 async function grammarForReview(day: string): Promise<Page[]> {
-  const all = await queryAll(DS.n3Grammar);
+  const all = await cachedGrammarAll();
   const names = todaysGrammarNames(day);
   const picked = all.filter(
     (p) =>
@@ -202,7 +205,7 @@ export async function getN3Batch(day = today()): Promise<{ words: N3WordItem[]; 
       grammar: items.filter((i): i is GrammarItem => i.kind === "grammar"),
     };
   }
-  const [batch, grammarAll] = await Promise.all([n3Batch(day), queryAll(DS.n3Grammar)]);
+  const [batch, grammarAll] = await Promise.all([n3Batch(day), cachedGrammarAll()]);
   const idx = grammarIndexForDate(day);
   const name = idx === null ? null : GRAMMAR_ORDER[idx];
   return {
@@ -634,7 +637,7 @@ export async function getToday(): Promise<TodayData> {
     ),
     safe("今晚複習", getReviewQueue, [] as ReviewItem[]),
     safe("N3 單字", () => n3Batch(day), [] as Page[]),
-    safe("N3 文法", () => queryAll(DS.n3Grammar), [] as Page[]),
+    safe("N3 文法", cachedGrammarAll, [] as Page[]),
     safe("ISI 課堂筆記", () => queryAll(DS.isiNotes, { property: "日期", date: { equals: day } }), [] as Page[]),
     safe(
       "TED Log",
@@ -855,6 +858,7 @@ export async function submitAnswer(payload: AnswerPayload): Promise<void> {
       "熟悉度 / 숙련도": w.status(GRAMMAR_LEVEL_FULL[next]),
       "上次複習 / 지난 복습": w.date(day),
     });
+    revalidateTag("n3-grammar");
   }
   await logged;
 }
