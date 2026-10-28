@@ -63,7 +63,7 @@ export function N3Study({ cards }: { cards: Card[] }) {
     for (const c of cards.slice(i, i + 3)) {
       if (asked.current.has(c.id)) continue;
       asked.current.add(c.id);
-      fetch(`/api/n3/detail?id=${encodeURIComponent(c.id)}`)
+      fetch(`/api/n3/detail?id=${encodeURIComponent(c.id)}`, { cache: "no-store" })
         .then(async (r) => {
           const body = await r.json();
           if (!r.ok) throw new Error(body.error ?? r.status);

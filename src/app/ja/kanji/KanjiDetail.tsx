@@ -10,7 +10,7 @@ export function KanjiDetail({ id, kanji }: { id: string; kanji: string }) {
     if (state.detail !== undefined || state.loading) return;
     setState({ loading: true });
     try {
-      const r = await fetch(`/api/n3/detail?id=${encodeURIComponent(id)}`);
+      const r = await fetch(`/api/n3/detail?id=${encodeURIComponent(id)}`, { cache: "no-store" });
       const body = await r.json();
       if (!r.ok) throw new Error(body.error ?? r.status);
       setState({ detail: body as N3Detail | null });
