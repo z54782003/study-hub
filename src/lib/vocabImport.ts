@@ -18,7 +18,7 @@ async function children(id: string) {
   return out;
 }
 
-export const normWord = (s: string) => s.replace(/[〜～\s]/g, "").replace(/[（(]な[)）]$/, "").replace(/・?する$/, "");
+export const normWord = (s: string) => s.replace(/[〜～\s]/g, "").replace(/^[（(]お[)）]/, "").replace(/[（(]な[)）]$/, "").replace(/・?する$/, "");
 
 async function tableRows(pageId: string): Promise<Row[]> {
   const blocks = await children(pageId);
