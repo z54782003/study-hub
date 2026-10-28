@@ -4,10 +4,16 @@ export type Usage = { ja: string; zh: string };
 export function parseUsage(s: string): Usage[] {
   return s
     .split(/[／\n]/)
-    .map((x) => x.trim())
+    .map((x) =>
+      x
+        .trim()
+        // 舊資料寫成「・搭配：目標を立てる——訂立目標」：去掉開頭的「・」「搭配：」
+        .replace(/^[・•]\s*/, "")
+        .replace(/^搭配[：:]\s*/, ""),
+    )
     .filter(Boolean)
     .map((x) => {
-      const m = x.match(/^(.+?)\s*(?:[：:＝=]|\s[-–—]\s)\s*(.+)$/);
+      const m = x.match(/^(.+?)\s*(?:[：:＝=]|——|\s[-–—]\s)\s*(.+)$/);
       return m ? { ja: m[1], zh: m[2] } : { ja: x, zh: "" };
     });
 }

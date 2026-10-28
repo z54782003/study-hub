@@ -9,6 +9,12 @@ describe("parseUsage", () => {
       { ja: "目標に向かって", zh: "" },
     ]);
   });
+  it("reads the older 「・搭配：X——中文」 lines", () => {
+    expect(parseUsage("・搭配：美容院（びよういん）に行く：去美容院\n・搭配：目標（もくひょう）を立（た）てる——訂立目標")).toEqual([
+      { ja: "美容院（びよういん）に行く", zh: "去美容院" },
+      { ja: "目標（もくひょう）を立（た）てる", zh: "訂立目標" },
+    ]);
+  });
 });
 
 describe("markWord", () => {

@@ -123,6 +123,7 @@ export function LessonCards({
       </div>
 
       <article
+        key={w.id}
         className="card touch-pan-y space-y-4 rounded-[22px] px-5 pt-5.5 pb-4.5"
         style={drag ? { transform: `translateX(${drag.dx}px)` } : undefined}
         onPointerDown={(e) => !(e.target as HTMLElement).closest("a,button") && setDrag({ x: e.clientX, dx: 0 })}
@@ -160,8 +161,8 @@ export function LessonCards({
           <section className="space-y-2">
             <div className="label">搭配與用法</div>
             <dl className="grid grid-cols-[auto_1fr] gap-x-3.5 gap-y-1.5 pt-1.5 text-[15px] leading-loose">
-              {usage.map((u) => (
-                <Fragment key={u.ja}>
+              {usage.map((u, k) => (
+                <Fragment key={k}>
                   <dt className="font-semibold" lang="ja">
                     <Ruby text={u.ja} />
                   </dt>

@@ -49,7 +49,7 @@ function DetailView({ card, loaded }: { card: Card; loaded: Loaded | undefined }
         <section className="space-y-1.5">
           <div className="label">接續</div>
           <ul className="space-y-1 text-[15px]" lang="ja">
-            {d.forms.map((f) => <li key={f}><Ruby text={f} /></li>)}
+            {d.forms.map((f, k) => <li key={k}><Ruby text={f} /></li>)}
           </ul>
         </section>
       )}
@@ -57,8 +57,8 @@ function DetailView({ card, loaded }: { card: Card; loaded: Loaded | undefined }
         <section className="space-y-1.5">
           <div className="label">常用搭配</div>
           <dl className="grid grid-cols-[auto_1fr] gap-x-3.5 gap-y-1.5 text-[15px] leading-relaxed">
-            {d.collocations.map((c) => (
-              <div key={c.ja} className="contents">
+            {d.collocations.map((c, k) => (
+              <div key={k} className="contents">
                 <dt className="font-semibold" lang="ja"><Ruby text={c.ja} /></dt>
                 <dd className="text-ink-2">{c.zh}</dd>
               </div>
@@ -163,6 +163,7 @@ export function N3Study({ cards }: { cards: Card[] }) {
       </details>
 
       <article
+        key={card.id}
         className="card touch-pan-y space-y-4 rounded-[22px] px-5 pt-5.5 pb-4.5"
         style={drag ? { transform: `translateX(${drag.dx}px)` } : undefined}
         onPointerDown={(e) => !(e.target as HTMLElement).closest("a,button") && setDrag({ x: e.clientX, dx: 0 })}
