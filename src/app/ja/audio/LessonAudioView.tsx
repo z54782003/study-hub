@@ -31,7 +31,7 @@ function Lines({ lines }: { lines: Scene["lines"] }) {
 /** 課文全文：場面標題＋台詞 */
 function Transcript({ part }: { part: TranscriptPart }) {
   return (
-    <div className="space-y-3 border-t border-line px-4 py-3" lang="ja">
+    <div className="space-y-3" lang="ja">
       {part.scenes.map((s, i) => (
         <section key={i}>
           {s.title && <h4 className="mb-1 text-xs font-bold text-muted">{s.title}</h4>}
@@ -39,6 +39,21 @@ function Transcript({ part }: { part: TranscriptPart }) {
         </section>
       ))}
     </div>
+  );
+}
+
+/** 文字預設收起來，想看再點開 */
+function Reveal({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <details className="group border-t border-line px-4 py-2.5">
+      <summary className="cursor-pointer list-none text-[13px] font-semibold text-accent">
+        <span className="group-open:hidden">{label} ▾</span>
+        <span className="hidden group-open:inline">收起 ▴</span>
+      </summary>
+      <div className="pt-2" lang="ja">
+        {children}
+      </div>
+    </details>
   );
 }
 
@@ -64,6 +79,8 @@ function TrackRow({ t, active, onPick }: { t: Row; active: boolean; onPick: () =
 
 export function LessonAudioView({ tracks, transcript, st }: { tracks: Row[]; transcript: TranscriptPart[]; st: [string, string] | null }) {
   const [current, setCurrent] = useState<number | null>(null);
+  // 全部／只看 ST1／只看 ST2
+  const [only, setOnly] = useState<0 | 1 | 2>(0);
   const playing = tracks.find((t) => t.no === current);
   const row = (t: Row) => <TrackRow key={t.no} t={t} active={t.no === current} onPick={() => setCurrent(t.no)} />;
   const part = (name: string) => transcript.find((p) => p.heading.includes(name));
@@ -79,14 +96,35 @@ export function LessonAudioView({ tracks, transcript, st }: { tracks: Row[]; tra
   return (
     <>
       <div className="mb-24 space-y-3">
-        {full.length > 0 && (
+        <div className="flex gap-1.5" role="tablist" aria-label="範圍">
+          {([0, 1, 2] as const).map((n) => (
+            <button
+              key={n}
+              type="button"
+              role="tab"
+              aria-selected={only === n}
+              onClick={() => setOnly(n)}
+              className={`rounded-full border px-3.5 py-1.5 text-[13px] font-semibold ${only === n ? "border-accent bg-accent text-on-accent" : "border-line bg-card text-ink-2"}`}
+            >
+              {n ? `ST${n}` : "全部"}
+            </button>
+          ))}
+        </div>
+
+        {only === 0 && full.length > 0 && (
           <div className="card overflow-hidden">
             {full.map(row)}
-            {listen ? <Transcript part={listen} /> : <p className="border-t border-line px-4 py-3 text-sm text-muted">讀不到這課的課文（Notion「初中級課本索引」）</p>}
+            {listen ? (
+              <Reveal label="看課文">
+                <Transcript part={listen} />
+              </Reveal>
+            ) : (
+              <p className="border-t border-line px-4 py-3 text-sm text-muted">讀不到這課的課文（Notion「初中級課本索引」）</p>
+            )}
           </div>
         )}
 
-        {([1, 2] as const).map((n) => {
+        {([1, 2] as const).filter((n) => !only || n === only).map((n) => {
           const list = tracks.filter((t) => t.st === n);
           if (!list.length) return null;
           return (
@@ -100,20 +138,11 @@ export function LessonAudioView({ tracks, transcript, st }: { tracks: Row[]; tra
                   return (
                     <div key={t.no}>
                       {row(t)}
-                      {text &&
-                        (t.kind === "task" ? (
-                          // やってみよう是聽力題：スクリプト先收起來
-                          <details className="px-4 pb-3">
-                            <summary className="cursor-pointer text-[13px] font-semibold text-accent">看スクリプト</summary>
-                            <div className="pt-2" lang="ja">
-                              <Lines lines={text.lines} />
-                            </div>
-                          </details>
-                        ) : (
-                          <div className="px-4 pt-1 pb-3" lang="ja">
-                            <Lines lines={text.lines} />
-                          </div>
-                        ))}
+                      {text && (
+                        <Reveal label={t.kind === "task" ? "看スクリプト" : "看文字"}>
+                          <Lines lines={text.lines} />
+                        </Reveal>
+                      )}
                     </div>
                   );
                 })}
@@ -122,10 +151,14 @@ export function LessonAudioView({ tracks, transcript, st }: { tracks: Row[]; tra
           );
         })}
 
-        {read.length > 0 && (
+        {only === 0 && read.length > 0 && (
           <div className="card overflow-hidden">
             {read.map(row)}
-            {story && <Transcript part={story} />}
+            {story && (
+              <Reveal label="看短文">
+                <Transcript part={story} />
+              </Reveal>
+            )}
           </div>
         )}
       </div>
