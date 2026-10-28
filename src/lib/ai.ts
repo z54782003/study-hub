@@ -1,6 +1,5 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
-import type { N3Detail } from "./n3Detail";
 
 export type AiGrade = { correct: boolean; feedback: string; suggestion: string };
 
@@ -88,83 +87,6 @@ export async function gradeWithAi(input: {
   }
   if (typeof parsed.correct !== "boolean") throw new Error("AI 回覆缺少 correct 欄位");
   return parsed;
-}
-
-const DETAIL_SYSTEM = `你是日本語學校的日文老師，替一位中文母語、程度約 N4–N3、正在背 N3 單字和文型的學生寫單字或文型的詳解卡。
-
-- 說明一律用繁體中文（台灣用語），簡短具體，不要客套。
-- usage：意思和用法重點，2–4 句（何時用、語感、正式或口語、常見錯誤）。
-- forms：只有文型要寫，列出接續方式（例：動詞た形＋ばかり）；單字留空陣列。
-- collocations：單字寫 2–4 個常用搭配（日文＋中文）；文型可留空陣列。
-- examples：3 句自然的日文例句，程度 N3 左右，要用到該單字或文型；kana 是整句的平假名讀音（不用空格）；zh 是中文翻譯。
-- compare：和意思相近、容易混淆的詞或文型比較，1–2 句；沒有就留空字串。
-
-如果是「漢字」：
-- usage：這個字的意思，以及音読み、訓読み各在什麼情況用（例：單獨當動詞用訓讀，組成熟語多半用音讀），2–4 句；可以加一句字形記憶法。
-- forms：留空陣列。
-- collocations：2–4 個用到這個字的常用詞（日文寫「漢字（かな）」的形式，例「食事（しょくじ）」）＋中文。
-- examples：3 句 N4–N3 程度的例句，每句都用到這個字；ja 欄裡每個漢字詞後面用全形括號加平假名讀音（例「毎朝（まいあさ）牛乳（ぎゅうにゅう）を飲（の）みます。」）；kana 留空字串；zh 是中文翻譯。
-- compare：和形近字或同音字的差別，1–2 句；沒有就留空字串。`;
-
-const DETAIL_SCHEMA = {
-  type: "object",
-  properties: {
-    usage: { type: "string" },
-    forms: { type: "array", items: { type: "string" } },
-    collocations: {
-      type: "array",
-      items: { type: "object", properties: { ja: { type: "string" }, zh: { type: "string" } }, required: ["ja", "zh"], additionalProperties: false },
-    },
-    examples: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: { ja: { type: "string" }, kana: { type: "string" }, zh: { type: "string" } },
-        required: ["ja", "kana", "zh"],
-        additionalProperties: false,
-      },
-    },
-    compare: { type: "string" },
-  },
-  required: ["usage", "forms", "collocations", "examples", "compare"],
-  additionalProperties: false,
-};
-
-/** N3 單字／文型詳解：只在 Notion 內文還沒有詳解時呼叫一次 */
-export async function generateN3Detail(input: { kind: "word" | "grammar" | "kanji"; fields: Record<string, string> }): Promise<N3Detail> {
-  if (!hasAi()) throw new Error("Vercel 沒有讀到 ANTHROPIC_API_KEY");
-  client ??= new Anthropic();
-  const response = await client.messages
-    .create({
-      model: "claude-haiku-5-5",
-      max_tokens: 3000,
-      system: DETAIL_SYSTEM,
-      output_config: { effort: "low", format: { type: "json_schema", schema: DETAIL_SCHEMA } },
-      messages: [
-        {
-          role: "user",
-          content: [
-            { word: "請寫這個 N3 單字的詳解：", grammar: "請寫這個 N3 文型的詳解：", kanji: "請寫這個漢字的詳解：" }[input.kind],
-            ...Object.entries(input.fields)
-              .filter(([, v]) => v)
-              .map(([k, v]) => `${k}：${v}`),
-          ].join("\n"),
-        },
-      ],
-    })
-    .catch(explainApiError);
-  if (response.stop_reason !== "end_turn") throw new Error(`AI 沒有寫完（${response.stop_reason}）`);
-  const text = response.content.flatMap((b) => (b.type === "text" ? [b.text] : [])).join("");
-  const d = JSON.parse(text) as N3Detail;
-  const one = (s: string) => s.replace(/[\n｜＝]/g, " ").trim();
-  // 存回 Notion 時一行一段、用「｜」「＝」分欄，所以內容裡不能有這些字元
-  return {
-    usage: d.usage.trim(),
-    forms: d.forms.map(one).filter(Boolean),
-    collocations: d.collocations.map((c) => ({ ja: one(c.ja), zh: one(c.zh) })).filter((c) => c.ja),
-    examples: d.examples.map((e) => ({ ja: one(e.ja), kana: one(e.kana), zh: one(e.zh) })).filter((e) => e.ja),
-    compare: d.compare.trim(),
-  };
 }
 
 function explainApiError(e: unknown): never {

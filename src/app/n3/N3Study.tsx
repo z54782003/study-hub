@@ -13,10 +13,11 @@ type Card = N3WordItem | GrammarItem;
 type Loaded = { detail?: N3Detail; error?: string };
 
 function DetailView({ card, loaded }: { card: Card; loaded: Loaded | undefined }) {
-  if (!loaded) return <p className="text-sm text-muted">詳解載入中…（第一次看要等 AI 寫，約 5–10 秒）</p>;
+  if (!loaded) return <p className="text-sm text-muted">詳解載入中…</p>;
   if (loaded.error) return <p className="text-sm text-bad">詳解讀不到：{loaded.error}</p>;
+  if (!loaded.detail) return <p className="text-sm text-muted">Notion 還沒有這個的「📘 詳解」。</p>;
   const mark = card.kind === "n3" ? card.word : card.pattern.replace(/^〜/, "").split(/[／（(]/)[0];
-  return <DetailBody d={loaded.detail!} mark={mark} />;
+  return <DetailBody d={loaded.detail} mark={mark} />;
 }
 
 function Head({ card }: { card: Card }) {
@@ -49,7 +50,7 @@ function Head({ card }: { card: Card }) {
   );
 }
 
-/** 一張一張看：上一個／下一個（也可以左右滑），詳解看到哪張才去讀（順便先讀後面兩張） */
+/** 一張一張看：上一個／下一個（也可以左右滑），詳解看到哪張才去讀 Notion（順便先讀後面兩張） */
 export function N3Study({ cards }: { cards: Card[] }) {
   const router = useRouter();
   const [i, setI] = useState(0);
@@ -66,7 +67,7 @@ export function N3Study({ cards }: { cards: Card[] }) {
         .then(async (r) => {
           const body = await r.json();
           if (!r.ok) throw new Error(body.error ?? r.status);
-          return { detail: body as N3Detail };
+          return { detail: (body as N3Detail | null) ?? undefined };
         })
         .catch((e: Error) => {
           asked.current.delete(c.id); // 下次切回來再試

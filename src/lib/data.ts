@@ -3,9 +3,9 @@ import { revalidateTag, unstable_cache } from "next/cache";
 import { isFullBlock } from "@notionhq/client";
 import { DS, EXAMS, GRAMMAR_ORDER, LESSON_AUDIO_PAGE, TEXTBOOK_INDEX_PARENT, N3_BATCH_SAMPLE, N3_DUE_LIMIT, QUIZ_DAILY_LIMIT, TZ, W3_PARENT_PAGE } from "./config";
 import { addDays, diffDays, formatJP, isWeekend, todayISO } from "./dates";
-import { generateN3Detail, gradeWithAi } from "./ai";
+import { gradeWithAi } from "./ai";
 import { groupBySection, sectionTitle, type IndexSection } from "./lessonOrder";
-import { DETAIL_HEADING, detailLines, parseDetail, type N3Detail } from "./n3Detail";
+import { parseDetail, type N3Detail } from "./n3Detail";
 import { autoGrade, gradeChoice, parseChoices } from "./grading";
 import { mockAnswer, mockHistory, mockN3Detail, mockJournal, mockReview, mockToday, mockVocab } from "./mock";
 import { byTime, eventsOnDay, nextEventDay, type CalendarEvent } from "./calendar";
@@ -215,37 +215,13 @@ export async function getN3Batch(day = today()): Promise<{ words: N3WordItem[]; 
   };
 }
 
-/** N3 單字／文型、漢字的詳解：先讀 Notion 頁內文的「📘 詳解」，沒有就請 AI 寫一份存回去 */
-export async function getN3Detail(id: string): Promise<N3Detail> {
+/** N3 單字／文型、漢字的詳解：只讀 Notion 頁內文的「📘 詳解」（由 Notion AI 寫好；App 不產生，省 API 費用）；沒有就回傳 null */
+export async function getN3Detail(id: string): Promise<N3Detail | null> {
   if (useMock()) return mockN3Detail(id);
   const page = await getPage(id);
   const source = page.parent.type === "data_source_id" ? page.parent.data_source_id.replace(/-/g, "") : "";
-  const kind =
-    source === DS.n3Words.replace(/-/g, "") ? "word" : source === DS.n3Grammar.replace(/-/g, "") ? "grammar" : source === DS.kanji.replace(/-/g, "") ? "kanji" : null;
-  if (!kind) throw new Error("不是 N3 單字、文型或漢字的頁面");
-  const saved = parseDetail((await allChildren(id)).map((b) => ({ type: b.type, text: richText(b) })));
-  if (saved) return saved;
-  const fields =
-    kind === "word"
-      ? (({ word, reading, meaning, pos, note }) => ({ 單字: word, 讀音: reading, 中文: meaning, 詞性: pos ?? "", 備註: note }))(toN3(page, "batch"))
-      : kind === "grammar"
-        ? (({ pattern, meaning, connection, confusable }) => ({ 文型: pattern, 中文説明: meaning, 接續: connection, 易混淆: confusable }))(toGrammar(page))
-        : (({ kanji, on, kun, meaning, examples, hint, confusable }) => ({
-            漢字: kanji,
-            音読み: on,
-            訓読み: kun,
-            中文意思: meaning,
-            例詞: examples.map((e) => `${e.word}（${e.reading}）${e.zh}`).join("、"),
-            字形提示: hint,
-            易混淆: confusable,
-          }))(toKanji(page));
-  const detail = await generateN3Detail({ kind, fields });
-  const para = (content: string) => ({ paragraph: { rich_text: [{ text: { content: content.slice(0, 2000) } }] } });
-  await notion().blocks.children.append({
-    block_id: id,
-    children: [{ heading_3: { rich_text: [{ text: { content: DETAIL_HEADING } }] } }, ...detailLines(detail).map(para)],
-  });
-  return detail;
+  if (![DS.n3Words, DS.n3Grammar, DS.kanji].some((ds) => ds.replace(/-/g, "") === source)) throw new Error("不是 N3 單字、文型或漢字的頁面");
+  return parseDetail((await allChildren(id)).map((b) => ({ type: b.type, text: richText(b) })));
 }
 
 // ── 題庫練習／單字測驗（複習頁的篩選入口）──────────────────
