@@ -9,19 +9,21 @@ export const normWord = (s: string) =>
 /** 「4-1｜生活を楽しむ（p.56–59）」→「4-1 生活を楽しむ」；「補｜話読聞書・もう一度聞こう（p.64・66）」→「補 話読聞書・もう一度聞こう」 */
 export const sectionTitle = (h: string) => h.replace(/[（(]p\.[^）)]*[）)]\s*$/, "").replace("｜", " ").trim();
 
-/** 單字庫的字照課本順序分段；課本表裡沒有的放最後「其他」 */
+/** 小節只留編號：「4-1 生活を楽しむ」→「4-1」；補充、課本表以外的字都歸「補充」 */
+export const shortSection = (title: string) => /^\d+-\d+/.exec(title)?.[0] ?? "補充";
+
+/** 單字庫的字照課本順序分段（4-1、4-2…，最後是「補充」：話読聞書、もう一度聞こう和課本表以外的字） */
 export function groupBySection<T extends { word: string }>(words: T[], sections: IndexSection[]): { title: string; words: T[] }[] {
-  const pos = new Map<string, [number, number]>();
-  sections.forEach((s, i) => s.words.forEach((w, j) => pos.has(normWord(w)) || pos.set(normWord(w), [i, j])));
-  const out = sections.map((s) => ({ title: s.title, words: [] as (T & { _j: number })[] }));
-  const rest: T[] = [];
-  for (const w of words) {
-    const p = pos.get(normWord(w.word));
-    if (p) out[p[0]].words.push({ ...w, _j: p[1] });
-    else rest.push(w);
-  }
-  return [
-    ...out.filter((s) => s.words.length).map((s) => ({ title: s.title, words: s.words.sort((a, b) => a._j - b._j).map(({ _j, ...w }) => w as unknown as T) })),
-    ...(rest.length ? [{ title: sections.length ? "其他（課本表以外）" : "", words: rest }] : []),
-  ];
+  const pos = new Map<string, number>();
+  let n = 0;
+  for (const s of sections) for (const w of s.words) if (!pos.has(normWord(w))) pos.set(normWord(w), n++);
+  const sectionOf = new Map<string, string>();
+  for (const s of sections) for (const w of s.words) if (!sectionOf.has(normWord(w))) sectionOf.set(normWord(w), shortSection(s.title));
+  const order = [...new Set(sections.map((s) => shortSection(s.title)))];
+  if (!sections.length) return words.length ? [{ title: "", words }] : [];
+  if (!order.includes("補充")) order.push("補充");
+  const groups = new Map(order.map((t) => [t, [] as T[]]));
+  const sorted = [...words].sort((a, b) => (pos.get(normWord(a.word)) ?? Infinity) - (pos.get(normWord(b.word)) ?? Infinity));
+  for (const w of sorted) groups.get(sectionOf.get(normWord(w.word)) ?? "補充")!.push(w);
+  return order.map((title) => ({ title, words: groups.get(title)! })).filter((g) => g.words.length);
 }
