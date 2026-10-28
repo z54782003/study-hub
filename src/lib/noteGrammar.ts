@@ -59,12 +59,14 @@ function tableExamples(t: NoteBlock): Example[] {
   const body = t.header ? rows.slice(1) : rows;
   const jaCols = head ? head.flatMap((h, i) => (/出處|說明|備註|理由|中文/.test(h) ? [] : [i])) : [0];
   const noteCol = head ? head.findIndex((h) => /說明|中文/.test(h)) : -1;
-  return body.flatMap((r) => {
+  const rows2 = body.flatMap((r) => {
     const parts = jaCols.map((i) => r[i] ?? []).filter(hasText);
     if (!parts.length) return [];
     const ja = parts.flatMap((p, i) => (i ? [{ text: " → ", bold: false }, ...p] : p));
-    return [{ ja, note: noteCol >= 0 && r[noteCol] && hasText(r[noteCol]) ? plain(r[noteCol]) : "" }];
+    return [{ ja, note: noteCol >= 0 && r[noteCol] && hasText(r[noteCol]) ? plain(r[noteCol]) : "", full: parts.length === jaCols.length }];
   });
+  // 問答都有的列先用（「—」只有答的列排後面）
+  return [...rows2.filter((r) => r.full), ...rows2.filter((r) => !r.full)].map(({ ja, note }) => ({ ja, note }));
 }
 
 export function parseNoteGrammar(blocks: NoteBlock[]): GrammarPoint[] {

@@ -49,6 +49,9 @@ describe("class note grammar", () => {
     expect(g[0].examples.map((e) => text(e.ja))).toEqual(["歯が痛いんですが、〜。", "ちょっと聞きたいんですが。"]);
     expect(g[0].mistakes.map(text)).toEqual(["①後面才是重點"]);
     expect(g[1].examples.map((e) => text(e.ja))).toEqual(["スキーがしたいんですが。 → スキーなら北海道がいいですよ。", "温泉なら別府がいいですよ。"]);
+    // 問答都有的列優先
+    const q = parseNoteGrammar([p("heading_2", "文法"), p("paragraph", "① x"), p("bulleted_list_item", "例："), table(true, ["問", "答"], ["—", "只有答。"], ["問。", "答。"])]);
+    expect(q[0].examples.map((e) => text(e.ja))).toEqual(["問。 → 答。", "只有答。"]);
     expect(g[2].examples).toEqual([{ ja: segs("金曜日までに出してください。"), note: "最晚星期五" }]);
   });
 });
