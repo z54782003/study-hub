@@ -4,7 +4,8 @@ import { Fragment, useEffect, useState } from "react";
 import { Icon } from "@/components/Icon";
 import { Speak } from "@/components/Speak";
 import { speakableJa } from "@/lib/speech";
-import { markWord, parseUsage } from "@/lib/usage";
+import { parseUsage } from "@/lib/usage";
+import { Ruby } from "@/components/Ruby";
 import type { VocabItem } from "@/lib/types";
 
 const STATUS_TAG: Record<string, string> = {
@@ -118,13 +119,15 @@ export function LessonCards({ groups, practice }: { groups: { title: string; wor
         {usage.length > 0 && (
           <section className="space-y-2">
             <div className="label">搭配與用法</div>
-            <dl className="grid grid-cols-[auto_1fr] gap-x-3.5 gap-y-1.5 text-[15px] leading-relaxed">
+            <dl className="grid grid-cols-[auto_1fr] gap-x-3.5 gap-y-1.5 pt-1.5 text-[15px] leading-loose">
               {usage.map((u) => (
                 <Fragment key={u.ja}>
                   <dt className="font-semibold" lang="ja">
-                    {u.ja}
+                    <Ruby text={u.ja} />
                   </dt>
-                  <dd className="text-ink-2">{u.zh}</dd>
+                  <dd className="text-ink-2">
+                    <Ruby text={u.zh} />
+                  </dd>
                 </Fragment>
               ))}
             </dl>
@@ -136,8 +139,8 @@ export function LessonCards({ groups, practice }: { groups: { title: string; wor
             {w.examples.map((e, k) => (
               <div key={k} className="flex items-start">
                 <div className="flex-1">
-                  <p className="text-[17px] leading-loose" lang="ja">
-                    {markWord(e.ja, w.word).map((p, j) => (p.hit ? <b key={j} className="text-accent">{p.text}</b> : <span key={j}>{p.text}</span>))}
+                  <p className="pt-1.5 text-[17px] leading-loose" lang="ja">
+                    <Ruby text={e.ja} word={w.word} />
                   </p>
                   {e.zh && <p className="text-sm text-ink-2">{e.zh}</p>}
                 </div>

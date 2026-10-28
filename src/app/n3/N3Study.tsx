@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/Icon";
 import { Speak } from "@/components/Speak";
 import { speakableJa } from "@/lib/speech";
-import { markWord } from "@/lib/usage";
+import { Ruby } from "@/components/Ruby";
 import type { N3Detail } from "@/lib/n3Detail";
 import type { GrammarItem, N3WordItem } from "@/lib/types";
 
@@ -19,8 +19,8 @@ function Examples({ list, mark }: { list: N3Detail["examples"]; mark: string }) 
       {list.map((e, i) => (
         <div key={i} className="flex items-start">
           <div className="flex-1 space-y-0.5">
-            <p className="text-[17px] leading-relaxed" lang="ja">
-              {markWord(e.ja, mark).map((p, j) => (p.hit ? <b key={j} className="text-accent">{p.text}</b> : <span key={j}>{p.text}</span>))}
+            <p className="pt-1.5 text-[17px] leading-loose" lang="ja">
+              <Ruby text={e.ja} word={mark} />
             </p>
             {e.kana && <p className="text-[13px] text-muted" lang="ja">{e.kana}</p>}
             {e.zh && <p className="text-sm text-ink-2">{e.zh}</p>}
@@ -49,7 +49,7 @@ function DetailView({ card, loaded }: { card: Card; loaded: Loaded | undefined }
         <section className="space-y-1.5">
           <div className="label">接續</div>
           <ul className="space-y-1 text-[15px]" lang="ja">
-            {d.forms.map((f) => <li key={f}>{f}</li>)}
+            {d.forms.map((f) => <li key={f}><Ruby text={f} /></li>)}
           </ul>
         </section>
       )}
@@ -59,7 +59,7 @@ function DetailView({ card, loaded }: { card: Card; loaded: Loaded | undefined }
           <dl className="grid grid-cols-[auto_1fr] gap-x-3.5 gap-y-1.5 text-[15px] leading-relaxed">
             {d.collocations.map((c) => (
               <div key={c.ja} className="contents">
-                <dt className="font-semibold" lang="ja">{c.ja}</dt>
+                <dt className="font-semibold" lang="ja"><Ruby text={c.ja} /></dt>
                 <dd className="text-ink-2">{c.zh}</dd>
               </div>
             ))}
@@ -102,7 +102,7 @@ function Head({ card }: { card: Card }) {
         {card.level && <span className="tag bg-card-2 text-ink-2">{card.level}</span>}
       </div>
       <p className="text-2xl leading-snug font-bold">{card.meaning}</p>
-      {card.note && <p className="text-sm text-ink-2" lang="ja">{card.note}</p>}
+      {card.note && <p className="text-sm text-ink-2" lang="ja"><Ruby text={card.note} /></p>}
     </div>
   );
 }
