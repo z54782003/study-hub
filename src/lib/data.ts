@@ -215,19 +215,30 @@ export async function getN3Batch(day = today()): Promise<{ words: N3WordItem[]; 
   };
 }
 
-/** N3 單字／文型詳解：先讀 Notion 頁內文的「📘 詳解」，沒有就請 AI 寫一份存回去 */
+/** N3 單字／文型、漢字的詳解：先讀 Notion 頁內文的「📘 詳解」，沒有就請 AI 寫一份存回去 */
 export async function getN3Detail(id: string): Promise<N3Detail> {
   if (useMock()) return mockN3Detail(id);
   const page = await getPage(id);
   const source = page.parent.type === "data_source_id" ? page.parent.data_source_id.replace(/-/g, "") : "";
-  const kind = source === DS.n3Words.replace(/-/g, "") ? "word" : source === DS.n3Grammar.replace(/-/g, "") ? "grammar" : null;
-  if (!kind) throw new Error("不是 N3 單字或文型的頁面");
+  const kind =
+    source === DS.n3Words.replace(/-/g, "") ? "word" : source === DS.n3Grammar.replace(/-/g, "") ? "grammar" : source === DS.kanji.replace(/-/g, "") ? "kanji" : null;
+  if (!kind) throw new Error("不是 N3 單字、文型或漢字的頁面");
   const saved = parseDetail((await allChildren(id)).map((b) => ({ type: b.type, text: richText(b) })));
   if (saved) return saved;
   const fields =
     kind === "word"
       ? (({ word, reading, meaning, pos, note }) => ({ 單字: word, 讀音: reading, 中文: meaning, 詞性: pos ?? "", 備註: note }))(toN3(page, "batch"))
-      : (({ pattern, meaning, connection, confusable }) => ({ 文型: pattern, 中文説明: meaning, 接續: connection, 易混淆: confusable }))(toGrammar(page));
+      : kind === "grammar"
+        ? (({ pattern, meaning, connection, confusable }) => ({ 文型: pattern, 中文説明: meaning, 接續: connection, 易混淆: confusable }))(toGrammar(page))
+        : (({ kanji, on, kun, meaning, examples, hint, confusable }) => ({
+            漢字: kanji,
+            音読み: on,
+            訓読み: kun,
+            中文意思: meaning,
+            例詞: examples.map((e) => `${e.word}（${e.reading}）${e.zh}`).join("、"),
+            字形提示: hint,
+            易混淆: confusable,
+          }))(toKanji(page));
   const detail = await generateN3Detail({ kind, fields });
   const para = (content: string) => ({ paragraph: { rich_text: [{ text: { content: content.slice(0, 2000) } }] } });
   await notion().blocks.children.append({

@@ -5,6 +5,7 @@ import { KANJI_CHAPTERS } from "@/lib/config";
 import { getKanji, kanjiChapterCounts } from "@/lib/data";
 import { BackLink } from "@/components/BackLink";
 import { StatusMessage } from "@/components/StatusMessage";
+import { KanjiDetail } from "./KanjiDetail";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "漢字表・Study Hub" };
@@ -100,6 +101,7 @@ export default async function KanjiTablePage({ searchParams }: { searchParams: P
                 {[k.hint, k.confusable && `易混淆：${k.confusable}`].filter(Boolean).join("　")}
               </p>
             )}
+            <KanjiDetail id={k.id} kanji={k.kanji} />
           </li>
         ))}
       </ul>
