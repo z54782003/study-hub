@@ -5,6 +5,9 @@ export type RubyPart = { text: string; rt?: string; hit: boolean };
 
 const RUBY = /([一-鿿々〆ヶ]+)[（(]([぀-ヿー・]+)[）)]/g;
 
+/** 句子裡有沒有「漢字（かな）」形式的讀音 */
+export const hasReadings = (text: string) => new RegExp(RUBY.source).test(text);
+
 export function rubyParts(text: string, word = ""): RubyPart[] {
   // 1. 拆成「一般文字」和「漢字＋讀音」
   const tokens: { text: string; rt?: string }[] = [];

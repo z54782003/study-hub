@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { rubyParts } from "./furigana";
+import { hasReadings, rubyParts } from "./furigana";
 
 describe("rubyParts", () => {
   it("turns bracketed readings into ruby", () => {
@@ -23,5 +23,13 @@ describe("rubyParts", () => {
   });
   it("leaves non-reading brackets alone", () => {
     expect(rubyParts("駅（東口）")).toEqual([{ text: "駅（東口）", hit: false }]);
+  });
+});
+
+describe("hasReadings", () => {
+  it("detects bracketed kana after kanji", () => {
+    expect(hasReadings("海外（かいがい）で働いた")).toBe(true);
+    expect(hasReadings("海外で働いた")).toBe(false);
+    expect(hasReadings("駅（東口）")).toBe(false);
   });
 });

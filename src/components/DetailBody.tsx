@@ -1,5 +1,6 @@
 import { Speak } from "@/components/Speak";
 import { Ruby } from "@/components/Ruby";
+import { hasReadings } from "@/lib/furigana";
 import type { N3Detail } from "@/lib/n3Detail";
 
 /** 例句：單字／文型標粗；讀音（平假名）小字；中文 */
@@ -13,7 +14,8 @@ function Examples({ list, mark }: { list: N3Detail["examples"]; mark: string }) 
             <p className="pt-1.5 text-[17px] leading-loose" lang="ja">
               <Ruby text={e.ja} word={mark} />
             </p>
-            {e.kana && <p className="text-[13px] text-muted" lang="ja">{e.kana}</p>}
+            {/* 例句已經有「漢字（かな）」小字讀音，就不再顯示整句平假名 */}
+            {e.kana && !hasReadings(e.ja) && <p className="text-[13px] text-muted" lang="ja">{e.kana}</p>}
             {e.zh && <p className="text-sm text-ink-2">{e.zh}</p>}
           </div>
           <Speak text={e.ja} label={`播放例句${i + 1}`} />
