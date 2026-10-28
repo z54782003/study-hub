@@ -4,6 +4,7 @@ import { isFullBlock } from "@notionhq/client";
 import { DS, EXAMS, GRAMMAR_ORDER, LESSON_AUDIO_PAGE, TEXTBOOK_INDEX_PARENT, N3_BATCH_SAMPLE, N3_DUE_LIMIT, QUIZ_DAILY_LIMIT, TZ, W3_PARENT_PAGE } from "./config";
 import { addDays, diffDays, formatJP, isWeekend, todayISO } from "./dates";
 import { generateN3Detail, gradeWithAi } from "./ai";
+import { groupBySection, sectionTitle, type IndexSection } from "./lessonOrder";
 import { DETAIL_HEADING, detailLines, parseDetail, type N3Detail } from "./n3Detail";
 import { autoGrade, gradeChoice, parseChoices } from "./grading";
 import { mockAnswer, mockHistory, mockN3Detail, mockJournal, mockReview, mockToday, mockVocab } from "./mock";
@@ -523,15 +524,55 @@ export async function englishVocabCount(): Promise<number> {
 }
 
 /** 日文分頁：某一課的單字（依加入順序＝課本順序） */
-export async function getLessonVocab(level: string, lesson: number): Promise<VocabItem[]> {
-  if (useMock()) return mockVocab();
-  const pages = await queryAll(
-    DS.vocab,
-    { and: [{ property: "語言", select: { equals: "🇯🇵 日文" } }, { property: "課次", select: { equals: `${level} L${lesson}` } }] } as never,
-    [{ timestamp: "created_time", direction: "ascending" }],
-    500,
-  );
-  return pages.map(toVocab);
+// 課本索引頁（初中級：「初中級課本索引｜L〇 …」；初級：「課本索引｜L〇 …」）
+const cachedLessonIndexPages = unstable_cache(
+  async () =>
+    (await allChildren(TEXTBOOK_INDEX_PARENT)).flatMap((b) =>
+      b.type === "child_page" && /課本索引｜L\d/.test(b.child_page.title) ? [{ id: b.id, title: b.child_page.title }] : [],
+    ),
+  ["lesson-index-pages"],
+  { revalidate: 86400 },
+);
+
+/** 課本索引「📒 單字表」：每個 ### 小節底下表格的「單字」欄，依序 */
+const cachedLessonSections = unstable_cache(
+  async (level: string, lesson: number): Promise<IndexSection[]> => {
+    const prefix = level === "初中級" ? "初中級課本索引" : "課本索引";
+    const page = (await cachedLessonIndexPages()).find((p) => p.title.replace(/^\S*?(?=初中級課本索引|課本索引)/, "").startsWith(`${prefix}｜L${lesson} `));
+    if (!page) return [];
+    const blocks = await allChildren(page.id);
+    const start = blocks.findIndex((b) => b.type === "heading_2" && richText(b).includes("單字表"));
+    if (start < 0) return [];
+    const sections: IndexSection[] = [];
+    for (const b of blocks.slice(start + 1)) {
+      if (b.type === "heading_2" || b.type === "heading_1") break;
+      if (b.type === "heading_3") sections.push({ title: sectionTitle(richText(b)), words: [] });
+      if (b.type !== "table") continue;
+      const rows = (await allChildren(b.id)).flatMap((r) => (r.type === "table_row" ? [r.table_row.cells.map((c) => c.map((t) => t.plain_text).join("").trim())] : []));
+      const col = rows[0]?.indexOf("單字") ?? -1;
+      if (col < 0) continue;
+      if (!sections.length) sections.push({ title: "", words: [] });
+      sections.at(-1)!.words.push(...rows.slice(1).map((r) => r[col]).filter(Boolean));
+    }
+    return sections.filter((s) => s.words.length);
+  },
+  ["lesson-vocab-sections"],
+  { revalidate: 86400 },
+);
+
+/** 一課的單字，照課本索引的順序分段（ST1／ST2／補…；表裡沒有的放最後） */
+export async function getLessonVocab(level: string, lesson: number): Promise<{ title: string; words: VocabItem[] }[]> {
+  if (useMock()) return groupBySection(mockVocab(), [{ title: "1-1 アルバイトを探す", words: mockVocab().map((w) => w.word) }]);
+  const [pages, sections] = await Promise.all([
+    queryAll(
+      DS.vocab,
+      { and: [{ property: "語言", select: { equals: "🇯🇵 日文" } }, { property: "課次", select: { equals: `${level} L${lesson}` } }] } as never,
+      [{ timestamp: "created_time", direction: "ascending" }],
+      500,
+    ),
+    cachedLessonSections(level, lesson).catch(() => [] as IndexSection[]),
+  ]);
+  return groupBySection(pages.map(toVocab), sections);
 }
 
 

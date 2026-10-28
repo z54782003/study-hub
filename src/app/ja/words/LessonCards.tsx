@@ -29,7 +29,9 @@ function Familiarity({ w }: { w: VocabItem }) {
 }
 
 /** できる日本語一課的單字：一張一張看（上一個／下一個、左右滑、一覽跳字）；熟悉度在練習時自動更新 */
-export function LessonCards({ words, practice }: { words: VocabItem[]; practice: string }) {
+export function LessonCards({ groups, practice }: { groups: { title: string; words: VocabItem[] }[]; practice: string }) {
+  // 課本順序攤平；每張卡記得自己在哪一段
+  const words = groups.flatMap((g) => g.words.map((w) => ({ ...w, section: g.title })));
   const [i, setI] = useState(0);
   const [drag, setDrag] = useState<{ x: number; dx: number } | null>(null);
   const w = words[i];
@@ -46,17 +48,31 @@ export function LessonCards({ words, practice }: { words: VocabItem[]; practice:
           <summary className="cursor-pointer text-sm font-semibold text-accent">
             一覽（{i + 1} / {words.length}）
           </summary>
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {words.map((x, k) => (
-              <button
-                key={x.id}
-                type="button"
-                onClick={() => go(k)}
-                className={`rounded-full border px-3 py-1 text-sm ${k === i ? "border-accent bg-accent text-on-accent" : "border-line bg-card"}`}
-                lang="ja"
-              >
-                {x.word}
-              </button>
+          <div className="mt-2 space-y-2.5">
+            {groups.map((g) => (
+              <section key={g.title}>
+                {g.title && (
+                  <h3 className="mb-1.5 text-xs font-bold text-muted" lang="ja">
+                    {g.title}
+                  </h3>
+                )}
+                <div className="flex flex-wrap gap-1.5">
+                  {g.words.map((x) => {
+                    const k = words.findIndex((y) => y.id === x.id);
+                    return (
+                      <button
+                        key={x.id}
+                        type="button"
+                        onClick={() => go(k)}
+                        className={`rounded-full border px-3 py-1 text-sm ${k === i ? "border-accent bg-accent text-on-accent" : "border-line bg-card"}`}
+                        lang="ja"
+                      >
+                        {x.word}
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
             ))}
           </div>
         </details>
@@ -78,6 +94,11 @@ export function LessonCards({ words, practice }: { words: VocabItem[]; practice:
         onPointerCancel={() => setDrag(null)}
       >
         <div>
+          {w.section && (
+            <div className="mb-1 text-xs font-bold text-muted" lang="ja">
+              {w.section}
+            </div>
+          )}
           <h1 className="text-[44px] leading-tight font-bold tracking-[0.02em]" lang="ja">
             {w.word}
           </h1>
