@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { BackLink } from "@/components/BackLink";
 import { getClassNote } from "@/lib/data";
 import { formatJP } from "@/lib/dates";
-import type { GrammarBullet, Seg } from "@/lib/noteGrammar";
+import type { GrammarPoint, Seg } from "@/lib/noteGrammar";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "課堂筆記・Study Hub" };
@@ -11,40 +11,63 @@ function Text({ segs }: { segs: Seg[] }) {
   return segs.map((s, i) => (s.bold ? <b key={i}>{s.text}</b> : <span key={i}>{s.text}</span>));
 }
 
-/** 「例」那幾條用「／」分句，一句一行 */
-function splitSentences(segs: Seg[]): Seg[][] {
-  const lines: Seg[][] = [[]];
-  for (const s of segs)
-    s.text.split("／").forEach((part, i) => {
-      if (i > 0) lines.push([]);
-      if (part) lines.at(-1)!.push({ ...s, text: part });
-    });
-  return lines.filter((l) => l.some((s) => s.text.trim()));
-}
-
-function Bullet({ b }: { b: GrammarBullet }) {
-  const quiet = b.label && /逐字|出處/.test(b.label);
+/** 一行就一段，多行就條列 */
+function Lines({ label, lines, warn }: { label: string; lines: Seg[][]; warn?: boolean }) {
+  if (!lines.length) return null;
   return (
-    <div className={quiet ? "text-[13px] text-muted" : "text-[15px] leading-relaxed"}>
-      {b.label && <div className={`label ${b.label.includes("易錯") ? "text-due" : ""}`}>{b.label}</div>}
-      {b.label?.startsWith("例") ? (
-        <ul className="space-y-1" lang="ja">
-          {splitSentences(b.segs).map((l, i) => (
+    <div className="text-[15px] leading-relaxed">
+      <div className={`label ${warn ? "text-due" : ""}`}>{label}</div>
+      {lines.length === 1 ? (
+        <p lang="ja">
+          <Text segs={lines[0]} />
+        </p>
+      ) : (
+        <ul className="list-disc space-y-1 pl-5" lang="ja">
+          {lines.map((l, i) => (
             <li key={i}>
               <Text segs={l} />
             </li>
           ))}
         </ul>
-      ) : (
-        <p lang="ja">
-          <Text segs={b.segs} />
-        </p>
       )}
     </div>
   );
 }
 
-/** 課堂筆記：Notion「## 文法（全部）」底下的 ①②③ 直接在這裡看 */
+function Point({ g }: { g: GrammarPoint }) {
+  return (
+    <details open className="card overflow-hidden">
+      <summary className="flex cursor-pointer list-none items-baseline gap-2 px-4 py-3">
+        <span className="text-lg font-bold text-accent">{g.no}</span>
+        <span className="text-[17px] font-bold" lang="ja">
+          {g.title}
+        </span>
+      </summary>
+      <div className="space-y-3 border-t border-line px-4 py-3">
+        <Lines label="句型" lines={g.pattern} />
+        <Lines label="說明" lines={g.explain} />
+        {g.examples.length > 0 && (
+          <div className="text-[15px] leading-relaxed">
+            <div className="label">例句</div>
+            <ol className="space-y-1.5">
+              {g.examples.map((e, i) => (
+                <li key={i}>
+                  <p lang="ja">
+                    <Text segs={e.ja} />
+                  </p>
+                  {e.note && <p className="text-[13px] text-muted">{e.note}</p>}
+                </li>
+              ))}
+            </ol>
+          </div>
+        )}
+        <Lines label="⚠️ 易錯" lines={g.mistakes} warn />
+      </div>
+    </details>
+  );
+}
+
+/** 課堂筆記：Notion「## 文法」底下每個 ①②③ 的句型・說明・兩個例句・易錯；筆記一改就跟著更新 */
 export default async function ClassNotePage({ params }: { params: Promise<{ id: string }> }) {
   const note = await getClassNote((await params).id);
   if (!note) notFound();
@@ -55,32 +78,12 @@ export default async function ClassNotePage({ params }: { params: Promise<{ id: 
       <h1 className="mt-0.5 mb-3 text-xl leading-snug font-bold" lang="ja">
         {note.title.replace(/^\s*\d{1,2}\/\d{1,2}（.）\s*/, "")}
       </h1>
-      {note.homework && (
-        <section className="mb-3 card p-4">
-          <div className="label">作業</div>
-          <p className="text-[15px] leading-relaxed" lang="ja">
-            {note.homework}
-          </p>
-        </section>
-      )}
       {note.grammar.length === 0 ? (
         <p className="text-sm text-muted">這份筆記沒有「文法」段落的編號項目。</p>
       ) : (
         <div className="space-y-3">
           {note.grammar.map((g) => (
-            <details key={g.no} open className="card overflow-hidden">
-              <summary className="flex cursor-pointer list-none items-baseline gap-2 px-4 py-3">
-                <span className="text-lg font-bold text-accent">{g.no}</span>
-                <span className="text-[17px] font-bold" lang="ja">
-                  {g.title}
-                </span>
-              </summary>
-              <div className="space-y-3 border-t border-line px-4 py-3">
-                {g.bullets.map((b, i) => (
-                  <Bullet key={i} b={b} />
-                ))}
-              </div>
-            </details>
+            <Point key={g.no} g={g} />
           ))}
         </div>
       )}

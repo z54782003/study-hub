@@ -13,7 +13,7 @@ import { GROUP_OF, VERB_CLASSES, conjugate, formsFor, parseVerb, type Verb, type
 import { VOA_BASE, VOA_FEEDS, parseVoaArticle, parseVoaFeed, type VoaArticle, type VoaFeedKey, type VoaItem } from "./voa";
 import { TADOKU_URL, parseTadoku, parseTadokuBook, type TadokuBook, type TadokuDetail } from "./tadoku";
 import { lessonTitle, lessonTracks, parseIndexPage, parseTranscript, trackNumber, type IndexBlock, type Track, type TranscriptPart } from "./lessonAudio";
-import { parseNoteGrammar, type GrammarPoint, type Seg } from "./noteGrammar";
+import { parseNoteGrammar, type GrammarPoint, type NoteBlock, type Seg } from "./noteGrammar";
 import { pickPreviewPage, summarizePreview, type ChildPage, type SimpleBlock } from "./preview";
 import { date, getPage, hasNotion, notion, num, queryAll, relationIds, select, text, updatePage, w, type Page } from "./notion";
 import {
@@ -998,35 +998,57 @@ export async function recentClassNotes(n: number): Promise<ClassNoteLink[]> {
   }));
 }
 
-export type ClassNoteDetail = ClassNoteLink & { homework: string; grammar: GrammarPoint[] };
+export type ClassNoteDetail = ClassNoteLink & { grammar: GrammarPoint[] };
 
+const rtSegs = (rt: { plain_text: string; annotations: { bold: boolean } }[]): Seg[] => rt.map((r) => ({ text: r.plain_text, bold: r.annotations.bold }));
 const segsOf = (b: object): Seg[] => {
   const v = (b as Record<string, { rich_text?: { plain_text: string; annotations: { bold: boolean } }[] }>)[(b as { type: string }).type];
-  return (v?.rich_text ?? []).map((r) => ({ text: r.plain_text, bold: r.annotations.bold }));
+  return rtSegs(v?.rich_text ?? []);
 };
 
-const cachedNoteGrammar = unstable_cache(
-  async (id: string) => parseNoteGrammar((await allChildren(id)).map((b) => ({ type: b.type, segs: segsOf(b) }))),
-  ["class-note-grammar"],
-  { revalidate: 600 },
-);
+type FullBlock = Awaited<ReturnType<typeof allChildren>>[number];
+
+/** 一個區塊連同子條列（兩層）或表格內容 */
+async function noteTree(b: FullBlock, depth = 0): Promise<NoteBlock> {
+  const node: NoteBlock = { type: b.type, segs: segsOf(b) };
+  if (!b.has_children || depth > 1) return node;
+  const kids = await allChildren(b.id);
+  if (b.type === "table")
+    return { ...node, header: b.table.has_column_header, rows: kids.flatMap((r) => (r.type === "table_row" ? [r.table_row.cells.map(rtSegs)] : [])) };
+  return { ...node, children: await Promise.all(kids.map((k) => noteTree(k, depth + 1))) };
+}
+
+/** 只展開「文法」那一節的子條列和表格（其他節不用多讀） */
+async function noteBlocks(id: string): Promise<NoteBlock[]> {
+  let inGrammar = false;
+  const top = (await allChildren(id)).map((b) => {
+    if (b.type === "heading_1" || b.type === "heading_2") inGrammar = segsOf(b).some((x) => x.text.includes("文法"));
+    return { b, expand: inGrammar };
+  });
+  return Promise.all(top.map(({ b, expand }) => (expand ? noteTree(b) : { type: b.type, segs: segsOf(b) })));
+}
+
+// 筆記改了（頁面最後編輯時間變了）就重讀；沒改就用快取
+const cachedNoteGrammar = unstable_cache(async (id: string, edited: string) => (edited ? parseNoteGrammar(await noteBlocks(id)) : []), ["class-note-grammar-v2"], {
+  revalidate: 86400,
+});
 
 /** 課堂筆記：屬性＋「## 文法（全部）」的 ①②③ */
 export async function getClassNote(id: string): Promise<ClassNoteDetail | null> {
   if (useMock())
     return {
       ...(await recentClassNotes(1))[0],
-      homework: "①文法ノート 大8〜13番",
       grammar: [
         {
           no: "①",
           title: "〜ために、〜（目的）",
-          bullets: [
-            { label: "句型", segs: [{ text: "V辞書形＋ために、〜／Nの＋ために、〜", bold: false }] },
-            { label: "說明", segs: [{ text: "目的「為了〜」", bold: true }, { text: "。名詞のときは必ず「の」。", bold: false }] },
-            { label: "例", segs: [{ text: "ケーキを作るために、卵とバターを買います。／健康のために、バランスよく食べます。", bold: false }] },
-            { label: "⚠️易錯", segs: [{ text: "×上手するために→○上手になるために", bold: true }] },
+          pattern: [[{ text: "V辞書形＋ために、〜／Nの＋ために、〜", bold: false }]],
+          explain: [[{ text: "目的「為了〜」", bold: true }, { text: "。名詞のときは必ず「の」。", bold: false }]],
+          examples: [
+            { ja: [{ text: "ケーキを作るために、卵とバターを買います。", bold: false }], note: "" },
+            { ja: [{ text: "健康のために、バランスよく食べます。", bold: false }], note: "為了健康" },
           ],
+          mistakes: [[{ text: "×上手するために→○上手になるために", bold: true }]],
         },
       ],
     };
@@ -1040,8 +1062,7 @@ export async function getClassNote(id: string): Promise<ClassNoteDetail | null> 
     level: select(page, "レベル"),
     date: date(page, "日期"),
     url: page.url,
-    homework: text(page, "作業"),
-    grammar: await cachedNoteGrammar(id),
+    grammar: await cachedNoteGrammar(id, page.last_edited_time),
   };
 }
 
