@@ -70,7 +70,13 @@ export function LessonCards({
   // 選 ST：全部／1-1／1-2／補…；課本順序攤平，每張卡記得自己在哪一段
   // 看到哪張記在網址（?sec=4-1&w=頁面id），重新整理或分享都回到同一張
   const params = useSearchParams();
-  const [sec, setSec] = useState<string | null>(() => all.find((g) => g.title && g.title === params.get("sec"))?.title ?? null);
+  // 日文一進來先看第一段（ST1），想看整課再點「全部」（網址記成 sec=all）
+  const named0 = all.filter((g) => g.title);
+  const [sec, setSec] = useState<string | null>(() => {
+    const q = params.get("sec");
+    if (q === "all") return null;
+    return all.find((g) => g.title && g.title === q)?.title ?? (lang === "ja" && named0.length > 1 ? named0[0].title : null);
+  });
   const groups = sec === null ? all : all.filter((g) => g.title === sec);
   const words = groups.flatMap((g) => g.words.map((w) => ({ ...w, section: g.title })));
   const practice = sec === null ? lessonPractice : (sectionPractice[sec] ?? lessonPractice);
@@ -79,8 +85,7 @@ export function LessonCards({
   const w = words[i];
   useEffect(() => {
     const url = new URL(window.location.href);
-    if (sec === null) url.searchParams.delete("sec");
-    else url.searchParams.set("sec", sec);
+    url.searchParams.set("sec", sec ?? "all");
     url.searchParams.set("w", w.id);
     window.history.replaceState(window.history.state, "", url);
   }, [sec, w.id]);

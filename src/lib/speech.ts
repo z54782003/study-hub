@@ -20,16 +20,20 @@ export function canSpeak(): boolean {
 // 依序挑比較自然的語音（裝置上有才會用到）
 const PREFERRED: Record<SpeechLang, RegExp[]> = {
   ja: [/O-ren.*(Premium|Enhanced)/i, /Kyoko.*(Premium|Enhanced)/i, /Google 日本語/i, /Kyoko/i, /O-ren/i, /Otoya/i],
-  en: [/(Ava|Zoe|Evan|Samantha).*(Premium|Enhanced)/i, /Google US English/i, /Samantha/i, /Alex/i],
+  // 英文用英式發音（單字庫是英式拼法）
+  en: [/(Daniel|Kate|Serena|Jamie|Stephanie|Arthur).*(Premium|Enhanced)/i, /Google UK English/i, /Daniel/i, /Kate/i, /Serena/i, /Arthur/i],
 };
 
 function pickVoice(lang: SpeechLang): SpeechSynthesisVoice | undefined {
-  const voices = window.speechSynthesis.getVoices().filter((v) => v.lang.toLowerCase().startsWith(lang));
+  const all = window.speechSynthesis.getVoices();
+  // 英文先找英國腔（en-GB），沒有才用其他英文語音
+  const gb = lang === "en" ? all.filter((v) => /^en[-_]gb/i.test(v.lang)) : [];
+  const voices = gb.length ? gb : all.filter((v) => v.lang.toLowerCase().startsWith(lang));
   for (const re of PREFERRED[lang]) {
     const v = voices.find((x) => re.test(x.name));
     if (v) return v;
   }
-  return voices.find((v) => v.lang.toLowerCase() === (lang === "ja" ? "ja-jp" : "en-us")) ?? voices[0];
+  return voices.find((v) => v.lang.toLowerCase().replace("_", "-") === (lang === "ja" ? "ja-jp" : "en-gb")) ?? voices[0];
 }
 
 /** 念一段文字；再按一次會從頭念（先停掉正在念的） */
@@ -55,7 +59,7 @@ export function speak(text: string, lang: SpeechLang, rate = lang === "ja" ? 0.9
   const synth = window.speechSynthesis;
   synth.cancel();
   const u = new SpeechSynthesisUtterance(lang === "ja" ? stripReadings(text) : text);
-  u.lang = lang === "ja" ? "ja-JP" : "en-US";
+  u.lang = lang === "ja" ? "ja-JP" : "en-GB";
   const voice = pickVoice(lang);
   if (voice) u.voice = voice;
   u.rate = rate;
