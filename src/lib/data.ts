@@ -675,9 +675,10 @@ async function calendarEvents(day: string): Promise<{ today: CalendarEvent[]; ne
   return { today: todays, next: todays.length ? null : nextEventDay(icsList, day, TZ) };
 }
 
-export async function getToday(): Promise<TodayData> {
-  const day = today();
-  if (useMock()) return mockToday(day);
+/** 今日頁；day 給過去的日期＝從紀錄回看那天的內容 */
+export async function getToday(day = today()): Promise<TodayData> {
+  const past = day < today();
+  if (useMock()) return { ...mockToday(day), past };
 
   const errors: string[] = [];
   // 每個區塊各自失敗，不讓一個沒分享的資料庫拖垮整頁
@@ -705,11 +706,13 @@ export async function getToday(): Promise<TodayData> {
         }),
       [] as Page[],
     ),
-    safe("今晚複習", getReviewQueue, [] as ReviewItem[]),
+    past ? ([] as ReviewItem[]) : safe("今晚複習", getReviewQueue, [] as ReviewItem[]),
     safe("N3 單字", () => n3Batch(day), [] as Page[]),
     safe("N3 文法", cachedGrammarAll, [] as Page[]),
     safe("ISI 課堂筆記", () => queryAll(DS.isiNotes, { property: "日期", date: { equals: day } }), [] as Page[]),
-    safe(
+    past
+      ? ([] as Page[])
+      : safe(
       "TED Log",
       async () => {
         const doing = await queryAll(DS.tedLog, { property: "進度", status: { equals: "今天做" } });
@@ -720,7 +723,7 @@ export async function getToday(): Promise<TodayData> {
       },
       [] as Page[],
     ),
-    safe("Books", () => queryAll(DS.books, { property: "Status", select: { equals: "Reading" } }), [] as Page[]),
+    past ? ([] as Page[]) : safe("Books", () => queryAll(DS.books, { property: "Status", select: { equals: "Reading" } }), [] as Page[]),
   ]);
 
   const grammarNames = todaysGrammarNames(day);
@@ -730,6 +733,7 @@ export async function getToday(): Promise<TodayData> {
   return {
     date: day,
     dateLabel: formatJP(day),
+    past,
     weekend,
     exams: EXAMS.map((e) => ({ ...e, daysLeft: diffDays(day, e.date) })).filter((e) => e.daysLeft >= 0 && e.daysLeft <= 7),
     homework: homework

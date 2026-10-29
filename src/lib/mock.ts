@@ -9,6 +9,7 @@ export function mockToday(day: string): TodayData {
   return {
     date: day,
     dateLabel: formatJP(day),
+    past: false,
     weekend: isWeekend(day),
     exams: EXAMS.map((e) => ({ ...e, daysLeft: diffDays(day, e.date) })).filter((e) => e.daysLeft >= 0 && e.daysLeft <= 7),
     homework: [{ text: "文法ノート 練習8–10（p.19–22）", due: "2026-10-28", url: "#", daysLeft: 1 }],

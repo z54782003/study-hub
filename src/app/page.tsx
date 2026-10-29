@@ -3,7 +3,8 @@ import { Icon, type IconName } from "@/components/Icon";
 import { TaskList, type TaskRow } from "@/components/TaskList";
 import { COUNTDOWN, EXAMS, NHK_EASY_URL } from "@/lib/config";
 import type { CalendarEvent } from "@/lib/calendar";
-import { getToday } from "@/lib/data";
+import Link from "next/link";
+import { getToday, today } from "@/lib/data";
 import { diffDays, formatJP } from "@/lib/dates";
 import { hasNotion } from "@/lib/notion";
 
@@ -38,7 +39,8 @@ function EventList({ events }: { events: CalendarEvent[] }) {
   );
 }
 
-export default async function TodayPage() {
+/** ?d=YYYY-MM-DD：從「紀錄」點進來看過去某一天的今日內容 */
+export default async function TodayPage({ searchParams }: { searchParams: Promise<{ d?: string }> }) {
   if (!hasNotion() && process.env.MOCK !== "1") {
     return (
       <section className="mt-10 card p-5">
@@ -48,7 +50,9 @@ export default async function TodayPage() {
     );
   }
 
-  const t = await getToday();
+  const d0 = (await searchParams).d;
+  const t = await getToday(d0 && /^\d{4}-\d{2}-\d{2}$/.test(d0) && d0 < today() ? d0 : undefined);
+  const dayWord = t.past ? "這天" : "今天";
   const reviewTotal = t.review.quiz + t.review.n3 + t.review.grammar;
   const [, m, d] = t.date.split("-").map(Number);
   // 倒數：左＝最近一場學校考試，右＝N3 單字背完
@@ -60,7 +64,7 @@ export default async function TodayPage() {
       ? [{ id: "preview", title: "預習", sub: t.preview ? t.preview.title : "今天的預習頁還沒產生", href: t.preview?.url, external: true }]
       : []),
     ...(t.n3
-      ? [{ id: "n3", title: `N3 單字 ${t.n3.count} 個`, sub: t.n3.grammar.length ? `文型：${t.n3.grammar.map((g) => g.name).join("、")}` : "今日批次", href: "/n3" }]
+      ? [{ id: "n3", title: `N3 單字 ${t.n3.count} 個`, sub: t.n3.grammar.length ? `文型：${t.n3.grammar.map((g) => g.name).join("、")}` : "今日批次", href: t.past ? `/n3?day=${t.date}` : "/n3" }]
       : []),
     { id: "nhk", title: "NHK Easy 5 分", sub: "NHK 網站", href: NHK_EASY_URL, external: true },
     ...(!t.weekend ? ["13:00–16:10 上課"] : []),
@@ -75,33 +79,44 @@ export default async function TodayPage() {
           },
         ]
       : []),
-    {
-      id: "review",
-      title: reviewTotal ? "今日到期複習" : "今日到期：全部完成",
-      sub: reviewTotal ? `題庫 ${t.review.quiz}・N3 單字 ${t.review.n3}・文型 ${t.review.grammar}` : undefined,
-      tag: reviewTotal ? `${reviewTotal} 張` : undefined,
-      href: "/review/due",
-      autoDone: reviewTotal === 0,
-    },
-    { id: "ted", title: "TED", sub: t.ted ? t.ted.title : "Log 裡沒有待做的 talk", href: t.ted?.url },
-    {
-      id: "reading",
-      title: "閱讀 30 分",
-      sub: t.books.length ? t.books.map((b) => b.title).join("、") : "目前沒有 Reading 中的書",
-      href: t.books[0]?.url,
-      external: !!t.books[0],
-    },
+    // 過去的日子：到期複習、TED、閱讀只剩打勾紀錄（內容是「現在」的狀態，看不到當天的）
+    t.past
+      ? { id: "review", title: "到期複習", sub: "看這天的作答紀錄", href: `/history?m=${t.date.slice(0, 7)}&d=${t.date}` }
+      : {
+          id: "review",
+          title: reviewTotal ? "今日到期複習" : "今日到期：全部完成",
+          sub: reviewTotal ? `題庫 ${t.review.quiz}・N3 單字 ${t.review.n3}・文型 ${t.review.grammar}` : undefined,
+          tag: reviewTotal ? `${reviewTotal} 張` : undefined,
+          href: "/review/due",
+          autoDone: reviewTotal === 0,
+        },
+    t.past ? { id: "ted", title: "TED" } : { id: "ted", title: "TED", sub: t.ted ? t.ted.title : "Log 裡沒有待做的 talk", href: t.ted?.url },
+    t.past
+      ? { id: "reading", title: "閱讀 30 分" }
+      : {
+          id: "reading",
+          title: "閱讀 30 分",
+          sub: t.books.length ? t.books.map((b) => b.title).join("、") : "目前沒有 Reading 中的書",
+          href: t.books[0]?.url,
+          external: !!t.books[0],
+        },
   ];
 
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-3.5 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] md:items-start md:gap-x-5 md:[grid-auto-flow:dense]">
       <header className="flex items-end justify-between md:col-span-2">
         <div>
+          {t.past && (
+            <Link href={`/history?m=${t.date.slice(0, 7)}&d=${t.date}`} className="mb-1 inline-flex items-center gap-0.5 text-sm font-semibold text-accent">
+              <Icon name="back" size={16} stroke={2.2} />
+              紀錄
+            </Link>
+          )}
           <div className="text-[13px] font-medium text-muted">
             {m}月{d}日 星期{WEEKDAY[new Date(`${t.date}T00:00:00Z`).getUTCDay()]}
             {t.weekend && "・週末輕量"}
           </div>
-          <h1 className="mt-0.5 text-[28px] leading-[34px] font-bold">今天要做的事</h1>
+          <h1 className="mt-0.5 text-[28px] leading-[34px] font-bold">{t.past ? "這天要做的事" : "今天要做的事"}</h1>
         </div>
       </header>
 
@@ -156,10 +171,10 @@ export default async function TodayPage() {
 
       {/* iPad：今天的課固定在右欄 */}
       {!t.weekend && (
-        <section aria-label="今天的課" className="card space-y-2.5 p-4 md:sticky md:top-4 md:col-start-2 md:row-span-6 md:row-start-2">
+        <section aria-label={`${dayWord}的課`} className="card space-y-2.5 p-4 md:sticky md:top-4 md:col-start-2 md:row-span-6 md:row-start-2">
           <Heading
             icon="cap"
-            title="今天的課"
+            title={`${dayWord}的課`}
             right={
               (t.classNote?.url ?? t.preview?.url) && (
                 <a href={t.classNote?.url ?? t.preview?.url} target="_blank" rel="noreferrer" className="text-accent">
@@ -175,12 +190,12 @@ export default async function TodayPage() {
       <section aria-label="行程" className="card px-4 py-3.5 md:col-start-1">
         {t.calendar === null ? (
           <div className="flex items-center gap-2.5">
-            <Heading icon="calendar" title="今天的行程" />
+            <Heading icon="calendar" title={`${dayWord}的行程`} />
             <span className="ml-auto text-sm text-muted">還沒連結行事曆</span>
           </div>
         ) : t.calendar.length > 0 ? (
           <div className="space-y-2">
-            <Heading icon="calendar" title="今天的行程" />
+            <Heading icon="calendar" title={`${dayWord}的行程`} />
             <EventList events={t.calendar} />
           </div>
         ) : t.nextCalendar ? (
@@ -194,14 +209,14 @@ export default async function TodayPage() {
           </div>
         ) : (
           <div className="flex items-center gap-2.5">
-            <Heading icon="calendar" title="今天的行程" />
-            <span className="ml-auto text-sm text-muted">今天沒有行程</span>
+            <Heading icon="calendar" title={`${dayWord}的行程`} />
+            <span className="ml-auto text-sm text-muted">{dayWord}沒有行程</span>
           </div>
         )}
       </section>
 
       <div className="md:col-start-1">
-        <TaskList date={t.date} rows={rows} />
+        <TaskList date={t.date} rows={rows} title={`${dayWord}要做`} />
       </div>
 
       {t.errors.length > 0 && (

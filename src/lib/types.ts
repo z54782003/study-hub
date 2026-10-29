@@ -5,6 +5,8 @@ export type Link = { title: string; url: string };
 export type TodayData = {
   date: string;
   dateLabel: string;
+  /** 從「紀錄」點進來看過去某一天（到期複習、TED、閱讀是現在的狀態，不顯示） */
+  past: boolean;
   weekend: boolean;
   exams: { date: string; name: string; scope: string; daysLeft: number }[];
   homework: { text: string; due: string; url: string; daysLeft: number }[];

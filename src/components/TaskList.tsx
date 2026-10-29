@@ -36,7 +36,7 @@ function TaskLink({ t, className, children }: { t: Task; className: string; chil
 }
 
 /** 今日任務：順序固定、點圓圈打勾、點文字進功能；第一個沒勾的是「下一件」，底部主按鈕跟著它 */
-export function TaskList({ date, rows }: { date: string; rows: TaskRow[] }) {
+export function TaskList({ date, rows, title = "今天要做" }: { date: string; rows: TaskRow[]; title?: string }) {
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const ids = rows.flatMap((r) => (typeof r === "string" ? [] : [r.id])).join(",");
   useEffect(() => {
@@ -64,7 +64,7 @@ export function TaskList({ date, rows }: { date: string; rows: TaskRow[] }) {
   return (
     <>
       <div className="mt-1.5 mb-2 flex items-baseline justify-between">
-        <h2 className="text-[15px] font-bold">今天要做</h2>
+        <h2 className="text-[15px] font-bold">{title}</h2>
         <span className="text-[13px] text-ink-2 tabular-nums">
           {count} / {tasks.length} 完成
         </span>

@@ -126,6 +126,11 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
             {dayItems.length ? `${dayItems.length} 題・正確率 ${pct(dayItems)}%` : "這天沒有作答"}
           </span>
         </h2>
+        <Link href={selected === now ? "/" : `/?d=${selected}`} className="card mb-3 flex min-h-12 items-center gap-2.5 px-4 text-sm font-semibold">
+          <Icon name="sun" className="shrink-0 text-muted" />
+          {selected === now ? "看今天要做的事" : "看這天要做的事"}
+          <Icon name="chevron" size={16} stroke={2.2} className="ml-auto text-muted" />
+        </Link>
         {byKind.length > 0 && (
           <nav aria-label="類型" className="mb-3 flex flex-wrap gap-1.5">
             <Link
