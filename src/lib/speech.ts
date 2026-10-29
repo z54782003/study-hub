@@ -36,7 +36,8 @@ function pickVoice(lang: SpeechLang): SpeechSynthesisVoice | undefined {
 /** 例句裡的振り仮名「通（かよ）って」：把漢字換成標好的讀音再唸，不讓語音自己猜（通って→とおって）；也不會唸兩次 */
 export function stripReadings(text: string): string {
   return text
-    .replace(/[\u4e00-\u9fff々〆ヶ]+[（(]([\u3040-\u30ffー・\s]+)[）)]/g, "$1")
+    // 換成假名後語音分不出助詞：緊接在讀音後面的「は」「へ」照發音寫成「わ」「え」（電車（でんしゃ）は→でんしゃわ）
+    .replace(/[\u4e00-\u9fff々〆ヶ]+[（(]([\u3040-\u30ffー・\s]+)[）)]([はへ])?/g, (_, kana: string, p?: string) => kana + (p === "は" ? "わ" : p === "へ" ? "え" : ""))
     .replace(/[（(][\u3040-\u30ffー・\s]+[）)]/g, "");
 }
 

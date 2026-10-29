@@ -15,7 +15,13 @@ describe("speakableJa", () => {
 describe("stripReadings", () => {
   it("reads marked kanji by their furigana, once", () => {
     expect(stripReadings("明日は大事な面接（めんせつ）があるので、今日美容院で髪を切りました。")).toBe("明日は大事なめんせつがあるので、今日美容院で髪を切りました。");
-    expect(stripReadings("弟（おとうと）は小学校（しょうがっこう）に通（かよ）っています。")).toBe("おとうとはしょうがっこうにかよっています。");
+    expect(stripReadings("弟（おとうと）は小学校（しょうがっこう）に通（かよ）っています。")).toBe("おとうとわしょうがっこうにかよっています。");
+  });
+  it("writes the particles は／へ after a reading the way they sound", () => {
+    expect(stripReadings("電車（でんしゃ）は午後（ごご）三時（さんじ）に駅（えき）に着（つ）きます。")).toBe("でんしゃわごごさんじにえきにつきます。");
+    expect(stripReadings("この時計（とけい）は五分（ごふん）遅（おく）れて止（と）まりました。")).toBe("このとけいわごふんおくれてとまりました。");
+    expect(stripReadings("学校（がっこう）へ行（い）きます。")).toBe("がっこうえいきます。");
+    expect(stripReadings("早（はや）く")).toBe("はやく");
   });
   it("drops a stray reading that does not follow kanji", () => {
     expect(stripReadings("たばこをやめる（たばこをやめる）")).toBe("たばこをやめる");
