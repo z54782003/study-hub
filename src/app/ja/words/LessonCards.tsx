@@ -57,12 +57,16 @@ export function LessonCards({
   groups: all,
   practice: lessonPractice,
   sectionPractice,
+  lang = "ja",
 }: {
   groups: { title: string; words: VocabItem[] }[];
   practice: string;
   /** 小節名稱 → 只練這一小節的網址 */
   sectionPractice: Record<string, string>;
+  /** 英文單字卡也用這個元件：發音、lang 屬性、按鈕文字跟著換 */
+  lang?: "ja" | "en";
 }) {
+  const t = lang === "en" ? { all: "練習全部", part: "練習這個主題", tabs: "主題" } : { all: "練習這課", part: "練習這段", tabs: "課本小節" };
   // 選 ST：全部／1-1／1-2／補…；課本順序攤平，每張卡記得自己在哪一段
   // 看到哪張記在網址（?sec=4-1&w=頁面id），重新整理或分享都回到同一張
   const params = useSearchParams();
@@ -95,7 +99,7 @@ export function LessonCards({
   return (
     <div className="pb-24">
       {named.length > 1 && (
-        <div className="-mx-4 mb-3 flex gap-1.5 overflow-x-auto px-4 pb-1" role="tablist" aria-label="課本小節">
+        <div className="-mx-4 mb-3 flex gap-1.5 overflow-x-auto px-4 pb-1" role="tablist" aria-label={t.tabs}>
           {[null, ...named.map((g) => g.title)].map((t) => {
             const on = t === sec;
             const n = t === null ? all.reduce((a, g) => a + g.words.length, 0) : all.find((g) => g.title === t)!.words.length;
@@ -107,7 +111,7 @@ export function LessonCards({
                 aria-selected={on}
                 onClick={() => pick(t)}
                 className={`shrink-0 rounded-full border px-3 py-1.5 text-[13px] font-semibold whitespace-nowrap ${on ? "border-accent bg-accent text-on-accent" : "border-line bg-card text-ink-2"}`}
-                lang="ja"
+                lang={lang}
               >
                 {t === null ? "全部" : t}
                 <span className="ml-1 font-normal opacity-70">{n}</span>
@@ -125,7 +129,7 @@ export function LessonCards({
             {groups.map((g) => (
               <section key={g.title}>
                 {g.title && (
-                  <h3 className="mb-1.5 text-xs font-bold text-muted" lang="ja">
+                  <h3 className="mb-1.5 text-xs font-bold text-muted" lang={lang}>
                     {g.title}
                   </h3>
                 )}
@@ -138,7 +142,7 @@ export function LessonCards({
                         type="button"
                         onClick={() => go(k)}
                         className={`rounded-full border px-3 py-1 text-sm ${k === i ? "border-accent bg-accent text-on-accent" : "border-line bg-card"}`}
-                        lang="ja"
+                        lang={lang}
                       >
                         {x.word}
                       </button>
@@ -150,7 +154,7 @@ export function LessonCards({
           </div>
         </details>
         <Link href={practice} className="shrink-0 text-sm font-semibold text-accent">
-          {sec === null ? "練習這課" : "練習這段"} ›
+          {sec === null ? t.all : t.part} ›
         </Link>
       </div>
 
@@ -169,18 +173,18 @@ export function LessonCards({
       >
         <div>
           {w.section && (
-            <div className="mb-1 text-xs font-bold text-muted" lang="ja">
+            <div className="mb-1 text-xs font-bold text-muted" lang={lang}>
               {w.section}
             </div>
           )}
-          <h1 className="text-[44px] leading-tight font-bold tracking-[0.02em]" lang="ja">
+          <h1 className="text-[44px] leading-tight font-bold tracking-[0.02em]" lang={lang}>
             {w.word}
           </h1>
           <div className="-ml-1 flex items-center">
-            <span className="pl-1 text-[17px] text-ink-2" lang="ja">
+            <span className="pl-1 text-[17px] text-ink-2" lang={lang}>
               {w.reading}
             </span>
-            <Speak text={speakableJa(w.reading, w.word)} label="播放讀音" />
+            <Speak text={lang === "en" ? w.word : speakableJa(w.reading, w.word)} lang={lang} label="播放讀音" />
           </div>
         </div>
         {w.pos && (
@@ -200,7 +204,7 @@ export function LessonCards({
                   </dd>
                 ) : (
                 <Fragment key={k}>
-                  <dt className="font-semibold" lang="ja">
+                  <dt className="font-semibold" lang={lang}>
                     <Ruby text={u.ja} />
                   </dt>
                   <dd className="text-ink-2">
@@ -218,12 +222,12 @@ export function LessonCards({
             {w.examples.map((e, k) => (
               <div key={k} className="flex items-start">
                 <div className="flex-1">
-                  <p className="pt-1.5 text-[17px] leading-loose" lang="ja">
+                  <p className="pt-1.5 text-[17px] leading-loose" lang={lang}>
                     <Ruby text={e.ja} word={w.word} />
                   </p>
                   {e.zh && <p className="text-sm text-ink-2">{e.zh}</p>}
                 </div>
-                <Speak text={e.ja} label={`播放例句${k + 1}`} />
+                <Speak text={e.ja} lang={lang} label={`播放例句${k + 1}`} />
               </div>
             ))}
           </section>
@@ -246,7 +250,7 @@ export function LessonCards({
           </button>
         ) : (
           <Link href={practice} className="flex h-12 items-center justify-center rounded-[14px] bg-accent font-bold text-on-accent">
-            {sec === null ? "練習這課" : "練習這段"}
+            {sec === null ? t.all : t.part}
           </Link>
         )}
       </div>

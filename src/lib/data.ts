@@ -14,8 +14,9 @@ import { VOA_BASE, VOA_FEEDS, parseVoaArticle, parseVoaFeed, type VoaArticle, ty
 import { TADOKU_URL, parseTadoku, parseTadokuBook, type TadokuBook, type TadokuDetail } from "./tadoku";
 import { lessonTitle, lessonTracks, parseIndexPage, parseTranscript, trackNumber, type IndexBlock, type Track, type TranscriptPart } from "./lessonAudio";
 import { parseNoteGrammar, type GrammarPoint, type NoteBlock, type Seg } from "./noteGrammar";
+import { EN_OTHER, EN_TOPICS } from "./reviewSource";
 import { pickPreviewPage, summarizePreview, type ChildPage, type SimpleBlock } from "./preview";
-import { date, getPage, hasNotion, notion, num, queryAll, relationIds, select, text, updatePage, w, type Page } from "./notion";
+import { date, getPage, hasNotion, multiSelect, notion, num, queryAll, relationIds, select, text, updatePage, w, type Page } from "./notion";
 import {
   dailySample,
   grammarIndexForDate,
@@ -299,7 +300,8 @@ async function vocabQuiz(s: Extract<ReviewSource, { src: "vocab" }>): Promise<Vo
     const lessons = s.lessons.length ? s.lessons : Array.from({ length: 15 }, (_, i) => i + 1);
     and.push({ or: lessons.map((n) => ({ property: "課次", select: { equals: `${s.level} L${n}` } })) });
   }
-  const pages = await queryAll(DS.vocab, (s.lang === "en" ? ENGLISH_NOT_MASTERED : { and }) as never, undefined, 600);
+  if (s.lang === "en") and.push(...englishFilter(s.cefr, s.topic), { property: "熟悉度", status: { does_not_equal: "精通" } });
+  const pages = await queryAll(DS.vocab, { and } as never, undefined, 1000);
   let items = pages.map(toVocab);
   // 只練課本的某一小節（ST1／ST2／補…）
   if (s.section && s.level && s.lessons.length === 1) {
@@ -514,6 +516,45 @@ export async function vocabLessonCounts(): Promise<Record<string, number>> {
 export async function englishVocabCount(): Promise<number> {
   if (useMock()) return 12;
   return (await queryAll(DS.vocab, ENGLISH_NOT_MASTERED as never, undefined, 1000)).length;
+}
+
+// ── 英文單字卡：CEFR → 主題 ──────────────────────────────
+
+/** 主題有好幾個時用第一個認得的；沒有就歸「其他」 */
+const enTopic = (p: Page) => multiSelect(p, "主題").find((t) => (EN_TOPICS as readonly string[]).includes(t)) ?? EN_OTHER;
+
+function englishFilter(cefr?: string, topic?: string): object[] {
+  const f: object[] = [];
+  if (cefr) f.push({ property: "CEFR", select: { equals: cefr } });
+  if (topic === EN_OTHER) f.push(...EN_TOPICS.map((t) => ({ property: "主題", multi_select: { does_not_contain: t } })));
+  else if (topic) f.push({ property: "主題", multi_select: { contains: topic } });
+  return f;
+}
+
+/** 某一級的英文單字，依主題分組（主題順序固定，組內依加入順序） */
+export async function getEnglishVocab(cefr: string): Promise<{ title: string; words: VocabItem[] }[]> {
+  if (useMock()) return [{ title: "日常", words: mockVocab() }];
+  const pages = await queryAll(
+    DS.vocab,
+    { and: [{ property: "語言", select: { equals: "🇬🇧 英文" } }, ...englishFilter(cefr)] } as never,
+    [{ timestamp: "created_time", direction: "ascending" }],
+    2000,
+  );
+  return [...EN_TOPICS, EN_OTHER]
+    .map((title) => ({ title, words: pages.filter((p) => enTopic(p) === title).map(toVocab) }))
+    .filter((g) => g.words.length);
+}
+
+/** 英文單字卡入口：每級幾個字 */
+export async function englishLevelCounts(): Promise<Record<string, number>> {
+  if (useMock()) return { B1: 12, B2: 5 };
+  const pages = await queryAll(DS.vocab, { property: "語言", select: { equals: "🇬🇧 英文" } } as never, undefined, 3000);
+  const out: Record<string, number> = {};
+  for (const p of pages) {
+    const c = select(p, "CEFR");
+    if (c) out[c] = (out[c] ?? 0) + 1;
+  }
+  return out;
 }
 
 /** 日文分頁：某一課的單字（依加入順序＝課本順序） */

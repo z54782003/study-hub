@@ -23,6 +23,9 @@ export default async function EnglishPage() {
       )}
       {done > 0 && <p className="mt-2 text-xs text-muted">已完成 {done} 個 talk</p>}
 
+      <h2 className="mt-6 mb-2 flex items-center gap-2 text-lg font-bold"><Icon name="cards" className="text-muted" />單字</h2>
+      <EntryCard href="/en/words" icon="cards" title="英文單字卡 B1・B2" detail="依主題一張一張看，練習時自動更新熟悉度" />
+
       <h2 className="mt-6 mb-2 flex items-center gap-2 text-lg font-bold"><Icon name="news" className="text-muted" />讀＋聽</h2>
       <EntryCard href="/en/voa" icon="news" title="VOA Learning English" detail="慢速英文全文＋朗讀，點字查、加入單字庫" />
 

@@ -66,6 +66,11 @@ export function select(p: Page, name: string): string | null {
   return null;
 }
 
+export function multiSelect(p: Page, name: string): string[] {
+  const v = prop(p, name);
+  return v?.type === "multi_select" ? v.multi_select.map((o) => o.name) : [];
+}
+
 export function date(p: Page, name: string): string | null {
   const v = prop(p, name);
   if (v?.type === "date") return v.date?.start?.slice(0, 10) ?? null;

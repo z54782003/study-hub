@@ -12,6 +12,11 @@ describe("parseSource / sourceQuery", () => {
     const s: ReviewSource = { src: "bank", level: "初中級", lessons: [1, 3], qtype: "C 翻譯", scope: "all", count: 10 };
     expect(parseSource(new URLSearchParams(sourceQuery(s)))).toEqual(s);
   });
+  it("round-trips an English level and topic", () => {
+    const s: ReviewSource = { src: "vocab", lang: "en", level: null, lessons: [], count: 30, cefr: "B1", topic: "旅行" };
+    expect(parseSource(new URLSearchParams(sourceQuery(s)))).toEqual(s);
+    expect(parseSource(new URLSearchParams("src=vocab&lang=en&cefr=Z9&topic=x"))).toEqual({ src: "vocab", lang: "en", level: null, lessons: [], count: 20 });
+  });
   it("keeps the old mode=mistakes link working", () => expect(parseSource(new URLSearchParams("mode=mistakes"))).toEqual({ src: "mistakes" }));
   it("defaults to due and rejects unknown values", () => {
     expect(parseSource(new URLSearchParams(""))).toEqual({ src: "due" });
