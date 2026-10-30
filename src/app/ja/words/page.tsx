@@ -13,7 +13,7 @@ export default async function LessonWordsPage({ searchParams }: { searchParams: 
   const lesson = Math.max(1, Math.min(15, Number(q.lesson) || 1));
   const groups = await getLessonVocab(level, lesson);
   const count = groups.reduce((n, g) => n + g.words.length, 0);
-  const practice = `/review/words?${new URLSearchParams({ level, lessons: String(lesson) })}`;
+  const practice = `/review/session?${sourceQuery({ src: "vocab", lang: "ja", level, lessons: [lesson], count: 50 })}`;
   return (
     <>
       <BackLink href={`/ja/lessons?level=${encodeURIComponent(level)}`}>{level}</BackLink>

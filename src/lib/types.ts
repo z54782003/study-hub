@@ -113,7 +113,7 @@ export type ReviewSource =
   | { src: "due" }
   | { src: "mistakes" }
   | { src: "bank"; level: string | null; lessons: number[]; qtype: string | null; scope: "weak" | "all"; count: number }
-  | { src: "vocab"; lang: "ja" | "en"; level: string | null; lessons: number[]; count: number; section?: string; cefr?: string; topic?: string }
+  | { src: "vocab"; lang: "ja" | "en"; level: string | null; lessons: number[]; count: number; section?: string; cefr?: string; topic?: string; qmode?: "choice" | "fill" }
   | { src: "verb"; forms: string[]; groups: string[]; judge: boolean; count: number }
   | { src: "kanji"; chapters: string[]; count: number };
 

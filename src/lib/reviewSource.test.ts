@@ -13,9 +13,9 @@ describe("parseSource / sourceQuery", () => {
     expect(parseSource(new URLSearchParams(sourceQuery(s)))).toEqual(s);
   });
   it("round-trips an English level and topic", () => {
-    const s: ReviewSource = { src: "vocab", lang: "en", level: null, lessons: [], count: 30, cefr: "B1", topic: "旅行" };
+    const s: ReviewSource = { src: "vocab", lang: "en", level: null, lessons: [], count: 30, cefr: "B1", topic: "旅行", qmode: "fill" };
     expect(parseSource(new URLSearchParams(sourceQuery(s)))).toEqual(s);
-    expect(parseSource(new URLSearchParams("src=vocab&lang=en&cefr=Z9&topic=x"))).toEqual({ src: "vocab", lang: "en", level: null, lessons: [], count: 20 });
+    expect(parseSource(new URLSearchParams("src=vocab&lang=en&cefr=Z9&topic=x"))).toEqual({ src: "vocab", lang: "en", level: null, lessons: [], count: 20, qmode: "choice" });
   });
   it("keeps the old mode=mistakes link working", () => expect(parseSource(new URLSearchParams("mode=mistakes"))).toEqual({ src: "mistakes" }));
   it("defaults to due and rejects unknown values", () => {

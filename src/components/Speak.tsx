@@ -4,7 +4,8 @@ import { canSpeak, speak, type SpeechLang } from "@/lib/speech";
 import { Icon } from "./Icon";
 
 /** 喇叭按鈕：點了念出 text（不會觸發外層的翻卡、展開） */
-export function Speak({ text, lang = "ja", label, className = "" }: { text: string; lang?: SpeechLang; label?: string; className?: string }) {
+/** keep：例句裡的單字（照寫的唸，跟單字按鈕一致） */
+export function Speak({ text, lang = "ja", label, className = "", keep }: { text: string; lang?: SpeechLang; label?: string; className?: string; keep?: string }) {
   const [ok, setOk] = useState(false);
   useEffect(() => setOk(canSpeak()), []);
   if (!ok || !text) return null;
@@ -15,7 +16,7 @@ export function Speak({ text, lang = "ja", label, className = "" }: { text: stri
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
-        speak(text, lang);
+        speak(text, lang, undefined, keep);
       }}
       className={`inline-flex size-11 shrink-0 items-center justify-center rounded-full text-muted active:bg-card-2 ${className}`}
     >

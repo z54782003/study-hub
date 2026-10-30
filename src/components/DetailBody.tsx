@@ -1,6 +1,7 @@
 import { Speak } from "@/components/Speak";
 import { Ruby } from "@/components/Ruby";
 import { hasReadings } from "@/lib/furigana";
+import { keepWordJa } from "@/lib/speech";
 import type { N3Detail } from "@/lib/n3Detail";
 
 /** 例句：單字／文型標粗；讀音（平假名）小字；中文 */
@@ -18,7 +19,7 @@ function Examples({ list, mark }: { list: N3Detail["examples"]; mark: string }) 
             {e.kana && !hasReadings(e.ja) && <p className="text-[13px] text-muted" lang="ja">{e.kana}</p>}
             {e.zh && <p className="text-sm text-ink-2">{e.zh}</p>}
           </div>
-          <Speak text={e.ja} label={`播放例句${i + 1}`} />
+          <Speak text={e.ja} keep={keepWordJa(mark)} label={`播放例句${i + 1}`} />
         </div>
       ))}
     </section>

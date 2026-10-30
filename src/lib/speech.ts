@@ -11,8 +11,24 @@ export function speakableJa(reading: string, fallback = ""): string {
   const word = fallback.replace(/[（(［\[][^）)］\]]*[）)］\]]/g, "").replace(/[・〜～~\s]/g, "");
   const kanji = word.match(/[\u4e00-\u9fff々]/g) ?? [];
   const special = [...SPECIAL].some((w) => word.includes(w));
-  if (kanji.length > 1 && !special && /^[おご]?[\u4e00-\u9fff々]+(?:[\u3040-\u309f]{1,2}[\u4e00-\u9fff々]+)*[\u3040-\u309f]*$/.test(word)) return word;
+  if (writtenOk(word, kanji.length, special)) return word;
   return readingKana(reading, fallback);
+}
+
+/** 例句要照寫的唸的單字：只有單字按鈕也照寫的唸時才保留（不然兩邊不一致） */
+export function keepWordJa(word: string): string {
+  const w = word.replace(/[（(［\[][^）)］\]]*[）)］\]]/g, "").replace(/[・〜～~\s]/g, "").replace(/する$/, "");
+  const special = [...SPECIAL].some((x) => w.includes(x));
+  return writtenOk(w, (w.match(/[\u4e00-\u9fff々]/g) ?? []).length, special) ? w : "";
+}
+
+/**
+ * 照寫的唸比較準的詞：兩個以上漢字（駐車する、お好み焼き），或假名開頭的複合詞（たこ焼き、お茶）。
+ * 單一漢字開頭的動詞・形容詞（通う、着く、高い）語音常猜錯讀法，不算。
+ */
+function writtenOk(word: string, kanjiCount: number, special: boolean): boolean {
+  if (special || !kanjiCount || !/^[\u3040-\u309f\u4e00-\u9fff々]+$/.test(word)) return false;
+  return kanjiCount > 1 || /^[\u3040-\u309f]/.test(word);
 }
 
 /** 讀音欄可能是「よみます（読む）」「あそびます／あそぶ」「う.まれる・い.きる」，整理成可以念的假名 */
@@ -62,7 +78,12 @@ const SPECIAL = new Set("今日 明日 昨日 今朝 今年 今夜 一日 二日
  * 兩個字以上的詞（時計、電車）保留漢字，語調比較自然，也不會在詞中間停頓。
  * 換成假名時，緊接在後面的助詞「は」「へ」照發音寫成「わ」「え」（語音分不出是助詞）。
  */
-export function stripReadings(text: string): string {
+export function stripReadings(text: string, keep = ""): string {
+  // 例句裡的單字本身：單字按鈕照寫的唸，例句也照寫的唸，兩邊才一致（たこ焼（や）き → たこ焼き）
+  if (keep) {
+    const pattern = [...keep].map((c) => c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + (/[\u4e00-\u9fff々]/.test(c) ? "(?:[（(][\u3040-\u30ffー・\\s]+[）)])?" : "")).join("");
+    text = text.replace(new RegExp(pattern, "g"), keep);
+  }
   return text
     // 一個詞裡有好幾個標了讀音的漢字（お好（この）み焼（や）き、髪（かみ）の毛（け））：整個詞照漢字唸，不拆成假名
     .replace(WORD_CHAIN, (m) => m.replace(/[（(][\u3040-\u30ffー・\s]+[）)]/g, ""))
@@ -72,11 +93,12 @@ export function stripReadings(text: string): string {
     .replace(/[（(][\u3040-\u30ffー・\s]+[）)]/g, "");
 }
 
-export function speak(text: string, lang: SpeechLang, rate = lang === "ja" ? 0.9 : 0.95) {
+/** keep：例句裡要照寫的唸的單字（見 stripReadings） */
+export function speak(text: string, lang: SpeechLang, rate = lang === "ja" ? 0.9 : 0.95, keep = "") {
   if (!canSpeak() || !text.trim()) return;
   const synth = window.speechSynthesis;
   synth.cancel();
-  const u = new SpeechSynthesisUtterance(lang === "ja" ? stripReadings(text) : text);
+  const u = new SpeechSynthesisUtterance(lang === "ja" ? stripReadings(text, keep) : text);
   u.lang = lang === "ja" ? "ja-JP" : "en-GB";
   const voice = pickVoice(lang);
   if (voice) u.voice = voice;

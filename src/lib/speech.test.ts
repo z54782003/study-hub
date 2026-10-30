@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { speakableJa, stripReadings } from "./speech";
+import { keepWordJa, speakableJa, stripReadings } from "./speech";
 
 describe("speakableJa", () => {
   it("cleans the reading formats in the DBs", () => {
@@ -37,6 +37,13 @@ describe("stripReadings", () => {
     expect(stripReadings("お好（この）み焼（や）きを食（た）べました。")).toBe("お好み焼きをたべました。");
     expect(stripReadings("髪（かみ）の毛（け）を切（き）る")).toBe("髪の毛をきる");
     expect(stripReadings("駅（えき）に着（つ）きます")).toBe("えきにつきます");
+  });
+  it("says the card's word in an example the same way as the word button", () => {
+    expect(speakableJa("たこやき", "たこ焼き")).toBe("たこ焼き");
+    expect(keepWordJa("たこ焼き")).toBe("たこ焼き");
+    expect(stripReadings("たこ焼（や）きが大好（だいす）きです。", keepWordJa("たこ焼き"))).toBe("たこ焼きが大好きです。");
+    expect(keepWordJa("通う")).toBe("");
+    expect(keepWordJa("駐車・する")).toBe("駐車");
   });
   it("drops a stray reading that does not follow kanji", () => {
     expect(stripReadings("たばこをやめる（たばこをやめる）")).toBe("たばこをやめる");

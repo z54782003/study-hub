@@ -4,7 +4,7 @@ import { useSearchParams } from "next/navigation";
 import { Fragment, useEffect, useState } from "react";
 import { Icon } from "@/components/Icon";
 import { Speak } from "@/components/Speak";
-import { speakableJa } from "@/lib/speech";
+import { keepWordJa, speakableJa } from "@/lib/speech";
 import { glossParts, parseUsage } from "@/lib/usage";
 import { Ruby } from "@/components/Ruby";
 import type { VocabItem } from "@/lib/types";
@@ -66,7 +66,7 @@ export function LessonCards({
   /** 英文單字卡也用這個元件：發音、lang 屬性、按鈕文字跟著換 */
   lang?: "ja" | "en";
 }) {
-  const t = lang === "en" ? { all: "練習全部", part: "練習這個主題", tabs: "主題" } : { all: "練習這課", part: "練習這段", tabs: "課本小節" };
+  const t = lang === "en" ? { all: "練習全部", part: "練習這主題", tabs: "主題" } : { all: "練習這課", part: "練習這段", tabs: "課本小節" };
   // 選 ST：全部／1-1／1-2／補…；課本順序攤平，每張卡記得自己在哪一段
   // 看到哪張記在網址（?sec=4-1&w=頁面id），重新整理或分享都回到同一張
   const params = useSearchParams();
@@ -80,6 +80,8 @@ export function LessonCards({
   const groups = sec === null ? all : all.filter((g) => g.title === sec);
   const words = groups.flatMap((g) => g.words.map((w) => ({ ...w, section: g.title })));
   const practice = sec === null ? lessonPractice : (sectionPractice[sec] ?? lessonPractice);
+  // 一回合只考一種：選擇題（選讀音／中文意思）或填空
+  const withMode = (m: "choice" | "fill") => `${practice}${practice.includes("?") ? "&" : "?"}qmode=${m}`;
   const [i, setI] = useState(() => Math.max(0, words.findIndex((x) => x.id === params.get("w"))));
   const [drag, setDrag] = useState<{ x: number; dx: number } | null>(null);
   const w = words[i];
@@ -158,9 +160,16 @@ export function LessonCards({
             ))}
           </div>
         </details>
-        <Link href={practice} className="shrink-0 text-sm font-semibold text-accent">
-          {sec === null ? t.all : t.part} ›
-        </Link>
+        <span className="shrink-0 text-sm font-semibold">
+          <span className="text-muted">{sec === null ? t.all : t.part}：</span>
+          <Link href={withMode("choice")} className="text-accent">
+            選擇
+          </Link>
+          <span className="mx-1 text-muted">｜</span>
+          <Link href={withMode("fill")} className="text-accent">
+            填空 ›
+          </Link>
+        </span>
       </div>
 
       <article
@@ -232,7 +241,7 @@ export function LessonCards({
                   </p>
                   {e.zh && <p className="text-sm text-ink-2">{e.zh}</p>}
                 </div>
-                <Speak text={e.ja} lang={lang} label={`播放例句${k + 1}`} />
+                <Speak text={e.ja} lang={lang} keep={lang === "ja" ? keepWordJa(w.word) : undefined} label={`播放例句${k + 1}`} />
               </div>
             ))}
           </section>
@@ -254,9 +263,14 @@ export function LessonCards({
             <Icon name="chevron" stroke={2.2} />
           </button>
         ) : (
-          <Link href={practice} className="flex h-12 items-center justify-center rounded-[14px] bg-accent font-bold text-on-accent">
-            {sec === null ? t.all : t.part}
-          </Link>
+          <span className="grid grid-cols-2 gap-1.5">
+            <Link href={withMode("choice")} className="flex h-12 items-center justify-center rounded-[14px] bg-accent text-sm font-bold text-on-accent">
+              選擇題
+            </Link>
+            <Link href={withMode("fill")} className="flex h-12 items-center justify-center rounded-[14px] border border-accent text-sm font-bold text-accent">
+              填空
+            </Link>
+          </span>
         )}
       </div>
     </div>

@@ -4,13 +4,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { gradeChoice, parseChoices } from "@/lib/grading";
 import { sourceLabel, sourceQuery } from "@/lib/reviewSource";
 import { Speak } from "@/components/Speak";
-import { speakableJa } from "@/lib/speech";
+import { keepWordJa, speakableJa } from "@/lib/speech";
 import { FORM_LABEL, FORM_RULE, GROUP_OF, checkConjugation, specialNote, type VerbForm } from "@/lib/conjugate";
 import type { GradeMethod, GradeResult, KanjiItem, QuizItem, ReviewItem, ReviewSource, VerbItem, VocabItem } from "@/lib/types";
 import { Icon } from "@/components/Icon";
 import { charDiff } from "@/lib/diff";
 import { recallQuestion, type RecallItem } from "@/lib/recall";
-import { choiceQuestion, isChoiceTurn } from "@/lib/choices";
+import { choiceQuestion } from "@/lib/choices";
 import { StatusMessage } from "@/components/StatusMessage";
 
 type Result = { item: ReviewItem; correct: boolean; answer?: string };
@@ -218,7 +218,7 @@ export function ReviewSession({ source }: { source: ReviewSource }) {
       ) : item.kind === "verb" ? (
         <VerbCard key={item.id} item={item} onDone={next} />
       ) : (
-        <RecallCard key={item.id} item={item} pool={items.filter((i): i is RecallItem => i.kind === "vocab" || i.kind === "n3")} onDone={next} onSkip={skip} />
+        <RecallCard key={item.id} item={item} asChoice={source.src === "vocab" && source.qmode !== "fill"} pool={items.filter((i): i is RecallItem => i.kind === "vocab" || i.kind === "n3")} onDone={next} onSkip={skip} />
       )}
     </div>
   );
@@ -454,13 +454,13 @@ function RecallDetail({ item }: { item: RecallItem }) {
   );
 }
 
-// ── 單字・漢字・N3・文型：寫答案 → AI 批改（單字有一半是選擇題）─────────────
+// ── 單字・漢字・N3・文型：寫答案 → AI 批改（單字練習可選「選擇題」回合）─────────
 
-function RecallCard({ item, pool, onDone, onSkip }: { item: RecallItem; pool: RecallItem[]; onDone: (p: Pending) => void; onSkip: () => void }) {
+function RecallCard({ item, asChoice, pool, onDone, onSkip }: { item: RecallItem; asChoice: boolean; pool: RecallItem[]; onDone: (p: Pending) => void; onSkip: () => void }) {
   const q = recallQuestion(item);
-  // 單字一半出選擇題（選讀音或中文意思，直接比對、不用 AI），一半填空
+  // 選擇題回合：漢字詞選讀音、假名／英文選中文意思（直接比對、不用 AI）；做不出四個選項就改填空
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const choice = useMemo(() => (isChoiceTurn(item.id) ? choiceQuestion(item, pool) : null), [item.id]);
+  const choice = useMemo(() => (asChoice ? choiceQuestion(item, pool) : null), [item.id]);
   const [draft, setDraft] = useState("");
   const [grading, setGrading] = useState(false);
   const [result, setResult] = useState<GradeResult | null>(null);
@@ -640,7 +640,7 @@ function VocabDetail({ item }: { item: VocabItem }) {
         <div key={i} className="text-sm">
           <p className="flex items-start gap-1" lang={lang}>
             <span className="flex-1">{e.ja}</span>
-            <Speak text={e.ja} lang={lang} label="念例句" />
+            <Speak text={e.ja} lang={lang} keep={lang === "ja" ? keepWordJa(item.word) : undefined} label="念例句" />
           </p>
           {e.zh && <p className="text-muted">{e.zh}</p>}
         </div>

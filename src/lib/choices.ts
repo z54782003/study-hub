@@ -1,4 +1,4 @@
-// 練習題的選擇題：日文漢字詞選讀音（干擾選項是長得很像的假名：しゃしん／しやしん／じゃしん），
+// 單字練習的選擇題回合：日文漢字詞選讀音（干擾選項是長得很像的假名：しゃしん／しやしん／じゃしん），
 // 英文和純假名的字選中文意思（干擾選項拿同一回合其他字的意思）。不用 AI，直接比對。
 import { readingKana } from "./speech";
 import type { RecallItem } from "./recall";
@@ -23,9 +23,6 @@ function shuffle<T>(xs: T[], rand: () => number): T[] {
   }
   return a;
 }
-
-/** 一半的題目出選擇、一半填空（依題目 id 固定） */
-export const isChoiceTurn = (id: string) => seeded(id)() < 0.5;
 
 // ── 相近假名 ──────────────────────────────────────────
 

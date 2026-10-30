@@ -41,14 +41,16 @@ export function parseSource(q: URLSearchParams): ReviewSource {
     return { src: "bank", level, lessons, qtype, scope: q.get("scope") === "all" ? "all" : "weak", count };
   }
   if (src === "vocab") {
+    // 一回合只考一種：選擇（預設，不用 AI）或填空（AI 批改）
+    const qmode = q.get("qmode") === "fill" ? ("fill" as const) : ("choice" as const);
     // section＝課本索引的小節（「1-1 アルバイトを探す」）；只在單一課時有意義
     const section = lessons.length === 1 ? q.get("section")?.slice(0, 60) || undefined : undefined;
     if (q.get("lang") === "en") {
       const cefr = CEFRS.find((c) => c === q.get("cefr"));
       const topic = [...EN_TOPICS, EN_OTHER].find((t) => t === q.get("topic"));
-      return { src: "vocab", lang: "en", level: null, lessons: [], count, ...(cefr ? { cefr } : {}), ...(cefr && topic ? { topic } : {}) };
+      return { src: "vocab", lang: "en", level: null, lessons: [], count, ...(cefr ? { cefr } : {}), ...(cefr && topic ? { topic } : {}), qmode };
     }
-    return { src: "vocab", lang: "ja", level, lessons, count, ...(section ? { section } : {}) };
+    return { src: "vocab", lang: "ja", level, lessons, count, ...(section ? { section } : {}), qmode };
   }
   if (src === "verb") {
     const list = (k: string) => (q.get(k) ?? "").split(",").filter(Boolean);
@@ -79,6 +81,7 @@ export function sourceQuery(s: ReviewSource): string {
     if (s.section) q.set("section", s.section);
     if (s.cefr) q.set("cefr", s.cefr);
     if (s.topic) q.set("topic", s.topic);
+    if (s.qmode) q.set("qmode", s.qmode);
   }
   if (s.src === "verb") {
     q.set("forms", s.forms.join(","));
@@ -99,7 +102,8 @@ export function sourceLabel(s: ReviewSource): string {
   if (s.src === "kanji") return `漢字・${s.chapters.length ? s.chapters.join("、") : "全部"}`;
   if (s.src === "verb") return `動詞の形・${s.forms.map((f) => FORM_LABEL[f as keyof typeof FORM_LABEL] ?? f).join("・")}`;
   const lessons = s.lessons.length ? `L${s.lessons.join("・")}` : "全部課";
-  if (s.src === "vocab") return s.lang === "en" ? ["英文單字", s.cefr, s.topic].filter(Boolean).join("・") : `單字測驗・${s.level ?? ""} ${lessons}${s.section ? `・${s.section}` : ""}`;
+  const qm = s.src === "vocab" ? (s.qmode === "fill" ? "（填空）" : "（選擇）") : "";
+  if (s.src === "vocab") return (s.lang === "en" ? ["英文單字", s.cefr, s.topic].filter(Boolean).join("・") : `單字測驗・${s.level ?? ""} ${lessons}${s.section ? `・${s.section}` : ""}`) + qm;
   return `題庫・${s.level ?? "全部"} ${lessons}${s.qtype ? `・${s.qtype}` : ""}`;
 }
 
