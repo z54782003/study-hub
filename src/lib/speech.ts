@@ -4,18 +4,19 @@
 export type SpeechLang = "ja" | "en";
 
 /**
- * 單字的發音。兩個字以上的漢字詞（駐車・する、小学校）直接唸漢字：只給假名時語音判斷不出是哪個詞，
- * 音調會跑掉（ちゅうしゃ＝注射？）。單一漢字、讀法特殊的詞、沒有漢字的才用讀音欄的假名。
+ * 單字的發音。有兩個以上漢字的詞（駐車・する、お好み焼き、髪の毛）照寫的唸：只給假名時語音判斷不出是哪個詞，
+ * 音調會跑掉、詞中間還會停頓。單一漢字、讀法特殊的詞、沒有漢字的才用讀音欄的假名。
  */
 export function speakableJa(reading: string, fallback = ""): string {
   const word = fallback.replace(/[（(［\[][^）)］\]]*[）)］\]]/g, "").replace(/[・〜～~\s]/g, "");
-  const stem = word.match(/^[\u4e00-\u9fff々]+/)?.[0] ?? "";
-  if (stem.length > 1 && !SPECIAL.has(stem) && /^[\u4e00-\u9fff々]+[\u3040-\u309f]*$/.test(word)) return word;
-  return kanaReading(reading, fallback);
+  const kanji = word.match(/[\u4e00-\u9fff々]/g) ?? [];
+  const special = [...SPECIAL].some((w) => word.includes(w));
+  if (kanji.length > 1 && !special && /^[おご]?[\u4e00-\u9fff々]+(?:[\u3040-\u309f]{1,2}[\u4e00-\u9fff々]+)*[\u3040-\u309f]*$/.test(word)) return word;
+  return readingKana(reading, fallback);
 }
 
 /** 讀音欄可能是「よみます（読む）」「あそびます／あそぶ」「う.まれる・い.きる」，整理成可以念的假名 */
-function kanaReading(reading: string, fallback: string): string {
+export function readingKana(reading: string, fallback = ""): string {
   const first = reading
     .replace(/[（(［\[][^）)］\]]*[）)］\]]/g, "")
     .split(/[／/・、,]/)[0]
@@ -48,6 +49,10 @@ function pickVoice(lang: SpeechLang): SpeechSynthesisVoice | undefined {
 }
 
 /** 念一段文字；再按一次會從頭念（先停掉正在念的） */
+const K = "[\\u4e00-\\u9fff々〆ヶ]+[（(][\\u3040-\\u30ffー・\\s]+[）)]";
+// 詞中間的送假名（み、の）可以，助詞（は、が、を、に、で、へ、と、も、や、か）就斷開
+const WORD_CHAIN = new RegExp(`[おご]?${K}(?:(?:(?![はがをにでへともやか])[ぁ-ゖ])${K})+`, "g");
+
 // 讀法特殊、語音常唸錯的漢字詞：照標的讀音唸
 const SPECIAL = new Set("今日 明日 昨日 今朝 今年 今夜 一日 二日 一人 二人 大人 上手 下手 部屋 眼鏡 土産 果物 景色 一昨日 明後日 二十日 二十歳 八百屋 紅葉 博士 何人 何日".split(" "));
 
@@ -59,6 +64,8 @@ const SPECIAL = new Set("今日 明日 昨日 今朝 今年 今夜 一日 二日
  */
 export function stripReadings(text: string): string {
   return text
+    // 一個詞裡有好幾個標了讀音的漢字（お好（この）み焼（や）き、髪（かみ）の毛（け））：整個詞照漢字唸，不拆成假名
+    .replace(WORD_CHAIN, (m) => m.replace(/[（(][\u3040-\u30ffー・\s]+[）)]/g, ""))
     .replace(/([\u4e00-\u9fff々〆ヶ]+)[（(]([\u3040-\u30ffー・\s]+)[）)]([はへ])?/g, (_, kanji: string, kana: string, p = "") =>
       [...kanji].length > 1 && !SPECIAL.has(kanji) ? kanji + p : kana + (p === "は" ? "わ" : p === "へ" ? "え" : ""),
     )

@@ -16,6 +16,7 @@ describe("speakableJa", () => {
     expect(speakableJa("きょう", "今日")).toBe("きょう");
     expect(speakableJa("かよう", "通う")).toBe("かよう");
     expect(speakableJa("おみやげ", "お土産")).toBe("おみやげ");
+    expect(speakableJa("おこのみやき", "お好み焼き")).toBe("お好み焼き");
   });
 });
 
@@ -31,6 +32,11 @@ describe("stripReadings", () => {
     expect(stripReadings("早（はや）く")).toBe("はやく");
     expect(stripReadings("駅（えき）へ行（い）きます。")).toBe("えきえいきます。");
     expect(stripReadings("今日（きょう）は")).toBe("きょうわ");
+  });
+  it("keeps a word with several furigana'd kanji whole", () => {
+    expect(stripReadings("お好（この）み焼（や）きを食（た）べました。")).toBe("お好み焼きをたべました。");
+    expect(stripReadings("髪（かみ）の毛（け）を切（き）る")).toBe("髪の毛をきる");
+    expect(stripReadings("駅（えき）に着（つ）きます")).toBe("えきにつきます");
   });
   it("drops a stray reading that does not follow kanji", () => {
     expect(stripReadings("たばこをやめる（たばこをやめる）")).toBe("たばこをやめる");

@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { gradeChoice, parseChoices } from "@/lib/grading";
 import { sourceLabel, sourceQuery } from "@/lib/reviewSource";
 import { Speak } from "@/components/Speak";
@@ -10,6 +10,7 @@ import type { GradeMethod, GradeResult, KanjiItem, QuizItem, ReviewItem, ReviewS
 import { Icon } from "@/components/Icon";
 import { charDiff } from "@/lib/diff";
 import { recallQuestion, type RecallItem } from "@/lib/recall";
+import { choiceQuestion, isChoiceTurn } from "@/lib/choices";
 import { StatusMessage } from "@/components/StatusMessage";
 
 type Result = { item: ReviewItem; correct: boolean; answer?: string };
@@ -217,7 +218,7 @@ export function ReviewSession({ source }: { source: ReviewSource }) {
       ) : item.kind === "verb" ? (
         <VerbCard key={item.id} item={item} onDone={next} />
       ) : (
-        <RecallCard key={item.id} item={item} onDone={next} onSkip={skip} />
+        <RecallCard key={item.id} item={item} pool={items.filter((i): i is RecallItem => i.kind === "vocab" || i.kind === "n3")} onDone={next} onSkip={skip} />
       )}
     </div>
   );
@@ -416,10 +417,50 @@ function QuizCard({ item, onDone, onSkip }: { item: QuizItem; onDone: (p: Pendin
   );
 }
 
-// ── 單字・漢字・N3・文型：寫答案 → AI 批改 ─────────────────────────
+/** 答完之後的單字／漢字／文型資料 */
+function RecallDetail({ item }: { item: RecallItem }) {
+  return item.kind === "kanji" ? (
+    <KanjiDetail item={item} />
+  ) : item.kind === "vocab" ? (
+    <VocabDetail item={item} />
+  ) : item.kind === "n3" ? (
+    <div className="space-y-2 text-center">
+      <p className="flex items-center justify-center gap-1 text-2xl" lang="ja">
+        {item.reading}
+        <Speak text={speakableJa(item.reading, item.word)} />
+      </p>
+      <p className="text-xl font-semibold">{item.meaning}</p>
+      <p className="text-sm text-muted">{[item.pos, item.level, item.status].filter(Boolean).join("・")}</p>
+      {item.note && (
+        <p className="text-sm whitespace-pre-wrap text-muted" lang="ja">
+          {item.note}
+        </p>
+      )}
+    </div>
+  ) : (
+    <div className="space-y-2">
+      <p className="text-lg font-semibold">{item.meaning}</p>
+      {item.connection && (
+        <p className="text-sm text-muted">
+          接續：<span lang="ja">{item.connection}</span>
+        </p>
+      )}
+      {item.confusable && (
+        <p className="text-sm text-muted">
+          易混淆：<span lang="ja">{item.confusable}</span>
+        </p>
+      )}
+    </div>
+  );
+}
 
-function RecallCard({ item, onDone, onSkip }: { item: RecallItem; onDone: (p: Pending) => void; onSkip: () => void }) {
+// ── 單字・漢字・N3・文型：寫答案 → AI 批改（單字有一半是選擇題）─────────────
+
+function RecallCard({ item, pool, onDone, onSkip }: { item: RecallItem; pool: RecallItem[]; onDone: (p: Pending) => void; onSkip: () => void }) {
   const q = recallQuestion(item);
+  // 單字一半出選擇題（選讀音或中文意思，直接比對、不用 AI），一半填空
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const choice = useMemo(() => (isChoiceTurn(item.id) ? choiceQuestion(item, pool) : null), [item.id]);
   const [draft, setDraft] = useState("");
   const [grading, setGrading] = useState(false);
   const [result, setResult] = useState<GradeResult | null>(null);
@@ -441,6 +482,10 @@ function RecallCard({ item, onDone, onSkip }: { item: RecallItem; onDone: (p: Pe
     }
   };
   const giveUp = () => setResult({ correct: false, method: "自評", feedback: "", suggestion: "" });
+  const pick = (o: string) => {
+    setDraft(o);
+    setResult({ correct: o === choice!.answer, method: "自動比對", feedback: "", suggestion: "" });
+  };
   const finalCorrect = override ?? result?.correct ?? null;
   const failed = result !== null && result.correct === null;
   const finish = (correct: boolean) =>
@@ -452,8 +497,32 @@ function RecallCard({ item, onDone, onSkip }: { item: RecallItem; onDone: (p: Pe
         <p className={`pt-4 text-center font-bold ${item.kind === "grammar" ? "text-3xl" : "text-5xl"}`} lang={q.cueLang}>
           {q.cue}
         </p>
-        <p className="mt-3 mb-1 text-center text-sm text-muted">{q.ask}</p>
-        {!result || failed ? (
+        <p className="mt-3 mb-1 text-center text-sm text-muted">{choice ? choice.ask : q.ask}</p>
+        {choice ? (
+          <div className="mt-4 grid gap-2">
+            {choice.options.map((o) => {
+              const right = result && o === choice.answer;
+              const wrongPick = result && o === draft && !right;
+              return (
+                <button
+                  key={o}
+                  type="button"
+                  disabled={Boolean(result)}
+                  onClick={() => pick(o)}
+                  className={`flex items-center gap-3 rounded-2xl border-2 px-4 py-3 text-left text-lg ${right ? "border-ok bg-ok-soft" : wrongPick ? "border-bad bg-bad-soft" : "border-line"}`}
+                  lang={choice.lang === "ja" ? "ja" : "zh-Hant"}
+                >
+                  <span className="flex-1">{o}</span>
+                  {right && <span className="text-ok">✓</span>}
+                  {wrongPick && <span className="text-bad">✗</span>}
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
+        {choice && result ? (
+          <div className="mt-4 border-t border-line pt-4"><RecallDetail item={item} /></div>
+        ) : choice ? null : !result || failed ? (
           <input
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
@@ -467,47 +536,19 @@ function RecallCard({ item, onDone, onSkip }: { item: RecallItem; onDone: (p: Pe
           <>
             <GradeResultView result={result} answer={draft.trim()} finalCorrect={finalCorrect} overridden={override !== null} />
             <div className="mt-4 border-t border-line pt-4">
-              {item.kind === "kanji" ? (
-                <KanjiDetail item={item} />
-              ) : item.kind === "vocab" ? (
-                <VocabDetail item={item} />
-              ) : item.kind === "n3" ? (
-                <div className="space-y-2 text-center">
-                  <p className="flex items-center justify-center gap-1 text-2xl" lang="ja">
-                    {item.reading}
-                    <Speak text={speakableJa(item.reading, item.word)} />
-                  </p>
-                  <p className="text-xl font-semibold">{item.meaning}</p>
-                  <p className="text-sm text-muted">{[item.pos, item.level, item.status].filter(Boolean).join("・")}</p>
-                  {item.note && (
-                    <p className="text-sm whitespace-pre-wrap text-muted" lang="ja">
-                      {item.note}
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <p className="text-lg font-semibold">{item.meaning}</p>
-                  {item.connection && (
-                    <p className="text-sm text-muted">
-                      接續：<span lang="ja">{item.connection}</span>
-                    </p>
-                  )}
-                  {item.confusable && (
-                    <p className="text-sm text-muted">
-                      易混淆：<span lang="ja">{item.confusable}</span>
-                    </p>
-                  )}
-                </div>
-              )}
+              <RecallDetail item={item} />
             </div>
           </>
         )}
       </article>
-      {result && result.correct !== null && <Overrule key={item.id} aiSays={result.correct} onChange={setOverride} />}
+      {result && result.correct !== null && !choice && <Overrule key={item.id} aiSays={result.correct} onChange={setOverride} />}
 
       <div className="sticky bottom-24 mt-4">
-        {!result || failed ? (
+        {choice && !result ? (
+          <button type="button" onClick={giveUp} className="w-full rounded-2xl border border-line py-4 font-semibold text-muted">
+            不會
+          </button>
+        ) : !result || failed ? (
           <div className="grid grid-cols-[1fr_2fr] gap-3">
             <button type="button" onClick={giveUp} disabled={grading} className="rounded-2xl border border-line py-4 font-semibold text-muted">
               不會
