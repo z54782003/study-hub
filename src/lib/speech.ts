@@ -3,8 +3,19 @@
 
 export type SpeechLang = "ja" | "en";
 
-/** 讀音欄可能是「よみます（読む）」「あそびます／あそぶ」「う.まれる・い.きる」，整理成可以念的假名 */
+/**
+ * 單字的發音。兩個字以上的漢字詞（駐車・する、小学校）直接唸漢字：只給假名時語音判斷不出是哪個詞，
+ * 音調會跑掉（ちゅうしゃ＝注射？）。單一漢字、讀法特殊的詞、沒有漢字的才用讀音欄的假名。
+ */
 export function speakableJa(reading: string, fallback = ""): string {
+  const word = fallback.replace(/[（(［\[][^）)］\]]*[）)］\]]/g, "").replace(/[・〜～~\s]/g, "");
+  const stem = word.match(/^[\u4e00-\u9fff々]+/)?.[0] ?? "";
+  if (stem.length > 1 && !SPECIAL.has(stem) && /^[\u4e00-\u9fff々]+[\u3040-\u309f]*$/.test(word)) return word;
+  return kanaReading(reading, fallback);
+}
+
+/** 讀音欄可能是「よみます（読む）」「あそびます／あそぶ」「う.まれる・い.きる」，整理成可以念的假名 */
+function kanaReading(reading: string, fallback: string): string {
   const first = reading
     .replace(/[（(［\[][^）)］\]]*[）)］\]]/g, "")
     .split(/[／/・、,]/)[0]

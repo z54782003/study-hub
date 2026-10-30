@@ -10,6 +10,13 @@ describe("speakableJa", () => {
     expect(speakableJa("〜じゅう")).toBe("じゅう");
   });
   it("falls back to the word when there is no reading", () => expect(speakableJa("", "～才")).toBe("才"));
+  it("says multi-kanji words as written so the voice gets the word right", () => {
+    expect(speakableJa("ちゅうしゃ", "駐車・する")).toBe("駐車する");
+    expect(speakableJa("しょうがっこう", "小学校")).toBe("小学校");
+    expect(speakableJa("きょう", "今日")).toBe("きょう");
+    expect(speakableJa("かよう", "通う")).toBe("かよう");
+    expect(speakableJa("おみやげ", "お土産")).toBe("おみやげ");
+  });
 });
 
 describe("stripReadings", () => {
