@@ -17,6 +17,8 @@ describe("speakableJa", () => {
     expect(speakableJa("かよう", "通う")).toBe("かよう");
     expect(speakableJa("おみやげ", "お土産")).toBe("おみやげ");
     expect(speakableJa("おこのみやき", "お好み焼き")).toBe("お好み焼き");
+    expect(speakableJa("けんがくかい", "見学会")).toBe("けんがくかい");
+    expect(stripReadings("見学会（けんがくかい）に行（い）きました。")).toBe("けんがくかいにいきました。");
   });
 });
 
