@@ -15,6 +15,12 @@ describe("parseUsage", () => {
       { ja: "目標（もくひょう）を立（た）てる", zh: "訂立目標" },
     ]);
   });
+  it("reads a single dash as the separator, but not the long-vowel mark", () => {
+    expect(parseUsage("・搭配：サークルに入（はい）る—加入社團\n・搭配：サークル活動（かつどう）—社團活動")).toEqual([
+      { ja: "サークルに入（はい）る", zh: "加入社團" },
+      { ja: "サークル活動（かつどう）", zh: "社團活動" },
+    ]);
+  });
   it("keeps ⚠️ reminders whole, colons included", () => {
     expect(parseUsage("・搭配：〜を楽（たの）しむ：享受〜\n・⚠️相關：楽（たの）しい（い形）\n・搭配：⚠️ 直接稱呼時用「先生」")).toEqual([
       { ja: "〜を楽（たの）しむ", zh: "享受〜" },

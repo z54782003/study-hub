@@ -15,7 +15,8 @@ export function parseUsage(s: string): Usage[] {
     .filter(Boolean)
     .map((x): Usage => {
       if (/^⚠️?/.test(x)) return { ja: x.replace(/^⚠️?\s*/, ""), zh: "", note: true };
-      const m = x.match(/^(.+?)\s*(?:[：:＝=]|——|\s[-–—]\s)\s*(.+)$/);
+      // 分隔：「：」「＝」「——」「—」（不會跟長音「ー」搞混）或前後有空白的「-」
+      const m = x.match(/^(.+?)\s*(?:[：:＝=]|——|—|\s[-–]\s)\s*(.+)$/);
       return m ? { ja: m[1], zh: m[2] } : { ja: x, zh: "" };
     });
 }
