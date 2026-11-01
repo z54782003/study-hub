@@ -15,6 +15,12 @@ describe("parseUsage", () => {
       { ja: "目標（もくひょう）を立（た）てる", zh: "訂立目標" },
     ]);
   });
+  it("keeps the loanword origin line whole", () => {
+    expect(parseUsage("・搭配：アクセサリーをつける：戴飾品\n・語源：英語 accessory（配件）")).toEqual([
+      { ja: "アクセサリーをつける", zh: "戴飾品" },
+      { ja: "語源：英語 accessory（配件）", zh: "", note: true },
+    ]);
+  });
   it("reads a single dash as the separator, but not the long-vowel mark", () => {
     expect(parseUsage("・搭配：サークルに入（はい）る—加入社團\n・搭配：サークル活動（かつどう）—社團活動")).toEqual([
       { ja: "サークルに入（はい）る", zh: "加入社團" },

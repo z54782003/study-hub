@@ -18,12 +18,12 @@ const STATUS_TAG: Record<string, string> = {
 
 /** 「・⚠️」提醒：「相關：」那種把日文和括號裡的中文補充分開顏色，其他（多半是中文說明）照原樣 */
 function Note({ text }: { text: string }) {
-  const rel = text.match(/^相關[：:]\s*(.+)$/);
+  const rel = text.match(/^(相關|語源)[：:]\s*(.+)$/);
   if (!rel) return <>⚠️ <Ruby text={text} /></>;
   return (
     <>
-      <span className="tag mr-2 bg-card-2 text-ink-2">相關</span>
-      {glossParts(rel[1]).map((p, i) =>
+      <span className="tag mr-2 bg-card-2 text-ink-2">{rel[1]}</span>
+      {glossParts(rel[2]).map((p, i) =>
         p.zh ? (
           <span key={i} className="text-sm text-muted">
             {p.text}

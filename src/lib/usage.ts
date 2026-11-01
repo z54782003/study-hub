@@ -15,6 +15,8 @@ export function parseUsage(s: string): Usage[] {
     .filter(Boolean)
     .map((x): Usage => {
       if (/^⚠️?/.test(x)) return { ja: x.replace(/^⚠️?\s*/, ""), zh: "", note: true };
+      // 外來語的「語源：英語 accessory（配件）」也整行顯示
+      if (/^語源[：:]/.test(x)) return { ja: x, zh: "", note: true };
       // 分隔：「：」「＝」「——」「—」（不會跟長音「ー」搞混）或前後有空白的「-」
       const m = x.match(/^(.+?)\s*(?:[：:＝=]|——|—|\s[-–]\s)\s*(.+)$/);
       return m ? { ja: m[1], zh: m[2] } : { ja: x, zh: "" };
