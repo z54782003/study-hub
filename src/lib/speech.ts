@@ -15,6 +15,9 @@ export function speakableJa(reading: string, fallback = ""): string {
   return readingKana(reading, fallback);
 }
 
+/** 讀音開頭是「は」「へ」的（はたち、歯（は））換成片假名：平假名的話語音會當成助詞唸成 wa／e */
+const safeKana = (kana: string) => (/^[はへ]/.test(kana) ? kana.replace(/[ぁ-ゖ]/g, (c) => String.fromCharCode(c.charCodeAt(0) + 0x60)) : kana);
+
 /** 例句要照寫的唸的單字：只有單字按鈕也照寫的唸時才保留（不然兩邊不一致） */
 export function keepWordJa(word: string): string {
   const w = word.replace(/[（(［\[][^）)］\]]*[）)］\]]/g, "").replace(/[・〜～~\s]/g, "").replace(/する$/, "");
@@ -88,7 +91,7 @@ export function stripReadings(text: string, keep = ""): string {
     // 一個詞裡有好幾個標了讀音的漢字（お好（この）み焼（や）き、髪（かみ）の毛（け））：整個詞照漢字唸，不拆成假名
     .replace(WORD_CHAIN, (m) => m.replace(/[（(][\u3040-\u30ffー・\s]+[）)]/g, ""))
     .replace(/([\u4e00-\u9fff々〆ヶ]+)[（(]([\u3040-\u30ffー・\s]+)[）)]([はへ])?/g, (_, kanji: string, kana: string, p = "") =>
-      [...kanji].length > 1 && !SPECIAL.has(kanji) ? kanji + p : kana + (p === "は" ? "わ" : p === "へ" ? "え" : ""),
+      [...kanji].length > 1 && !SPECIAL.has(kanji) ? kanji + p : safeKana(kana) + (p === "は" ? "わ" : p === "へ" ? "え" : ""),
     )
     .replace(/[（(][\u3040-\u30ffー・\s]+[）)]/g, "");
 }

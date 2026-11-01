@@ -19,6 +19,7 @@ describe("speakableJa", () => {
     expect(speakableJa("おこのみやき", "お好み焼き")).toBe("お好み焼き");
     expect(speakableJa("けんがくかい", "見学会")).toBe("けんがくかい");
     expect(stripReadings("見学会（けんがくかい）に行（い）きました。")).toBe("けんがくかいにいきました。");
+    expect(stripReadings("お酒（さけ）は二十歳（はたち）から飲（の）める")).toBe("おさけわハタチからのめる");
   });
 });
 
@@ -31,7 +32,7 @@ describe("stripReadings", () => {
     expect(stripReadings("電車（でんしゃ）は午後（ごご）三時（さんじ）に駅（えき）に着（つ）きます。")).toBe("電車は午後三時にえきにつきます。");
     expect(stripReadings("この時計（とけい）は五分（ごふん）遅（おく）れて止（と）まりました。")).toBe("この時計は五分おくれてとまりました。");
     expect(stripReadings("学校（がっこう）へ行（い）きます。")).toBe("学校へいきます。");
-    expect(stripReadings("早（はや）く")).toBe("はやく");
+    expect(stripReadings("早（はや）く")).toBe("ハヤく");
     expect(stripReadings("駅（えき）へ行（い）きます。")).toBe("えきえいきます。");
     expect(stripReadings("今日（きょう）は")).toBe("きょうわ");
   });
