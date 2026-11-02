@@ -41,8 +41,13 @@ describe("stripReadings", () => {
     expect(stripReadings("髪（かみ）の毛（け）を切（き）る")).toBe("髪の毛をきる");
     // 「聞」照原字唸：換成 き 會和前面的「と」變成「とき」
     expect(stripReadings("引（ひ）っ越（こ）すと聞（き）いて")).toBe("引っ越すと聞いて");
+    // 「少し」和後面的詞分開
+    expect(stripReadings("少（すこ）し悲（かな）しくなりました。")).toBe("すこしかなしくなりました。");
+    // 複合詞照舊合在一起
+    expect(stripReadings("締（し）め切（き）りは来週（らいしゅう）です。")).toBe("締め切りは来週です。");
+    expect(stripReadings("申（もう）し込（こ）みます")).toBe("申し込みます");
     // 「の」前後是不同的詞：各自照讀音唸，夜才不會被唸成 よ
-    expect(stripReadings("昨日（きのう）の夜（よる）、空（そら）を飛（と）ぶ夢（ゆめ）を見（み）ました。")).toBe("きのうのよる、そらを飛ぶ夢を見ました。");
+    expect(stripReadings("昨日（きのう）の夜（よる）、空（そら）を飛（と）ぶ夢（ゆめ）を見（み）ました。")).toBe("きのうのよる、そらをとぶゆめを見ました。");
     expect(stripReadings("駅（えき）に着（つ）きます")).toBe("えきにつきます");
   });
   it("says the card's word in an example the same way as the word button", () => {
