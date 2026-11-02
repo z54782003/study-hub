@@ -5,7 +5,7 @@ import { Fragment, useEffect, useState } from "react";
 import { Icon } from "@/components/Icon";
 import { Speak } from "@/components/Speak";
 import { keepWordJa, speakableJa } from "@/lib/speech";
-import { glossParts, parseUsage } from "@/lib/usage";
+import { glossParts, parseUsage, usageSpeech } from "@/lib/usage";
 import { Ruby } from "@/components/Ruby";
 import type { VocabItem } from "@/lib/types";
 
@@ -213,16 +213,24 @@ export function LessonCards({
             <dl className="grid grid-cols-[auto_1fr] gap-x-3.5 gap-y-1.5 pt-1.5 text-[15px] leading-loose">
               {usage.map((u, k) =>
                 u.note ? (
-                  <dd key={k} className="col-span-2 text-sm leading-loose text-ink-2">
-                    <Note text={u.ja} />
+                  <dd key={k} className="col-span-2 flex items-start justify-between gap-1 text-sm leading-loose text-ink-2">
+                    <span>
+                      <Note text={u.ja} />
+                    </span>
+                    {lang === "ja" && /^相關[：:]/.test(u.ja) && (
+                      <Speak text={usageSpeech(u.ja.replace(/^相關[：:]\s*/, ""))} label={`播放相關${k + 1}`} className="-my-2" />
+                    )}
                   </dd>
                 ) : (
                 <Fragment key={k}>
                   <dt className="font-semibold" lang={lang}>
                     <Ruby text={u.ja} />
                   </dt>
-                  <dd className="text-ink-2">
-                    <Ruby text={u.zh} />
+                  <dd className="flex items-start justify-between gap-1 text-ink-2">
+                    <span>
+                      <Ruby text={u.zh} />
+                    </span>
+                    <Speak text={lang === "en" ? u.ja : usageSpeech(u.ja)} lang={lang} keep={lang === "ja" ? keepWordJa(w.word) : undefined} label={`播放搭配${k + 1}`} className="-my-2" />
                   </dd>
                 </Fragment>
                 ),

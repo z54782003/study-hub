@@ -33,6 +33,19 @@ export function glossParts(text: string): { text: string; zh: boolean }[] {
     .map((t) => ({ text: t, zh: /^[（(]/.test(t) && !/^[（(][\u3040-\u30ffー・]+[）)]$/.test(t) }));
 }
 
+/** 搭配、相關要念出來的日文：去掉中文補充（（自）（牙醫））、↔、〈〉；「〜」連同後面的助詞不念（〜に驚く → 驚く）；「・」「／」念成停頓 */
+export function usageSpeech(text: string): string {
+  return glossParts(text)
+    .filter((p) => !p.zh)
+    .map((p) => p.text)
+    .join("")
+    .replace(/[〜～](?:のが|[をがにのでとへは])?/g, "")
+    .replace(/[↔〈〉]/g, "")
+    .replace(/\s*[・／]\s*/g, "、")
+    .replace(/^、+|、+$/g, "")
+    .trim();
+}
+
 /** 例句裡把單字本身標出來；找不到就整句一段 */
 export function markWord(sentence: string, word: string): { text: string; hit: boolean }[] {
   let w = word.replace(/[（(].*$/, "").trim();

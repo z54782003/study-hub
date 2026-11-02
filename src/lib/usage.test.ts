@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { glossParts, markWord, parseUsage } from "./usage";
+import { glossParts, markWord, parseUsage, usageSpeech } from "./usage";
 
 describe("parseUsage", () => {
   it("splits phrases and their meanings", () => {
@@ -53,6 +53,15 @@ describe("glossParts", () => {
       { text: "・歯医者（はいしゃ）", zh: false },
       { text: "（牙醫）", zh: true },
     ]);
+  });
+});
+
+describe("usageSpeech", () => {
+  it("keeps only the Japanese to read aloud", () => {
+    expect(usageSpeech("〈人（ひと）〉を〜に招待（しょうたい）する")).toBe("人（ひと）を招待（しょうたい）する");
+    expect(usageSpeech("〜のが苦手（にがて）だ")).toBe("苦手（にがて）だ");
+    expect(usageSpeech("↔ 厚（あつ）い・濃（こ）い")).toBe("厚（あつ）い、濃（こ）い");
+    expect(usageSpeech("落（お）ちる（自）・歯医者（はいしゃ）（牙醫）")).toBe("落（お）ちる、歯医者（はいしゃ）");
   });
 });
 
