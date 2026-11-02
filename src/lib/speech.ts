@@ -89,7 +89,10 @@ export function stripReadings(text: string, keep = ""): string {
   }
   return text
     // 一個詞裡有好幾個標了讀音的漢字（お好（この）み焼（や）き、髪（かみ）の毛（け））：整個詞照漢字唸，不拆成假名
-    .replace(WORD_CHAIN, (m) => m.replace(/[（(][\u3040-\u30ffー・\s]+[）)]/g, ""))
+    // 「の」連起來的只有兩邊都是單一漢字才算一個詞（髪の毛、目の前）；「昨日の夜」照各自的讀音唸（不然語音會把夜唸成 よ）
+    .replace(WORD_CHAIN, (m) =>
+      /の/.test(m) && /[\u4e00-\u9fff々〆ヶ]{2}/.test(m.replace(/[（(][^）)]*[）)]/g, "|")) ? m : m.replace(/[（(][\u3040-\u30ffー・\s]+[）)]/g, ""),
+    )
     .replace(/([\u4e00-\u9fff々〆ヶ]+)[（(]([\u3040-\u30ffー・\s]+)[）)]([はへ])?/g, (_, kanji: string, kana: string, p = "") =>
       [...kanji].length > 1 && !SPECIAL.has(kanji) ? kanji + p : safeKana(kana) + (p === "は" ? "わ" : p === "へ" ? "え" : ""),
     )

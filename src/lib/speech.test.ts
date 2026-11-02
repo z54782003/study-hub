@@ -39,6 +39,8 @@ describe("stripReadings", () => {
   it("keeps a word with several furigana'd kanji whole", () => {
     expect(stripReadings("お好（この）み焼（や）きを食（た）べました。")).toBe("お好み焼きをたべました。");
     expect(stripReadings("髪（かみ）の毛（け）を切（き）る")).toBe("髪の毛をきる");
+    // 「の」前後是不同的詞：各自照讀音唸，夜才不會被唸成 よ
+    expect(stripReadings("昨日（きのう）の夜（よる）、空（そら）を飛（と）ぶ夢（ゆめ）を見（み）ました。")).toBe("きのうのよる、そらを飛ぶ夢をみました。");
     expect(stripReadings("駅（えき）に着（つ）きます")).toBe("えきにつきます");
   });
   it("says the card's word in an example the same way as the word button", () => {
