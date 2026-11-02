@@ -5,7 +5,7 @@ import { Fragment, useEffect, useState } from "react";
 import { Icon } from "@/components/Icon";
 import { Speak } from "@/components/Speak";
 import { keepWordJa, speakableJa } from "@/lib/speech";
-import { glossParts, kanaOnly, parseUsage, splitMasu, usageSpeech, verbType } from "@/lib/usage";
+import { glossParts, kanaOnly, masuRuby, parseUsage, splitMasu, usageSpeech, verbType } from "@/lib/usage";
 import { Ruby } from "@/components/Ruby";
 import type { VocabItem } from "@/lib/types";
 
@@ -214,7 +214,7 @@ export function LessonCards({
               <span className="tag bg-card-2 text-ink-2">
                 ます形{" "}
                 <span className="font-semibold text-ink" lang="ja">
-                  <Ruby text={masu} />
+                  <Ruby text={masuRuby(masu, w.word, w.reading)} />
                 </span>
               </span>
             )}

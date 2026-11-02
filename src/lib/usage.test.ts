@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { glossParts, kanaOnly, markWord, splitMasu, parseUsage, usageSpeech, verbType } from "./usage";
+import { glossParts, kanaOnly, markWord, masuRuby, splitMasu, parseUsage, usageSpeech, verbType } from "./usage";
 
 describe("parseUsage", () => {
   it("splits phrases and their meanings", () => {
@@ -70,6 +70,20 @@ describe("splitMasu", () => {
     expect(splitMasu("ます形：行きます\n・搭配：学校（がっこう）へ行（い）く：去學校")).toEqual({ masu: "行きます", rest: "・搭配：学校（がっこう）へ行（い）く：去學校" });
     expect(splitMasu("・⚠️ます形：生（う）まれます\n・搭配：子（こ）どもが生（う）まれる：孩子出生")).toEqual({ masu: "生（う）まれます", rest: "・搭配：子（こ）どもが生（う）まれる：孩子出生" });
     expect(splitMasu("・搭配：本（ほん）を読（よ）む：讀書")).toEqual({ masu: null, rest: "・搭配：本（ほん）を読（よ）む：讀書" });
+  });
+});
+
+describe("masuRuby", () => {
+  it("adds the reading of the kanji from the word and its reading", () => {
+    expect(masuRuby("決めます", "決める", "きめる")).toBe("決（き）めます");
+    expect(masuRuby("勉強します", "勉強する", "べんきょうする")).toBe("勉強（べんきょう）します");
+    expect(masuRuby("風邪をひきます", "風邪をひく", "かぜをひく")).toBe("風邪（かぜ）をひきます");
+    expect(masuRuby("来ます", "来る", "くる")).toBe("来（き）ます");
+  });
+  it("leaves it alone when it already has a reading or can't be worked out", () => {
+    expect(masuRuby("生（う）まれます", "生まれる", "うまれる")).toBe("生（う）まれます");
+    expect(masuRuby("持って行きます", "持って行く", "もっていく")).toBe("持って行きます");
+    expect(masuRuby("あげます", "あげる", "あげる")).toBe("あげます");
   });
 });
 

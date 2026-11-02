@@ -69,6 +69,21 @@ export function splitMasu(usage: string): { masu: string | null; rest: string } 
   return { masu, rest };
 }
 
+/**
+ * ます形沒標讀音時，用單字和讀音欄補上：決める／きめる → 決（き）めます。
+ * 只處理「一段漢字＋假名」的詞（行く、勉強する、風邪をひく）；来る的ます形念 き。
+ */
+export function masuRuby(masu: string, word: string, reading: string): string {
+  if (/[（(]/.test(masu)) return masu;
+  const w = word.replace(/[（(][^）)]*[）)]/g, "").trim();
+  const m = w.match(/^([\u4e00-\u9fff々]+)([\u3040-\u309f]*)$/);
+  if (!m || !masu.startsWith(m[1]) || /^[\u4e00-\u9fff々]/.test(masu.slice(m[1].length))) return masu;
+  const r = reading.replace(/[（(［\[][^）)］\]]*[）)］\]]/g, "").split(/[／/・、,]/)[0].replace(/[.\-\s]/g, "");
+  if (!r.endsWith(m[2]) || r.length <= m[2].length) return masu;
+  const kana = w === "来る" ? "き" : r.slice(0, r.length - m[2].length);
+  return `${m[1]}（${kana}）${masu.slice(m[1].length)}`;
+}
+
 /** 中文翻譯尾巴的「（自動詞）」「(他動詞)」拿出來，卡片上改用標籤顯示 */
 export function verbType(meaning: string): { meaning: string; type: "自動詞" | "他動詞" | null } {
   const m = meaning.match(/^(.*?)\s*[（(]\s*([自他])動詞\s*[）)]\s*$/);
