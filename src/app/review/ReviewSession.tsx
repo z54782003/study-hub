@@ -6,7 +6,7 @@ import { sourceLabel, sourceQuery } from "@/lib/reviewSource";
 import { Speak } from "@/components/Speak";
 import { Ruby } from "@/components/Ruby";
 import { masuRuby, parseUsage, splitMasu } from "@/lib/usage";
-import { keepWordJa, speakableJa } from "@/lib/speech";
+import { speakableJa } from "@/lib/speech";
 import { FORM_LABEL, FORM_RULE, GROUP_OF, checkConjugation, specialNote, type VerbForm } from "@/lib/conjugate";
 import type { GradeMethod, GradeResult, KanjiItem, QuizItem, ReviewItem, ReviewSource, VerbItem, VocabItem } from "@/lib/types";
 import { Icon } from "@/components/Icon";
@@ -659,15 +659,6 @@ function VocabDetail({ item }: { item: VocabItem }) {
           )}
         </div>
       )}
-      {item.examples.map((e, i) => (
-        <div key={i} className="text-sm">
-          <p className="flex items-start gap-1" lang={lang}>
-            <span className="flex-1">{e.ja}</span>
-            <Speak text={e.ja} lang={lang} keep={lang === "ja" ? keepWordJa(item.word) : undefined} label="念例句" />
-          </p>
-          {e.zh && <p className="text-muted">{e.zh}</p>}
-        </div>
-      ))}
     </div>
   );
 }

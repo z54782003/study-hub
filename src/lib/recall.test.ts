@@ -1,11 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { recallQuestion } from "./recall";
+import { recallMode, recallQuestion, type RecallItem } from "./recall";
 
 describe("recallQuestion", () => {
-  it("asks reading and meaning for a kanji word", () => {
-    const q = recallQuestion({ kind: "vocab", id: "v", word: "目標", reading: "もくひょう", meaning: "目標", pos: null, usage: "", examples: [], lesson: null, lang: "ja", status: null, right: 0, wrong: 0 });
-    expect(q.ask).toBe("寫出讀音（平假名）和中文意思");
-    expect(q.reference).toBe("讀音：もくひょう／意思：目標");
+  it("asks either the reading or the meaning of a kanji word, not both", () => {
+    const v: RecallItem = { kind: "vocab", id: "v", word: "目標", reading: "もくひょう", meaning: "目標", pos: null, usage: "", examples: [], lesson: null, lang: "ja", status: null, right: 0, wrong: 0 };
+    expect(recallQuestion(v, "reading")).toMatchObject({ ask: "寫出讀音（平假名）", reference: "讀音：もくひょう" });
+    expect(recallQuestion(v, "meaning")).toMatchObject({ ask: "寫出中文意思", reference: "意思：目標" });
+  });
+  it("keeps the same kind of question all day and switches the next day", () => {
+    expect(recallMode("abc", 100)).toBe(recallMode("abc", 100));
+    expect(recallMode("abc", 100)).not.toBe(recallMode("abc", 101));
   });
   it("asks only the meaning for a kana word or an English word", () => {
     expect(recallQuestion({ kind: "n3", id: "n", word: "やっぱり", reading: "やっぱり", meaning: "果然", pos: null, note: "", level: null, status: null, source: "due" }).ask).toBe("寫出中文意思");

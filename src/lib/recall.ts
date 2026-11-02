@@ -17,7 +17,7 @@ export type RecallQuestion = {
 
 const isKana = (s: string) => /^[぀-ヿー・〜～\s]+$/.test(s);
 
-export function recallQuestion(item: RecallItem): RecallQuestion {
+export function recallQuestion(item: RecallItem, mode?: "reading" | "meaning"): RecallQuestion {
   if (item.kind === "kanji") {
     const readings = [item.on && `音読み：${item.on}`, item.kun && `訓読み：${item.kun}`].filter(Boolean).join("／");
     return {
@@ -49,14 +49,32 @@ export function recallQuestion(item: RecallItem): RecallQuestion {
       reference: `意思：${item.meaning}`,
     };
   }
-  // 日文單字（單字庫・N3）：漢字詞問讀音＋意思；整個是假名就只問意思
+  // 日文單字（單字庫・N3）：整個是假名就只問意思；漢字詞一次只考一項（讀音或意思），依日期輪流
   const kanaOnly = !item.reading || isKana(item.word) || item.word === item.reading;
+  const pick = kanaOnly ? "meaning" : (mode ?? recallMode(item.id));
+  if (pick === "reading") {
+    return {
+      cue: item.word,
+      cueLang: "ja",
+      ask: "寫出讀音（平假名）",
+      placeholder: "例：もくひょう",
+      question: `日文單字「${item.word}」的讀音（平假名）`,
+      reference: `讀音：${item.reading}`,
+    };
+  }
   return {
     cue: item.word,
     cueLang: "ja",
-    ask: kanaOnly ? "寫出中文意思" : "寫出讀音（平假名）和中文意思",
-    placeholder: kanaOnly ? "中文意思" : "例：もくひょう 目標",
-    question: kanaOnly ? `日文單字「${item.word}」的中文意思` : `日文單字「${item.word}」的讀音（平假名）和中文意思`,
-    reference: kanaOnly ? `意思：${item.meaning}` : `讀音：${item.reading}／意思：${item.meaning}`,
+    ask: "寫出中文意思",
+    placeholder: "中文意思",
+    question: `日文單字「${item.word}」的中文意思`,
+    reference: `意思：${item.meaning}`,
   };
+}
+
+/** 漢字詞這次考讀音還是意思：同一個字同一天固定（重新整理不會換題），隔天換另一項 */
+export function recallMode(id: string, day = Math.floor(Date.now() / 86_400_000)): "reading" | "meaning" {
+  let h = 0;
+  for (const c of id) h = (h * 31 + c.charCodeAt(0)) | 0;
+  return (Math.abs(h) + day) % 2 === 0 ? "reading" : "meaning";
 }
