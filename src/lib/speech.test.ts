@@ -19,7 +19,7 @@ describe("speakableJa", () => {
     expect(speakableJa("おこのみやき", "お好み焼き")).toBe("お好み焼き");
     expect(speakableJa("けんがくかい", "見学会")).toBe("けんがくかい");
     expect(stripReadings("見学会（けんがくかい）に行（い）きました。")).toBe("けんがくかいにいきました。");
-    expect(stripReadings("お酒（さけ）は二十歳（はたち）から飲（の）める")).toBe("おさけわハタチからのめる");
+    expect(stripReadings("お酒（さけ）は二十歳（はたち）から飲（の）める")).toBe("おさけわハタチから飲める");
   });
 });
 
@@ -39,8 +39,10 @@ describe("stripReadings", () => {
   it("keeps a word with several furigana'd kanji whole", () => {
     expect(stripReadings("お好（この）み焼（や）きを食（た）べました。")).toBe("お好み焼きをたべました。");
     expect(stripReadings("髪（かみ）の毛（け）を切（き）る")).toBe("髪の毛をきる");
+    // 「聞」照原字唸：換成 き 會和前面的「と」變成「とき」
+    expect(stripReadings("引（ひ）っ越（こ）すと聞（き）いて")).toBe("引っ越すと聞いて");
     // 「の」前後是不同的詞：各自照讀音唸，夜才不會被唸成 よ
-    expect(stripReadings("昨日（きのう）の夜（よる）、空（そら）を飛（と）ぶ夢（ゆめ）を見（み）ました。")).toBe("きのうのよる、そらを飛ぶ夢をみました。");
+    expect(stripReadings("昨日（きのう）の夜（よる）、空（そら）を飛（と）ぶ夢（ゆめ）を見（み）ました。")).toBe("きのうのよる、そらを飛ぶ夢を見ました。");
     expect(stripReadings("駅（えき）に着（つ）きます")).toBe("えきにつきます");
   });
   it("says the card's word in an example the same way as the word button", () => {

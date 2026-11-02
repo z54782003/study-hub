@@ -73,6 +73,9 @@ const K = "[\\u4e00-\\u9fff々〆ヶ]+[（(][\\u3040-\\u30ffー・\\s]+[）)]";
 const WORD_CHAIN = new RegExp(`[おご]?${K}(?:(?:(?![はがをにでへともやか])[ぁ-ゖ])${K})+`, "g");
 
 // 讀法特殊、語音常唸錯的漢字詞：照標的讀音唸（見学会：語音會照「学会（がっかい）」唸）
+// 讀法固定的常用動詞漢字：照原字唸。換成假名會和前面的助詞黏在一起（と聞（き）いて → ときいて，被唸成「時、いて」）
+const KEEP_ONE = new Set("聞見書読話飲買待言思".split(""));
+
 const SPECIAL = new Set("今日 明日 昨日 今朝 今年 今夜 一日 二日 一人 二人 大人 上手 下手 部屋 眼鏡 土産 果物 景色 一昨日 明後日 二十日 二十歳 八百屋 紅葉 博士 何人 何日 見学会".split(" "));
 
 /**
@@ -94,7 +97,7 @@ export function stripReadings(text: string, keep = ""): string {
       /の/.test(m) && /[\u4e00-\u9fff々〆ヶ]{2}/.test(m.replace(/[（(][^）)]*[）)]/g, "|")) ? m : m.replace(/[（(][\u3040-\u30ffー・\s]+[）)]/g, ""),
     )
     .replace(/([\u4e00-\u9fff々〆ヶ]+)[（(]([\u3040-\u30ffー・\s]+)[）)]([はへ])?/g, (_, kanji: string, kana: string, p = "") =>
-      [...kanji].length > 1 && !SPECIAL.has(kanji) ? kanji + p : safeKana(kana) + (p === "は" ? "わ" : p === "へ" ? "え" : ""),
+      ([...kanji].length > 1 && !SPECIAL.has(kanji)) || KEEP_ONE.has(kanji) ? kanji + p : safeKana(kana) + (p === "は" ? "わ" : p === "へ" ? "え" : ""),
     )
     .replace(/[（(][\u3040-\u30ffー・\s]+[）)]/g, "");
 }
