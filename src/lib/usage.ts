@@ -46,6 +46,12 @@ export function usageSpeech(text: string): string {
     .trim();
 }
 
+/** 中文翻譯尾巴的「（自動詞）」「(他動詞)」拿出來，卡片上改用標籤顯示 */
+export function verbType(meaning: string): { meaning: string; type: "自動詞" | "他動詞" | null } {
+  const m = meaning.match(/^(.*?)\s*[（(]\s*([自他])動詞\s*[）)]\s*$/);
+  return m ? { meaning: m[1], type: m[2] === "自" ? "自動詞" : "他動詞" } : { meaning, type: null };
+}
+
 /** 例句裡把單字本身標出來；找不到就整句一段 */
 export function markWord(sentence: string, word: string): { text: string; hit: boolean }[] {
   let w = word.replace(/[（(].*$/, "").trim();

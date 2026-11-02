@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { glossParts, markWord, parseUsage, usageSpeech } from "./usage";
+import { glossParts, markWord, parseUsage, usageSpeech, verbType } from "./usage";
 
 describe("parseUsage", () => {
   it("splits phrases and their meanings", () => {
@@ -62,6 +62,14 @@ describe("usageSpeech", () => {
     expect(usageSpeech("〜のが苦手（にがて）だ")).toBe("苦手（にがて）だ");
     expect(usageSpeech("↔ 厚（あつ）い・濃（こ）い")).toBe("厚（あつ）い、濃（こ）い");
     expect(usageSpeech("落（お）ちる（自）・歯医者（はいしゃ）（牙醫）")).toBe("落（お）ちる、歯医者（はいしゃ）");
+  });
+});
+
+describe("verbType", () => {
+  it("moves the 自動詞／他動詞 note out of the meaning", () => {
+    expect(verbType("開、被打開(自動詞)")).toEqual({ meaning: "開、被打開", type: "自動詞" });
+    expect(verbType("弄髒（他動詞）")).toEqual({ meaning: "弄髒", type: "他動詞" });
+    expect(verbType("自動鉛筆")).toEqual({ meaning: "自動鉛筆", type: null });
   });
 });
 

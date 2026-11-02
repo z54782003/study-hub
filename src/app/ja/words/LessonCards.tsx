@@ -5,7 +5,7 @@ import { Fragment, useEffect, useState } from "react";
 import { Icon } from "@/components/Icon";
 import { Speak } from "@/components/Speak";
 import { keepWordJa, speakableJa } from "@/lib/speech";
-import { glossParts, parseUsage, usageSpeech } from "@/lib/usage";
+import { glossParts, parseUsage, usageSpeech, verbType } from "@/lib/usage";
 import { Ruby } from "@/components/Ruby";
 import type { VocabItem } from "@/lib/types";
 
@@ -96,6 +96,7 @@ export function LessonCards({
     window.scrollTo({ top: 0 });
   }, [i]);
   const usage = parseUsage(w.usage);
+  const verb = verbType(w.meaning);
 
   const pick = (t: string | null) => {
     setSec(t);
@@ -201,12 +202,13 @@ export function LessonCards({
             <Speak text={lang === "en" ? w.word : speakableJa(w.reading, w.word)} lang={lang} label="播放讀音" />
           </div>
         </div>
-        {w.pos && (
+        {(w.pos || verb.type) && (
           <div className="flex gap-1.5">
-            <span className="tag bg-card-2 text-ink-2">{w.pos}</span>
+            {w.pos && <span className="tag bg-card-2 text-ink-2">{w.pos}</span>}
+            {verb.type && <span className={`tag ${verb.type === "自動詞" ? "bg-accent-soft text-accent" : "bg-due-soft text-due"}`}>{verb.type}</span>}
           </div>
         )}
-        <p className="text-2xl leading-snug font-bold">{w.meaning}</p>
+        <p className="text-2xl leading-snug font-bold">{verb.meaning}</p>
         {usage.length > 0 && (
           <section className="space-y-2">
             <div className="label">搭配與用法</div>
