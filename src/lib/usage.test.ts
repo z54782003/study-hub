@@ -27,6 +27,15 @@ describe("parseUsage", () => {
       { ja: "サークル活動（かつどう）", zh: "社團活動" },
     ]);
   });
+  it("keeps 「／」 inside a 「・」 line instead of splitting it into extra phrases", () => {
+    expect(
+      parseUsage("・搭配：先生（せんせい）に相談（そうだん）する—向老師商量／諮詢\n・搭配：天気（てんき）がいい／悪（わる）い—天氣好／不好\n・⚠️相關：↔ 厚（あつ）い／濃（こ）い"),
+    ).toEqual([
+      { ja: "先生（せんせい）に相談（そうだん）する", zh: "向老師商量／諮詢" },
+      { ja: "天気（てんき）がいい／悪（わる）い", zh: "天氣好／不好" },
+      { ja: "相關：↔ 厚（あつ）い／濃（こ）い", zh: "", note: true },
+    ]);
+  });
   it("keeps ⚠️ reminders whole, colons included", () => {
     expect(parseUsage("・搭配：〜を楽（たの）しむ：享受〜\n・⚠️相關：楽（たの）しい（い形）\n・搭配：⚠️ 直接稱呼時用「先生」")).toEqual([
       { ja: "〜を楽（たの）しむ", zh: "享受〜" },

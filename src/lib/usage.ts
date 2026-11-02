@@ -4,7 +4,9 @@ export type Usage = { ja: string; zh: string; note?: true };
 
 export function parseUsage(s: string): Usage[] {
   return s
-    .split(/[／\n]/)
+    .split("\n")
+    // 舊格式一行塞好幾個搭配，用「／」隔開；「・」開頭的新格式一行一個，「／」是「天氣好／不好」這種內文，不切
+    .flatMap((line) => (/^\s*[・•]/.test(line) ? [line] : line.split("／")))
     .map((x) =>
       x
         .trim()
