@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { glossParts, markWord, parseUsage, usageSpeech, verbType } from "./usage";
+import { glossParts, kanaOnly, markWord, parseUsage, usageSpeech, verbType } from "./usage";
 
 describe("parseUsage", () => {
   it("splits phrases and their meanings", () => {
@@ -62,6 +62,13 @@ describe("usageSpeech", () => {
     expect(usageSpeech("〜のが苦手（にがて）だ")).toBe("苦手（にがて）だ");
     expect(usageSpeech("↔ 厚（あつ）い・濃（こ）い")).toBe("厚（あつ）い、濃（こ）い");
     expect(usageSpeech("落（お）ちる（自）・歯医者（はいしゃ）（牙醫）")).toBe("落（お）ちる、歯医者（はいしゃ）");
+  });
+});
+
+describe("kanaOnly", () => {
+  it("is true only for words written in kana", () => {
+    expect(["やめる", "パーティー", "メジャー(な)", "シュート・する", "あれ？", "〜ずつ"].map(kanaOnly)).toEqual([true, true, true, true, true, true]);
+    expect(["開く", "おせち料理", "ATM", "ビタミンC", "〜日"].map(kanaOnly)).toEqual([false, false, false, false, false]);
   });
 });
 

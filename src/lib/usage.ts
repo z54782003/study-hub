@@ -46,6 +46,12 @@ export function usageSpeech(text: string): string {
     .trim();
 }
 
+/** 單字只有假名（やめる、パーティー、メジャー(な)、シュート・する）：讀音就是單字本身 */
+export function kanaOnly(word: string): boolean {
+  const w = word.replace(/[（(][^）)]*[）)]/g, "").replace(/[・〜～~？?！!\s]/g, "");
+  return !!w && /^[\u3040-\u30ffー]+$/.test(w);
+}
+
 /** 中文翻譯尾巴的「（自動詞）」「(他動詞)」拿出來，卡片上改用標籤顯示 */
 export function verbType(meaning: string): { meaning: string; type: "自動詞" | "他動詞" | null } {
   const m = meaning.match(/^(.*?)\s*[（(]\s*([自他])動詞\s*[）)]\s*$/);

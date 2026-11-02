@@ -5,7 +5,7 @@ import { Fragment, useEffect, useState } from "react";
 import { Icon } from "@/components/Icon";
 import { Speak } from "@/components/Speak";
 import { keepWordJa, speakableJa } from "@/lib/speech";
-import { glossParts, parseUsage, usageSpeech, verbType } from "@/lib/usage";
+import { glossParts, kanaOnly, parseUsage, usageSpeech, verbType } from "@/lib/usage";
 import { Ruby } from "@/components/Ruby";
 import type { VocabItem } from "@/lib/types";
 
@@ -196,9 +196,12 @@ export function LessonCards({
             {w.word}
           </h1>
           <div className="-ml-1 flex items-center">
-            <span className="pl-1 text-[17px] text-ink-2" lang={lang}>
-              {w.reading}
-            </span>
+            {/* 只有假名的詞（やめる、パーティー）讀音跟單字一樣，不再重複顯示；只留喇叭 */}
+            {(lang === "en" || !kanaOnly(w.word)) && (
+              <span className="pl-1 text-[17px] text-ink-2" lang={lang}>
+                {w.reading}
+              </span>
+            )}
             <Speak text={lang === "en" ? w.word : speakableJa(w.reading, w.word)} lang={lang} label="播放讀音" />
           </div>
         </div>
