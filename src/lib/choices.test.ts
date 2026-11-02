@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { choiceQuestion, nearReadings } from "./choices";
+import { choiceQuestion, kanjiChoices, nearReadings } from "./choices";
 import type { N3WordItem, VocabItem } from "./types";
 
 const vocab = (id: string, word: string, reading: string, meaning: string, lang: "ja" | "en" = "ja") =>
@@ -38,5 +38,30 @@ describe("choiceQuestion", () => {
   it("works for N3 words", () => {
     const n3 = { kind: "n3", id: "n", word: "経験", reading: "けいけん", meaning: "經驗" } as unknown as N3WordItem;
     expect(choiceQuestion(n3, [])?.options).toContain("けいけん");
+  });
+});
+
+describe("kanjiChoices", () => {
+  const k = (id: string, kanji: string, meaning: string, examples: { word: string; reading: string; zh: string }[] = []) =>
+    ({ kind: "kanji", id, kanji, on: "", kun: "", meaning, examples, hint: "", confusable: "", chapter: null, status: null }) as const;
+  const pool = [k("a", "休", "休息"), k("b", "歌", "歌；唱"), k("c", "山", "山")];
+  it("asks the reading of every example word, then the meaning", () => {
+    const item = k("t", "体", "身體", [
+      { word: "体", reading: "からだ", zh: "身體" },
+      { word: "体重", reading: "たいじゅう", zh: "體重" },
+    ]);
+    const steps = kanjiChoices(item, [item, ...pool]);
+    expect(steps.map((s) => [s.prompt, s.answer])).toEqual([
+      ["体", "からだ"],
+      ["体重", "たいじゅう"],
+      ["体", "身體"],
+    ]);
+    for (const s of steps) {
+      expect(s.options).toHaveLength(4);
+      expect(s.options).toContain(s.answer);
+    }
+  });
+  it("gives nothing when there are no examples and not enough other meanings", () => {
+    expect(kanjiChoices(k("t", "体", "身體"), [])).toEqual([]);
   });
 });

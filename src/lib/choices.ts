@@ -2,6 +2,7 @@
 // 英文和純假名的字選中文意思（干擾選項拿同一回合其他字的意思）。不用 AI，直接比對。
 import { readingKana } from "./speech";
 import type { RecallItem } from "./recall";
+import type { KanjiItem } from "./types";
 
 export type Choice = { ask: string; options: string[]; answer: string; lang: "ja" | "zh" };
 
@@ -109,4 +110,26 @@ export function choiceQuestion(item: RecallItem, pool: RecallItem[]): Choice | n
   );
   if (others.length < 3) return null;
   return { ask: "選出正確的中文意思", options: shuffle([answer, ...shuffle(others, rand).slice(0, 3)], rand), answer, lang: "zh" };
+}
+
+/** 漢字的一串選擇題：每個例詞考讀音（涵蓋音読み・訓読み的用法），最後考中文意思；全部答對才算對 */
+export type KanjiStep = Choice & { prompt: string };
+
+export function kanjiChoices(item: KanjiItem, pool: KanjiItem[]): KanjiStep[] {
+  const rand = seeded(item.id);
+  const steps: KanjiStep[] = [];
+  const seen = new Set<string>();
+  for (const ex of item.examples) {
+    const reading = readingKana(ex.reading, "");
+    if (seen.has(ex.word) || !hasKanji(ex.word) || !reading || hasKanji(reading)) continue;
+    const wrong = nearReadings(reading, item.id + ex.word);
+    if (wrong.length < 3) continue;
+    seen.add(ex.word);
+    steps.push({ prompt: ex.word, ask: "選出正確的讀音", options: shuffle([reading, ...wrong], rand), answer: reading, lang: "ja" });
+  }
+  const answer = shortMeaning(item.meaning);
+  const others = [...new Set(pool.filter((p) => p.id !== item.id).map((p) => shortMeaning(p.meaning)))].filter((m) => m && m !== answer);
+  if (answer && others.length >= 3)
+    steps.push({ prompt: item.kanji, ask: "選出正確的中文意思", options: shuffle([answer, ...shuffle(others, rand).slice(0, 3)], rand), answer, lang: "zh" });
+  return steps;
 }

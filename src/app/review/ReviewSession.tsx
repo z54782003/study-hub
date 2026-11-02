@@ -12,7 +12,7 @@ import type { GradeMethod, GradeResult, KanjiItem, QuizItem, ReviewItem, ReviewS
 import { Icon } from "@/components/Icon";
 import { charDiff } from "@/lib/diff";
 import { recallQuestion, type RecallItem } from "@/lib/recall";
-import { choiceQuestion } from "@/lib/choices";
+import { choiceQuestion, kanjiChoices, type KanjiStep } from "@/lib/choices";
 import { StatusMessage } from "@/components/StatusMessage";
 
 type Result = { item: ReviewItem; correct: boolean; answer?: string };
@@ -197,6 +197,8 @@ export function ReviewSession({ source }: { source: ReviewSource }) {
   }
 
   const item = items[index];
+  // 漢字：每個例詞考讀音、最後考意思的一串選擇題（做不出來就照舊填空給 AI 批改）
+  const kanjiSteps = item.kind === "kanji" ? kanjiChoices(item, items.filter((i): i is KanjiItem => i.kind === "kanji")) : [];
   return (
     <div className="mt-2 flex min-h-[calc(100dvh-9rem)] flex-col">
       <div className="flex items-center justify-between text-sm text-muted">
@@ -219,6 +221,8 @@ export function ReviewSession({ source }: { source: ReviewSource }) {
         <QuizCard key={item.id} item={item} onDone={next} onSkip={skip} />
       ) : item.kind === "verb" ? (
         <VerbCard key={item.id} item={item} onDone={next} />
+      ) : item.kind === "kanji" && kanjiSteps.length > 0 ? (
+        <KanjiChoiceCard key={item.id} item={item} steps={kanjiSteps} onDone={next} />
       ) : (
         <RecallCard key={item.id} item={item} asChoice={source.src === "vocab" && source.qmode !== "fill"} pool={items.filter((i): i is RecallItem => i.kind === "vocab" || i.kind === "n3")} onDone={next} onSkip={skip} />
       )}
@@ -565,6 +569,92 @@ function RecallCard({ item, asChoice, pool, onDone, onSkip }: { item: RecallItem
           </button>
         )}
         {failed && <AiFailed error={result.error} onSkip={onSkip} />}
+      </div>
+    </>
+  );
+}
+
+// ── 漢字：一串選擇題（每個例詞的讀音＋意思），全部答對才算對 ───────────────
+
+function KanjiChoiceCard({ item, steps, onDone }: { item: KanjiItem; steps: KanjiStep[]; onDone: (p: Pending) => void }) {
+  const [i, setI] = useState(0);
+  const [picks, setPicks] = useState<string[]>([]);
+  const step = steps[i];
+  const picked = picks[i];
+  const answered = picked !== undefined;
+  const last = i === steps.length - 1;
+  const allDone = answered && last;
+  const correct = steps.every((s, k) => picks[k] === s.answer);
+  const pick = (o: string) => setPicks((p) => [...p.slice(0, i), o]);
+
+  return (
+    <>
+      <article className="card mt-2 flex-1 rounded-3xl p-5">
+        <p className="text-center text-sm text-muted">
+          {item.kanji}・第 {i + 1} / {steps.length} 題
+        </p>
+        <p className="pt-3 text-center text-5xl font-bold" lang="ja">
+          {step.prompt}
+        </p>
+        <p className="mt-3 mb-1 text-center text-sm text-muted">{step.ask}</p>
+        <div className="mt-4 grid gap-2">
+          {step.options.map((o) => {
+            const right = answered && o === step.answer;
+            const wrongPick = answered && o === picked && !right;
+            return (
+              <button
+                key={o}
+                type="button"
+                disabled={answered}
+                onClick={() => pick(o)}
+                className={`flex items-center gap-3 rounded-2xl border-2 px-4 py-3 text-left text-lg ${right ? "border-ok bg-ok-soft" : wrongPick ? "border-bad bg-bad-soft" : "border-line"}`}
+                lang={step.lang === "ja" ? "ja" : "zh-Hant"}
+              >
+                <span className="flex-1">{o}</span>
+                {right && <span className="text-ok">✓</span>}
+                {wrongPick && <span className="text-bad">✗</span>}
+              </button>
+            );
+          })}
+        </div>
+        {allDone && (
+          <div className="mt-4 space-y-3 border-t border-line pt-4">
+            <p className={`font-bold ${correct ? "text-ok" : "text-bad"}`}>{correct ? "全部答對" : `答對 ${steps.filter((s, k) => picks[k] === s.answer).length} / ${steps.length} 題`}</p>
+            <ul className="space-y-1 text-sm">
+              {steps.map((s, k) => (
+                <li key={k} className="flex gap-2">
+                  <span className={picks[k] === s.answer ? "text-ok" : "text-bad"}>{picks[k] === s.answer ? "✓" : "✗"}</span>
+                  <span className="font-semibold" lang="ja">
+                    {s.prompt}
+                  </span>
+                  <span lang={s.lang === "ja" ? "ja" : "zh-Hant"}>{s.answer}</span>
+                  {picks[k] !== s.answer && <span className="text-muted">（你選：{picks[k] || "不會"}）</span>}
+                </li>
+              ))}
+            </ul>
+            <KanjiDetail item={item} />
+          </div>
+        )}
+      </article>
+
+      <div className="sticky bottom-24 mt-4">
+        {!answered ? (
+          <button type="button" onClick={() => pick("")} className="w-full rounded-2xl border border-line py-4 font-semibold text-muted">
+            不會
+          </button>
+        ) : !last ? (
+          <button type="button" onClick={() => setI(i + 1)} className="btn-primary w-full">
+            下一個
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => onDone({ item, correct, answer: steps.map((s, k) => `${s.prompt}：${picks[k] || "不會"}`).join("／"), method: "自動比對" })}
+            className="btn-primary w-full"
+          >
+            下一題
+          </button>
+        )}
       </div>
     </>
   );
