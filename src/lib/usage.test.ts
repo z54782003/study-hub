@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { glossParts, kanaOnly, markWord, parseUsage, usageSpeech, verbType } from "./usage";
+import { glossParts, kanaOnly, markWord, splitMasu, parseUsage, usageSpeech, verbType } from "./usage";
 
 describe("parseUsage", () => {
   it("splits phrases and their meanings", () => {
@@ -62,6 +62,14 @@ describe("usageSpeech", () => {
     expect(usageSpeech("〜のが苦手（にがて）だ")).toBe("苦手（にがて）だ");
     expect(usageSpeech("↔ 厚（あつ）い・濃（こ）い")).toBe("厚（あつ）い、濃（こ）い");
     expect(usageSpeech("落（お）ちる（自）・歯医者（はいしゃ）（牙醫）")).toBe("落（お）ちる、歯医者（はいしゃ）");
+  });
+});
+
+describe("splitMasu", () => {
+  it("takes the ます形 line out of the usage", () => {
+    expect(splitMasu("ます形：行きます\n・搭配：学校（がっこう）へ行（い）く：去學校")).toEqual({ masu: "行きます", rest: "・搭配：学校（がっこう）へ行（い）く：去學校" });
+    expect(splitMasu("・⚠️ます形：生（う）まれます\n・搭配：子（こ）どもが生（う）まれる：孩子出生")).toEqual({ masu: "生（う）まれます", rest: "・搭配：子（こ）どもが生（う）まれる：孩子出生" });
+    expect(splitMasu("・搭配：本（ほん）を読（よ）む：讀書")).toEqual({ masu: null, rest: "・搭配：本（ほん）を読（よ）む：讀書" });
   });
 });
 

@@ -52,6 +52,23 @@ export function kanaOnly(word: string): boolean {
   return !!w && /^[\u3040-\u30ffー]+$/.test(w);
 }
 
+/** 搭配・用法裡的「ます形：行きます」（或「・⚠️ます形：…」）拿出來，卡片上方另外顯示；其他行照舊 */
+export function splitMasu(usage: string): { masu: string | null; rest: string } {
+  let masu: string | null = null;
+  const rest = usage
+    .split("\n")
+    .filter((line) => {
+      const m = line.match(/^\s*(?:[・•]\s*)?(?:搭配[：:]\s*)?(?:⚠️?\s*)?ます形[：:]\s*(.+?)\s*$/);
+      if (m && masu === null) {
+        masu = m[1];
+        return false;
+      }
+      return true;
+    })
+    .join("\n");
+  return { masu, rest };
+}
+
 /** 中文翻譯尾巴的「（自動詞）」「(他動詞)」拿出來，卡片上改用標籤顯示 */
 export function verbType(meaning: string): { meaning: string; type: "自動詞" | "他動詞" | null } {
   const m = meaning.match(/^(.*?)\s*[（(]\s*([自他])動詞\s*[）)]\s*$/);
