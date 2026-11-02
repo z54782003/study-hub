@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { gradeChoice, parseChoices } from "@/lib/grading";
 import { sourceLabel, sourceQuery } from "@/lib/reviewSource";
 import { Speak } from "@/components/Speak";
+import { Ruby } from "@/components/Ruby";
+import { masuRuby, parseUsage, splitMasu } from "@/lib/usage";
 import { keepWordJa, speakableJa } from "@/lib/speech";
 import { FORM_LABEL, FORM_RULE, GROUP_OF, checkConjugation, specialNote, type VerbForm } from "@/lib/conjugate";
 import type { GradeMethod, GradeResult, KanjiItem, QuizItem, ReviewItem, ReviewSource, VerbItem, VocabItem } from "@/lib/types";
@@ -620,6 +622,9 @@ export function KanjiDetail({ item }: { item: KanjiItem }) {
 
 function VocabDetail({ item }: { item: VocabItem }) {
   const lang = item.lang === "en" ? "en" : "ja";
+  // 「・搭配：」「ます形：」這些標記不直接顯示：拆成一行一個搭配（同單字卡），ます形 另外放
+  const { masu, rest } = splitMasu(item.usage ?? "");
+  const usage = parseUsage(rest);
   return (
     <div className="space-y-3">
       <div className="text-center">
@@ -629,12 +634,30 @@ function VocabDetail({ item }: { item: VocabItem }) {
         </p>
         <p className="text-xl font-semibold">{item.meaning || "（中文翻譯還沒補）"}</p>
         <p className="text-sm text-muted">{[item.pos, item.lesson, item.status].filter(Boolean).join("・")}</p>
+        {masu && (
+          <p className="text-sm text-muted" lang={lang}>
+            ます形 <Ruby text={masuRuby(masu, item.word, item.reading)} />
+          </p>
+        )}
       </div>
-      {item.usage && (
-        <p className="rounded-xl bg-bg p-3 text-sm whitespace-pre-wrap" lang={lang}>
-          <span className="mr-1 text-xs text-muted">搭配</span>
-          {item.usage}
-        </p>
+      {usage.length > 0 && (
+        <div className="space-y-1 rounded-xl bg-bg p-3 text-sm">
+          <div className="text-xs text-muted">搭配與用法</div>
+          {usage.map((u, k) =>
+            u.note ? (
+              <p key={k} className="text-ink-2" lang={lang}>
+                <Ruby text={u.ja} />
+              </p>
+            ) : (
+              <p key={k}>
+                <span className="font-semibold" lang={lang}>
+                  <Ruby text={u.ja} />
+                </span>
+                {u.zh && <span className="ml-2 text-ink-2">{u.zh}</span>}
+              </p>
+            ),
+          )}
+        </div>
       )}
       {item.examples.map((e, i) => (
         <div key={i} className="text-sm">
