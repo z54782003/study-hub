@@ -43,6 +43,9 @@ describe("stripReadings", () => {
     expect(stripReadings("引（ひ）っ越（こ）すと聞（き）いて")).toBe("引っ越すと聞いて");
     // 「棚の上」是兩個詞：棚照讀音唸，和單字按鈕一樣
     expect(stripReadings("あの棚（たな）の上（うえ）にある")).toBe("あのたなのうえにある");
+    // 讀音裡多寫了前面的 お／ご：不要唸成「ごごはん」
+    expect(stripReadings("ご飯（ごはん）を食（た）べる")).toBe("ごハンをたべる");
+    expect(stripReadings("お湯（おゆ）を沸（わ）かす")).toBe("おゆをわかす");
     // 「少し」和後面的詞分開
     expect(stripReadings("少（すこ）し悲（かな）しくなりました。")).toBe("すこしかなしくなりました。");
     // 複合詞照舊合在一起

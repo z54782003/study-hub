@@ -1,4 +1,5 @@
 import { markWord } from "./usage";
+import { fixPrefixReading } from "./speech";
 
 // 「面接（めんせつ）」→ 漢字上方小字讀音（<ruby>）；同時標出例句裡的單字本身
 export type RubyPart = { text: string; rt?: string; hit: boolean };
@@ -9,6 +10,7 @@ const RUBY = /([一-鿿々〆ヶ]+)[（(]([぀-ヿー・]+)[）)]/g;
 export const hasReadings = (text: string) => new RegExp(RUBY.source).test(text);
 
 export function rubyParts(text: string, word = ""): RubyPart[] {
+  text = fixPrefixReading(text);
   // 1. 拆成「一般文字」和「漢字＋讀音」
   const tokens: { text: string; rt?: string }[] = [];
   let last = 0;

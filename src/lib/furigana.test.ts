@@ -33,3 +33,14 @@ describe("hasReadings", () => {
     expect(hasReadings("駅（東口）")).toBe(false);
   });
 });
+
+describe("prefix readings", () => {
+  it("drops the お／ご that was written into the reading", () => {
+    expect(rubyParts("ご飯（ごはん）とお湯（おゆ）")).toEqual([
+      { text: "ご", hit: false },
+      { text: "飯", rt: "はん", hit: false },
+      { text: "とお", hit: false },
+      { text: "湯", rt: "ゆ", hit: false },
+    ]);
+  });
+});

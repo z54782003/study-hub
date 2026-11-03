@@ -89,7 +89,13 @@ const SPECIAL = new Set("今日 明日 昨日 今朝 今年 今夜 一日 二日
  * 兩個字以上的詞（時計、電車）保留漢字，語調比較自然，也不會在詞中間停頓。
  * 換成假名時，緊接在後面的助詞「は」「へ」照發音寫成「わ」「え」（語音分不出是助詞）。
  */
+/** 「ご飯（ごはん）」「お湯（おゆ）」：讀音把前面的 お／ご 也寫進去了，拿掉重複的那個（→ ご飯（はん）） */
+export function fixPrefixReading(text: string): string {
+  return text.replace(/([おご])([\u4e00-\u9fff々〆ヶ]+)([（(])\1([\u3040-\u30ffー・]+)([）)])/g, "$1$2$3$4$5");
+}
+
 export function stripReadings(text: string, keep = ""): string {
+  text = fixPrefixReading(text);
   // 例句裡的單字本身：單字按鈕照寫的唸，例句也照寫的唸，兩邊才一致（たこ焼（や）き → たこ焼き）
   if (keep) {
     const pattern = [...keep].map((c) => c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + (/[\u4e00-\u9fff々]/.test(c) ? "(?:[（(][\u3040-\u30ffー・\\s]+[）)])?" : "")).join("");
