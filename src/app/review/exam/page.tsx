@@ -24,7 +24,7 @@ const LEVEL = "初中級";
 
 type Entry = { label: string; href: string; detail: string; disabled: boolean };
 
-/** 一場考試的入口（「語彙・文法」會拆成單字卡、語彙題、文法題好幾個） */
+/** 一場考試的入口（「動詞の形テスト／ビジネス」這種一天兩場的各自一個） */
 function examEntries(name: string, scope: string): Entry[] {
   if (name.includes("漢字テスト")) {
     const chapters = examChapters(scope);
@@ -42,20 +42,17 @@ function examEntries(name: string, scope: string): Entry[] {
   const lessons = examLessons(scope);
   if (!lessons.length) return [{ label: "", href: "", detail: `${scope}・沒有對應的課`, disabled: true }];
   const range = `${LEVEL} L${lessons[0]}–${lessons[lessons.length - 1]}`;
-  const bank = (qtype: string | null, what: string) => ({
-    label: what,
-    href: `/review/session?${sourceQuery({ src: "bank", level: LEVEL, lessons, qtype, scope: "all", count: 30 })}`,
-    detail: `${range} 題庫・${what}`,
-    disabled: false,
-  });
-  // 「語彙・文法」：單字卡＋題庫的語彙題、文法題；只有語彙就只出單字；其他（讀解・聽解…）出整個題庫
-  const out = [];
-  if (/語彙/.test(scope))
-    out.push({ label: "單字卡", href: `/review/session?${sourceQuery({ src: "vocab", lang: "ja", level: LEVEL, lessons, count: 30 })}`, detail: `${range} 單字卡`, disabled: false });
-  if (/語彙/.test(scope) && /文法/.test(scope)) out.push(bank("A 單字選擇", "語彙題"));
-  if (/文法/.test(scope)) out.push(bank("B 文法填空", "文法題"));
-  if (!out.length) out.push(bank(null, "全部題型"));
-  return out;
+  // 「語彙・文法」：點進去再選語彙題或文法題（單字卡在「單字・漢字」）；讀解・聽解這類直接出整個題庫
+  if (/語彙|文法/.test(scope))
+    return [{ label: "", href: `/review/exam/bank?${new URLSearchParams({ lessons: lessons.join(","), title: `${name}（${scope}）` })}`, detail: `${range} 題庫・選語彙題或文法題`, disabled: false }];
+  return [
+    {
+      label: "",
+      href: `/review/session?${sourceQuery({ src: "bank", level: LEVEL, lessons, qtype: null, scope: "all", count: 30 })}`,
+      detail: `${range} 題庫`,
+      disabled: false,
+    },
+  ];
 }
 
 export default function ExamPage() {
@@ -65,7 +62,7 @@ export default function ExamPage() {
     <>
       <BackLink href="/review">複習</BackLink>
       <h1 className="mt-1 mb-1 text-[28px] leading-[34px] font-bold">考試複習</h1>
-      <p className="mb-4 text-sm text-muted">未來 30 天的考試，點了直接開始；アチーブ的「語彙・文法」分成單字卡、語彙題、文法題，讀解・聽解考整個題庫。</p>
+      <p className="mb-4 text-sm text-muted">未來 30 天的考試；アチーブ的「語彙・文法」點進去選語彙題或文法題，其他點了直接開始。單字卡在「單字・漢字」。</p>
       {upcoming.length === 0 && <p className="text-muted">這一期沒有接下來的考試了</p>}
       <div className="space-y-2.5">
         {upcoming.flatMap((e) =>
