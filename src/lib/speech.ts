@@ -79,7 +79,7 @@ const WORD_CHAIN = new RegExp(`[おご]?${K}(?:${LINK}${K})+`, "g");
 const NO_WORDS = new Set("髪の毛 目の前 日の出 木の葉 火の元 天の川".split(" "));
 
 // 讀法固定的常用動詞漢字：照原字唸。換成假名會和前面的助詞黏在一起（と聞（き）いて → ときいて，被唸成「時、いて」）
-const KEEP_ONE = new Set("聞見書読話飲買待言思".split(""));
+const KEEP_ONE = new Set("聞見書読話飲買待言思動".split(""));
 
 const SPECIAL = new Set("今日 明日 昨日 今朝 今年 今夜 一日 二日 一人 二人 大人 上手 下手 部屋 眼鏡 土産 果物 景色 一昨日 明後日 二十日 二十歳 八百屋 紅葉 博士 何人 何日 見学会".split(" "));
 

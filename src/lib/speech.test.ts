@@ -46,6 +46,8 @@ describe("stripReadings", () => {
     // 讀音裡多寫了前面的 お／ご：不要唸成「ごごはん」
     expect(stripReadings("ご飯（ごはん）を食（た）べる")).toBe("ごハンをたべる");
     expect(stripReadings("お湯（おゆ）を沸（わ）かす")).toBe("おゆをわかす");
+    // 「動く歩道」整個照原字，語音才會當成一個詞
+    expect(stripReadings("これは動（うご）く歩道（ほどう）です。")).toBe("これは動く歩道です。");
     // 「少し」和後面的詞分開
     expect(stripReadings("少（すこ）し悲（かな）しくなりました。")).toBe("すこしかなしくなりました。");
     // 複合詞照舊合在一起
