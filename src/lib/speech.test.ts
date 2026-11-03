@@ -41,6 +41,8 @@ describe("stripReadings", () => {
     expect(stripReadings("髪（かみ）の毛（け）を切（き）る")).toBe("髪の毛をきる");
     // 「聞」照原字唸：換成 き 會和前面的「と」變成「とき」
     expect(stripReadings("引（ひ）っ越（こ）すと聞（き）いて")).toBe("引っ越すと聞いて");
+    // 「棚の上」是兩個詞：棚照讀音唸，和單字按鈕一樣
+    expect(stripReadings("あの棚（たな）の上（うえ）にある")).toBe("あのたなのうえにある");
     // 「少し」和後面的詞分開
     expect(stripReadings("少（すこ）し悲（かな）しくなりました。")).toBe("すこしかなしくなりました。");
     // 複合詞照舊合在一起

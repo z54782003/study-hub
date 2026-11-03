@@ -75,6 +75,9 @@ const LINK = "[いきぎしじちぢひびぴみりえけげせぜねべぺめ�
 const WORD_CHAIN = new RegExp(`[おご]?${K}(?:${LINK}${K})+`, "g");
 
 // 讀法特殊、語音常唸錯的漢字詞：照標的讀音唸（見学会：語音會照「学会（がっかい）」唸）
+// 中間有「の」但是一個詞的（其他「〇の〇」都當兩個詞）
+const NO_WORDS = new Set("髪の毛 目の前 日の出 木の葉 火の元 天の川".split(" "));
+
 // 讀法固定的常用動詞漢字：照原字唸。換成假名會和前面的助詞黏在一起（と聞（き）いて → ときいて，被唸成「時、いて」）
 const KEEP_ONE = new Set("聞見書読話飲買待言思".split(""));
 
@@ -94,13 +97,12 @@ export function stripReadings(text: string, keep = ""): string {
   }
   return text
     // 一個詞裡有好幾個標了讀音的漢字（お好（この）み焼（や）き、髪（かみ）の毛（け））：整個詞照漢字唸，不拆成假名
-    // 「の」連起來的只有兩邊都是單一漢字才算一個詞（髪の毛、目の前）；「昨日の夜」照各自的讀音唸（不然語音會把夜唸成 よ）
-    .replace(WORD_CHAIN, (m) =>
+    .replace(WORD_CHAIN, (m) => {
+      const plain = m.replace(/[（(][\u3040-\u30ffー・\s]+[）)]/g, "");
+      // 「の」連起來的只有確定是一個詞的才合併（髪の毛）；「棚の上」「昨日の夜」是兩個詞，各自照讀音唸
       // 「少し」是副詞，不和後面的詞合在一起（少（すこ）し悲（かな）しく）
-      (/の/.test(m) && /[\u4e00-\u9fff々〆ヶ]{2}/.test(m.replace(/[（(][^）)]*[）)]/g, "|"))) || /^少[（(]すこ[）)]し/.test(m)
-        ? m
-        : m.replace(/[（(][\u3040-\u30ffー・\s]+[）)]/g, ""),
-    )
+      return (/の/.test(plain) && !NO_WORDS.has(plain)) || /^少[（(]すこ[）)]し/.test(m) ? m : plain;
+    })
     .replace(/([\u4e00-\u9fff々〆ヶ]+)[（(]([\u3040-\u30ffー・\s]+)[）)]([はへ])?/g, (_, kanji: string, kana: string, p = "") =>
       ([...kanji].length > 1 && !SPECIAL.has(kanji)) || KEEP_ONE.has(kanji) ? kanji + p : safeKana(kana) + (p === "は" ? "わ" : p === "へ" ? "え" : ""),
     )
