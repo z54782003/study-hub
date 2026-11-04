@@ -34,6 +34,9 @@ describe("speakableJa", () => {
     expect(stripReadings("病院（びょういん）へ行（い）きます。")).toBe("病院えいきます。");
     expect(stripReadings("大学院（だいがくいん）は二年（にねん）です。")).toBe("大学院わ二年です。");
     expect(stripReadings("病院（びょういん）へ行（い）きます。", "病院")).toBe("病院えいきます。");
+    // 時速：照漢字送會念錯，念讀音
+    expect(speakableJa("じそく", "時速")).toBe("じそく");
+    expect(stripReadings("新幹線（しんかんせん）の時速（じそく）は320キロです。")).toBe("新幹線のじそくわ320キロです。");
     // おかわり：假名的高低音不穩，送漢字
     expect(stripReadings("コーヒーのおかわりはいかがですか。")).toBe("コーヒーのお代わりはいかがですか。");
     expect(stripReadings("おかわり")).toBe("お代わり");
