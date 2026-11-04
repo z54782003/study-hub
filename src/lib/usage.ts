@@ -33,13 +33,15 @@ export function glossParts(text: string): { text: string; zh: boolean }[] {
     .map((t) => ({ text: t, zh: /^[（(]/.test(t) && !/^[（(][\u3040-\u30ffー・]+[）)]$/.test(t) }));
 }
 
-/** 搭配、相關要念出來的日文：去掉中文補充（（自）（牙醫））、↔、〈〉；「〜」連同後面的助詞不念（〜に驚く → 驚く）；「・」「／」念成停頓 */
+/** 搭配、相關要念出來的日文：去掉中文補充（（自）（牙醫））、↔、〈〉；「〜」連同後面的助詞不念（〜に驚く → 驚く），〜にくい 的 に 要念；「・」「／」念成停頓 */
 export function usageSpeech(text: string): string {
   return glossParts(text)
     .filter((p) => !p.zh)
     .map((p) => p.text)
     .join("")
-    .replace(/[〜～](?:のが|[をがにのでとへは])?/g, "")
+    // 助詞後面接漢字／片假名才拿掉（〜に驚く → 驚く）；「〜にくい」「〜やすい」的假名是詞的一部分，留著，〜念成停頓
+    .replace(/[〜～](?:のが|[をがにのでとへは])?(?![\u3040-\u309f])/g, "")
+    .replace(/[〜～]/g, "、")
     .replace(/[↔〈〉]/g, "")
     .replace(/\s*[・／]\s*/g, "、")
     .replace(/^、+|、+$/g, "")
