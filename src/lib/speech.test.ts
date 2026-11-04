@@ -30,6 +30,10 @@ describe("speakableJa", () => {
     expect(speakableJa("がくせいしょう", "学生証")).toBe("がくせいしょう");
     expect(speakableJa("じぶん", "自分")).toBe("じぶん");
     expect(stripReadings("学生証（がくせいしょう）を見（み）せてください。", "学生証")).toBe("学生証を見せてください。");
+    // 照漢字唸的詞後面的 へ／は 也改成發音
+    expect(stripReadings("病院（びょういん）へ行（い）きます。")).toBe("病院えいきます。");
+    expect(stripReadings("大学院（だいがくいん）は二年（にねん）です。")).toBe("大学院わ二年です。");
+    expect(stripReadings("病院（びょういん）へ行（い）きます。", "病院")).toBe("病院えいきます。");
     // おかわり：假名的高低音不穩，送漢字
     expect(stripReadings("コーヒーのおかわりはいかがですか。")).toBe("コーヒーのお代わりはいかがですか。");
     expect(stripReadings("おかわり")).toBe("お代わり");
@@ -46,9 +50,9 @@ describe("stripReadings", () => {
     expect(stripReadings("弟（おとうと）は小学校（しょうがっこう）に通（かよ）っています。")).toBe("おとうとわ小学校にかよっています。");
   });
   it("writes the particles は／へ after a reading the way they sound", () => {
-    expect(stripReadings("電車（でんしゃ）は午後（ごご）三時（さんじ）に駅（えき）に着（つ）きます。")).toBe("電車は午後三時にえきにつきます。");
-    expect(stripReadings("この時計（とけい）は五分（ごふん）遅（おく）れて止（と）まりました。")).toBe("この時計は五分おくれてとまりました。");
-    expect(stripReadings("学校（がっこう）へ行（い）きます。")).toBe("学校へいきます。");
+    expect(stripReadings("電車（でんしゃ）は午後（ごご）三時（さんじ）に駅（えき）に着（つ）きます。")).toBe("電車わ午後三時にえきにつきます。");
+    expect(stripReadings("この時計（とけい）は五分（ごふん）遅（おく）れて止（と）まりました。")).toBe("この時計わ五分おくれてとまりました。");
+    expect(stripReadings("学校（がっこう）へ行（い）きます。")).toBe("学校えいきます。");
     expect(stripReadings("早（はや）く")).toBe("ハヤく");
     expect(stripReadings("駅（えき）へ行（い）きます。")).toBe("えきえいきます。");
     expect(stripReadings("今日（きょう）は")).toBe("きょうわ");

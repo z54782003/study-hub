@@ -112,7 +112,7 @@ export function stripReadings(text: string, keep = ""): string {
   // 例句裡的單字本身：單字按鈕照寫的唸，例句也照寫的唸，兩邊才一致（たこ焼（や）き → たこ焼き）
   if (keep) {
     const pattern = [...keep].map((c) => c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + (/[\u4e00-\u9fff々]/.test(c) ? "(?:[（(][\u3040-\u30ffー・\\s]+[）)])?" : "")).join("");
-    text = text.replace(new RegExp(pattern, "g"), keep);
+    text = text.replace(new RegExp(pattern + "([はへ])?", "g"), (_m, p?: string) => keep + (p === "は" ? "わ" : p === "へ" ? "え" : ""));
   }
   for (const [re, kana] of SPECIAL_MIXED) text = text.replace(re, kana);
   return text
@@ -124,7 +124,8 @@ export function stripReadings(text: string, keep = ""): string {
       return (/の/.test(plain) && !NO_WORDS.has(plain)) || /^少[（(]すこ[）)]し/.test(m) ? m : plain;
     })
     .replace(/([\u4e00-\u9fff々〆ヶ]+)[（(]([\u3040-\u30ffー・\s]+)[）)]([はへ])?/g, (_, kanji: string, kana: string, p = "") =>
-      ([...kanji].length > 1 && !SPECIAL.has(kanji)) || KEEP_ONE.has(kanji) ? kanji + p : safeKana(kana) + (p === "は" ? "わ" : p === "へ" ? "え" : ""),
+      // 照漢字唸的詞後面的助詞也照發音寫（病院へ → 病院え），語音才不會把「へ」唸成 he
+      (([...kanji].length > 1 && !SPECIAL.has(kanji)) || KEEP_ONE.has(kanji) ? kanji : safeKana(kana)) + (p === "は" ? "わ" : p === "へ" ? "え" : ""),
     )
     .replace(/[（(][\u3040-\u30ffー・\s]+[）)]/g, "")
     .replace(SAY_AS_RE, (w) => SAY_AS[w]);
