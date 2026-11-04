@@ -11,9 +11,12 @@ export function speakableJa(reading: string, fallback = ""): string {
   const word = fallback.replace(/[（(［\[][^）)］\]]*[）)］\]]/g, "").replace(/[・〜～~\s]/g, "");
   const kanji = word.match(/[\u4e00-\u9fff々]/g) ?? [];
   const special = [...SPECIAL].some((w) => word.includes(w));
-  if (writtenOk(word, kanji.length, special) || KEEP_ONE.has(word)) return word;
+  if (!WORD_KANA.has(word) && (writtenOk(word, kanji.length, special) || KEEP_ONE.has(word))) return word;
   return readingKana(reading, fallback);
 }
+
+/** 單字按鈕照漢字送會念錯高低音、例句裡照漢字念卻是對的詞：只有單字按鈕改念讀音（例句不變） */
+const WORD_KANA = new Set("学生証 自分".split(" "));
 
 /** 讀音開頭是「は」「へ」的（はたち、歯（は））換成片假名：平假名的話語音會當成助詞唸成 wa／e */
 const safeKana = (kana: string) => (/^[はへ]/.test(kana) ? kana.replace(/[ぁ-ゖ]/g, (c) => String.fromCharCode(c.charCodeAt(0) + 0x60)) : kana);

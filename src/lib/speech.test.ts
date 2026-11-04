@@ -26,6 +26,10 @@ describe("speakableJa", () => {
     expect(stripReadings("もう大丈夫（だいじょうぶ）です。")).toBe("もう大丈夫です。");
     // 〜円札：照漢字送語音可能把「札」念成ふだ，念讀音
     expect(stripReadings("一万円札（いちまんえんさつ）を千円札（せんえんさつ）に")).toBe("いちまんえんさつをせんえんさつに");
+    // 学生証、自分：單字按鈕念讀音，例句照漢字
+    expect(speakableJa("がくせいしょう", "学生証")).toBe("がくせいしょう");
+    expect(speakableJa("じぶん", "自分")).toBe("じぶん");
+    expect(stripReadings("学生証（がくせいしょう）を見（み）せてください。", "学生証")).toBe("学生証を見せてください。");
     // おかわり：假名的高低音不穩，送漢字
     expect(stripReadings("コーヒーのおかわりはいかがですか。")).toBe("コーヒーのお代わりはいかがですか。");
     expect(stripReadings("おかわり")).toBe("お代わり");
