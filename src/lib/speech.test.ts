@@ -41,8 +41,8 @@ describe("stripReadings", () => {
     expect(stripReadings("髪（かみ）の毛（け）を切（き）る")).toBe("髪の毛をきる");
     // 「聞」照原字唸：換成 き 會和前面的「と」變成「とき」
     expect(stripReadings("引（ひ）っ越（こ）すと聞（き）いて")).toBe("引っ越すと聞いて");
-    // 「棚の上」是兩個詞：棚照讀音唸，和單字按鈕一樣
-    expect(stripReadings("あの棚（たな）の上（うえ）にある")).toBe("あのたなのうえにある");
+    // 「棚の上」是兩個詞，不合併（棚本身在 KEEP_ONE，照原字）
+    expect(stripReadings("あの棚（たな）の上（うえ）にある")).toBe("あの棚のうえにある");
     // 讀音裡多寫了前面的 お／ご：不要唸成「ごごはん」
     expect(stripReadings("ご飯（ごはん）を食（た）べる")).toBe("ごハンをたべる");
     expect(stripReadings("お湯（おゆ）を沸（わ）かす")).toBe("おゆをわかす");
