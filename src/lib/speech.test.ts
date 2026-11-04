@@ -48,6 +48,9 @@ describe("stripReadings", () => {
     expect(stripReadings("お湯（おゆ）を沸（わ）かす")).toBe("おゆをわかす");
     // 「動く歩道」整個照原字，語音才會當成一個詞
     expect(stripReadings("これは動（うご）く歩道（ほどう）です。")).toBe("これは動く歩道です。");
+    // 棚：單字按鈕和例句都送漢字，語音才會用正確的平板重音
+    expect(speakableJa("たな", "棚")).toBe("棚");
+    expect(stripReadings("棚（たな）に本（ほん）を置（お）く")).toBe("棚にほんをおく");
     // 「少し」和後面的詞分開
     expect(stripReadings("少（すこ）し悲（かな）しくなりました。")).toBe("すこしかなしくなりました。");
     // 複合詞照舊合在一起

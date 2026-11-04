@@ -11,7 +11,7 @@ export function speakableJa(reading: string, fallback = ""): string {
   const word = fallback.replace(/[（(［\[][^）)］\]]*[）)］\]]/g, "").replace(/[・〜～~\s]/g, "");
   const kanji = word.match(/[\u4e00-\u9fff々]/g) ?? [];
   const special = [...SPECIAL].some((w) => word.includes(w));
-  if (writtenOk(word, kanji.length, special)) return word;
+  if (writtenOk(word, kanji.length, special) || KEEP_ONE.has(word)) return word;
   return readingKana(reading, fallback);
 }
 
@@ -78,8 +78,9 @@ const WORD_CHAIN = new RegExp(`[おご]?${K}(?:${LINK}${K})+`, "g");
 // 中間有「の」但是一個詞的（其他「〇の〇」都當兩個詞）
 const NO_WORDS = new Set("髪の毛 目の前 日の出 木の葉 火の元 天の川".split(" "));
 
-// 讀法固定的常用動詞漢字：照原字唸。換成假名會和前面的助詞黏在一起（と聞（き）いて → ときいて，被唸成「時、いて」）
-const KEEP_ONE = new Set("聞見書読話飲買待言思動".split(""));
+// 讀法固定的單一漢字（多半是動詞）：照原字唸。換成假名會和前面的助詞黏在一起（と聞（き）いて → ときいて，被唸成「時、いて」）
+// 棚：讀法只有 たな，送假名的話語音會唸成頭高（た↘な），送漢字才是正確的平板
+const KEEP_ONE = new Set("聞見書読話飲買待言思動棚".split(""));
 
 const SPECIAL = new Set("今日 明日 昨日 今朝 今年 今夜 一日 二日 一人 二人 大人 上手 下手 部屋 眼鏡 土産 果物 景色 一昨日 明後日 二十日 二十歳 八百屋 紅葉 博士 何人 何日 見学会".split(" "));
 
