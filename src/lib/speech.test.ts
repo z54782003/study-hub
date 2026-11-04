@@ -24,6 +24,9 @@ describe("speakableJa", () => {
     expect(speakableJa("じょうぶ", "丈夫な")).toBe("じょうぶ");
     expect(stripReadings("丈夫（じょうぶ）な靴（くつ）")).toBe("じょうぶなくつ");
     expect(stripReadings("もう大丈夫（だいじょうぶ）です。")).toBe("もう大丈夫です。");
+    // 飲み放題：照漢字送語音會念錯，單字和例句都念讀音
+    expect(speakableJa("のみほうだい", "飲み放題")).toBe("のみほうだい");
+    expect(stripReadings("二時間（にじかん）の飲（の）み放題（ほうだい）コース", "")).toBe("二時間ののみほうだいコース");
     expect(stripReadings("お酒（さけ）は二十歳（はたち）から飲（の）める")).toBe("おさけわハタチから飲める");
   });
 });

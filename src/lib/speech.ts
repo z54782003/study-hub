@@ -82,7 +82,16 @@ const NO_WORDS = new Set("髪の毛 目の前 日の出 木の葉 火の元 天�
 // 棚：讀法只有 たな，送假名的話語音會唸成頭高（た↘な），送漢字才是正確的平板
 const KEEP_ONE = new Set("聞見書読話飲買待言思動棚".split(""));
 
-const SPECIAL = new Set("今日 明日 昨日 今朝 今年 今夜 一日 二日 一人 二人 大人 上手 下手 部屋 眼鏡 土産 果物 景色 一昨日 明後日 二十日 二十歳 八百屋 紅葉 博士 何人 何日 見学会 丈夫".split(" "));
+const SPECIAL = new Set("今日 明日 昨日 今朝 今年 今夜 一日 二日 一人 二人 大人 上手 下手 部屋 眼鏡 土産 果物 景色 一昨日 明後日 二十日 二十歳 八百屋 紅葉 博士 何人 何日 見学会 丈夫 飲み放題".split(" "));
+
+/** SPECIAL 裡漢字夾假名的詞（飲み放題）：例句寫成「飲（の）み放題（ほうだい）」時整個換成讀音 */
+const SPECIAL_MIXED: [RegExp, (...m: string[]) => string][] = [...SPECIAL]
+  .filter((w) => /[\u3040-\u309f]/.test(w))
+  .map((w) => {
+    const parts = w.match(/[\u4e00-\u9fff々]+|[^\u4e00-\u9fff々]+/g) ?? [];
+    const src = parts.map((x) => (/[\u4e00-\u9fff々]/.test(x) ? `${x}[（(]([\u3040-\u30ffー]+)[）)]` : `(${x})`)).join("");
+    return [new RegExp(src, "g"), (_m: string, ...g: string[]) => g.slice(0, parts.length).join("")];
+  });
 
 /**
  * 例句裡的振り仮名「通（かよ）って」：括號不唸（不然會唸兩次）。
@@ -102,6 +111,7 @@ export function stripReadings(text: string, keep = ""): string {
     const pattern = [...keep].map((c) => c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + (/[\u4e00-\u9fff々]/.test(c) ? "(?:[（(][\u3040-\u30ffー・\\s]+[）)])?" : "")).join("");
     text = text.replace(new RegExp(pattern, "g"), keep);
   }
+  for (const [re, kana] of SPECIAL_MIXED) text = text.replace(re, kana);
   return text
     // 一個詞裡有好幾個標了讀音的漢字（お好（この）み焼（や）き、髪（かみ）の毛（け））：整個詞照漢字唸，不拆成假名
     .replace(WORD_CHAIN, (m) => {
