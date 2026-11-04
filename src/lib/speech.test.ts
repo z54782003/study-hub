@@ -19,6 +19,11 @@ describe("speakableJa", () => {
     expect(speakableJa("おこのみやき", "お好み焼き")).toBe("お好み焼き");
     expect(speakableJa("けんがくかい", "見学会")).toBe("けんがくかい");
     expect(stripReadings("見学会（けんがくかい）に行（い）きました。")).toBe("けんがくかいにいきました。");
+    // 丈夫：照漢字送會被唸成おっと（丈夫＝先生），要念 じょうぶ；大丈夫照原字
+    expect(speakableJa("じょうぶ", "丈夫(な)")).toBe("じょうぶ");
+    expect(speakableJa("じょうぶ", "丈夫な")).toBe("じょうぶ");
+    expect(stripReadings("丈夫（じょうぶ）な靴（くつ）")).toBe("じょうぶなくつ");
+    expect(stripReadings("もう大丈夫（だいじょうぶ）です。")).toBe("もう大丈夫です。");
     expect(stripReadings("お酒（さけ）は二十歳（はたち）から飲（の）める")).toBe("おさけわハタチから飲める");
   });
 });
