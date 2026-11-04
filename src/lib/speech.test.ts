@@ -24,6 +24,8 @@ describe("speakableJa", () => {
     expect(speakableJa("じょうぶ", "丈夫な")).toBe("じょうぶ");
     expect(stripReadings("丈夫（じょうぶ）な靴（くつ）")).toBe("じょうぶなくつ");
     expect(stripReadings("もう大丈夫（だいじょうぶ）です。")).toBe("もう大丈夫です。");
+    // 〜円札：照漢字送語音可能把「札」念成ふだ，念讀音
+    expect(stripReadings("一万円札（いちまんえんさつ）を千円札（せんえんさつ）に")).toBe("いちまんえんさつをせんえんさつに");
     // おかわり：假名的高低音不穩，送漢字
     expect(stripReadings("コーヒーのおかわりはいかがですか。")).toBe("コーヒーのお代わりはいかがですか。");
     expect(stripReadings("おかわり")).toBe("お代わり");
