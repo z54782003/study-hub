@@ -18,6 +18,7 @@ import { StatusMessage } from "@/components/StatusMessage";
 type Result = { item: ReviewItem; correct: boolean; answer?: string };
 type Pending = { item: ReviewItem; correct: boolean; answer?: string; method?: GradeMethod; feedback?: string };
 type Sync = { pending: number; failed: Pending[] };
+type SavedProgress = { items: ReviewItem[]; index: number; results: Result[]; startedAt: number; savedAt: number };
 
 const KIND_LABEL: Record<ReviewItem["kind"], string> = { quiz: "題庫", n3: "N3 單字", grammar: "文型", vocab: "單字", verb: "動詞の形", kanji: "漢字" };
 
@@ -55,7 +56,27 @@ export function ReviewSession({ source }: { source: ReviewSource }) {
   const [journal, setJournal] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const startedAt = useRef(Date.now());
 
+  const saveKey = `review-progress:${query}`;
+  const [restart, setRestart] = useState(0);
+
   useEffect(() => {
+    // 重新整理或關掉 App 再回來：同一組條件 24 小時內沒做完的，接著上次的題目和進度
+    if (!restart) {
+      try {
+        const saved = JSON.parse(localStorage.getItem(saveKey) ?? "null") as SavedProgress | null;
+        if (saved && Date.now() - saved.savedAt < 24 * 3600_000 && saved.index < saved.items.length) {
+          setItems(saved.items);
+          setIndex(saved.index);
+          setResults(saved.results);
+          startedAt.current = saved.startedAt;
+          return;
+        }
+      } catch {}
+    }
+    setItems(null);
+    setIndex(0);
+    setResults([]);
+    startedAt.current = Date.now();
     fetch(`/api/review?${query}`)
       .then(async (r) => {
         const data = await r.json();
@@ -63,7 +84,23 @@ export function ReviewSession({ source }: { source: ReviewSource }) {
         setItems(data.items);
       })
       .catch((e) => setLoadError(e.message));
-  }, [query]);
+  }, [query, saveKey, restart]);
+
+  // 每答一題就記下進度（只存在這台裝置）；做完就清掉
+  useEffect(() => {
+    if (!items) return;
+    try {
+      if (index >= items.length) localStorage.removeItem(saveKey);
+      else localStorage.setItem(saveKey, JSON.stringify({ items, index, results, startedAt: startedAt.current, savedAt: Date.now() } satisfies SavedProgress));
+    } catch {}
+  }, [items, index, results, saveKey]);
+
+  const startOver = () => {
+    try {
+      localStorage.removeItem(saveKey);
+    } catch {}
+    setRestart((n) => n + 1);
+  };
 
   // 每答一題就寫回 Notion：中途關掉 App 也不會遺失已作答的結果
   const send = useCallback((p: Pending) => {
@@ -201,15 +238,20 @@ export function ReviewSession({ source }: { source: ReviewSource }) {
   const kanjiSteps = item.kind === "kanji" ? kanjiChoices(item, items.filter((i): i is KanjiItem => i.kind === "kanji")) : [];
   return (
     <div className="mt-2 flex min-h-[calc(100dvh-9rem)] flex-col">
-      <div className="flex items-center justify-between text-sm text-muted">
-        <span>
+      <div className="flex items-center justify-between gap-3 text-sm text-muted">
+        <span className="min-w-0">
           {mode !== "due" && sourceLabel(source)}
           {mode === "due" && KIND_LABEL[item.kind]}
-          {item.kind === "quiz" && item.qtype && `・${item.qtype}`}
+          {item.kind === "quiz" && item.qtype && !("qtype" in source && source.qtype) && `・${item.qtype}`}
           {item.kind === "n3" && `・${item.source === "due" ? "到期複習" : "今日新字"}`}
           {mode === "due" && item.kind === "vocab" && item.lesson && `・${item.lesson}`}
         </span>
-        <span>
+        <span className="flex shrink-0 items-center gap-3 whitespace-nowrap">
+          {index > 0 && (
+            <button type="button" onClick={startOver} className="text-xs underline">
+              重新出題
+            </button>
+          )}
           {index + 1} / {items.length}
         </span>
       </div>
@@ -333,11 +375,6 @@ function QuizCard({ item, onDone, onSkip }: { item: QuizItem; onDone: (p: Pendin
               );
             })}
           </div>
-        )}
-        {item.myAnswer && !result && (
-          <p className="mt-3 rounded-xl bg-due-soft px-3 py-2 text-sm text-due">
-            上次寫錯：<span lang="ja">{item.myAnswer}</span>
-          </p>
         )}
 
         {choices ? null : !result ? (
