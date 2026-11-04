@@ -60,8 +60,16 @@ describe("usageSpeech", () => {
   it("keeps only the Japanese to read aloud", () => {
     expect(usageSpeech("〈人（ひと）〉を〜に招待（しょうたい）する")).toBe("人（ひと）を招待（しょうたい）する");
     expect(usageSpeech("〜のが苦手（にがて）だ")).toBe("苦手（にがて）だ");
-    expect(usageSpeech("ちょっと〜にくい")).toBe("ちょっと、にくい");
-    expect(usageSpeech("〜やすい")).toBe("やすい");
+    // 句型（〜後面接詞尾）念不自然，不念
+    expect(usageSpeech("ちょっと〜にくい")).toBe("");
+    expect(usageSpeech("〜やすい")).toBe("");
+    expect(usageSpeech("まだ〜ていない")).toBe("");
+    expect(usageSpeech("必（かなら）ず〜ます")).toBe("");
+    // 助詞照舊不念
+    expect(usageSpeech("〜をゆでる")).toBe("ゆでる");
+    expect(usageSpeech("〜からいらっしゃる")).toBe("いらっしゃる");
+    expect(usageSpeech("〜について発表（はっぴょう）する")).toBe("発表（はっぴょう）する");
+    expect(usageSpeech("〜を〜にかける")).toBe("かける");
     expect(usageSpeech("↔ 厚（あつ）い・濃（こ）い")).toBe("厚（あつ）い、濃（こ）い");
     expect(usageSpeech("落（お）ちる（自）・歯医者（はいしゃ）（牙醫）")).toBe("落（お）ちる、歯医者（はいしゃ）");
   });
