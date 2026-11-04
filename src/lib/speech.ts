@@ -123,8 +123,13 @@ export function stripReadings(text: string, keep = ""): string {
     .replace(/([\u4e00-\u9fff々〆ヶ]+)[（(]([\u3040-\u30ffー・\s]+)[）)]([はへ])?/g, (_, kanji: string, kana: string, p = "") =>
       ([...kanji].length > 1 && !SPECIAL.has(kanji)) || KEEP_ONE.has(kanji) ? kanji + p : safeKana(kana) + (p === "は" ? "わ" : p === "へ" ? "え" : ""),
     )
-    .replace(/[（(][\u3040-\u30ffー・\s]+[）)]/g, "");
+    .replace(/[（(][\u3040-\u30ffー・\s]+[）)]/g, "")
+    .replace(SAY_AS_RE, (w) => SAY_AS[w]);
 }
+
+/** 只寫假名時語音高低音不穩（同一個詞每次念得不一樣）的詞：改送標準漢字寫法，讓語音照辭典的高低音念 */
+const SAY_AS: Record<string, string> = { おかわり: "お代わり" };
+const SAY_AS_RE = new RegExp(Object.keys(SAY_AS).join("|"), "g");
 
 /** keep：例句裡要照寫的唸的單字（見 stripReadings） */
 export function speak(text: string, lang: SpeechLang, rate = lang === "ja" ? 0.9 : 0.95, keep = "") {
