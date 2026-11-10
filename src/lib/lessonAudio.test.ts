@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { lessonTracks, parseIndexPage, parseTranscript, trackNumber } from "./lessonAudio";
+import { audioKey, DISC_TRACKS, lessonRows, lessonTracks, parseIndexPage, parseTranscript, trackNumber } from "./lessonAudio";
 
 describe("lessonTracks", () => {
   it("numbers lesson 1 from 001: full, ST1 scenes, tasks, ST2, tasks, reading", () => {
@@ -89,5 +89,32 @@ describe("parseTranscript", () => {
       },
       { heading: "話読聞書", scenes: [{ title: null, lines: [{ speaker: null, text: "短文。" }] }] },
     ]);
+  });
+});
+
+describe("disc audio", () => {
+  it("reads the disc track from the file name", () => {
+    expect(audioKey("https://s3.example.com/a/b/7012019_DiscA_08.mp3?X-Amz=1")).toBe("A08");
+    expect(audioKey("https://s3.example.com/a/b/7012019_DiscB_67.mp3")).toBe("B67");
+    expect(audioKey("https://s3.example.com/a/b/030_v3.mp3")).toBe("030");
+    expect(audioKey("https://s3.example.com/a/b/7024084_Script_Answer.pdf")).toBeNull();
+  });
+  it("covers lessons 1–10 in order, every old number once", () => {
+    const all = Object.values(DISC_TRACKS).flat();
+    expect(all).toEqual(Array.from({ length: 162 }, (_, i) => i + 1));
+    expect(Object.keys(DISC_TRACKS)).toHaveLength(133);
+  });
+  it("joins the parts of one disc track into one row", () => {
+    const rows = lessonRows(1, Object.keys(DISC_TRACKS));
+    expect(rows).toHaveLength(15);
+    expect(rows[7]).toMatchObject({ key: "A08", kind: "task", st: 1, label: "やってみよう 1〜3" });
+    expect(rows[8]).toMatchObject({ key: "A09", label: "やってみよう 4" });
+    expect(rows.at(-1)).toMatchObject({ key: "A15", kind: "read" });
+    expect(lessonRows(2, Object.keys(DISC_TRACKS)).find((r) => r.key === "A25")?.label).toBe("チャレンジ 2〜3");
+  });
+  it("leaves lessons without audio as rows with no file", () => {
+    const rows = lessonRows(11, Object.keys(DISC_TRACKS));
+    expect(rows.length).toBe(lessonTracks(11).length);
+    expect(rows.every((r) => r.key === null)).toBe(true);
   });
 });

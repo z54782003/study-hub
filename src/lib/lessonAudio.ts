@@ -53,6 +53,59 @@ export function lessonTracks(n: number): Track[] {
 
 export const lessonTitle = (n: number) => LESSON_PLANS.find((p) => p.n === n)?.title ?? "";
 
+/**
+ * 光碟版音檔（7012019_DiscA_01.mp3…）：A 片＝第 1–5 課、B 片＝第 6–10 課（第 11–15 課沒有）。
+ * 一軌有時包含好幾個舊編號（やってみよう 整組一軌）。對照是用每軌長度和官方スクリプト的編號比對出來的。
+ */
+const DISC_LAYOUT =
+  "A01:1 A02:2 A03:3 A04:4 A05:5 A06:6 A07:7 A08:8+9+10 A09:11 A10:12 A11:13 A12:14 A13:15 A14:16+17 A15:18 A16:19 A17:20 A18:21 A19:22 A20:23 A21:24 A22:25 A23:26+27+28 A24:29 A25:30+31 A26:32 A27:33 A28:34 A29:35 A30:36+37+38 A31:39 A32:40 A33:41 A34:42 A35:43 A36:44 A37:45 A38:46+47 A39:48 A40:49 A41:50 A42:51 A43:52+53 A44:54 A45:55 A46:56 A47:57 A48:58 A49:59 A50:60 A51:61+62 A52:63 A53:64 A54:65+66+67 A55:68 A56:69 A57:70 A58:71 A59:72 A60:73 A61:74+75+76 A62:77 A63:78 A64:79 A65:80+81+82 A66:83 " +
+  "B01:84 B02:85 B03:86 B04:87 B05:88 B06:89 B07:90 B08:91 B09:92 B10:93 B11:94 B12:95 B13:96 B14:97 B15:98 B16:99 B17:100+101+102 B18:103 B19:104 B20:105 B21:106 B22:107 B23:108 B24:109 B25:110 B26:111 B27:112 B28:113 B29:114+115 B30:116 B31:117 B32:118 B33:119 B34:120 B35:121+122+123 B36:124 B37:125 B38:126 B39:127 B40:128 B41:129 B42:130 B43:131 B44:132 B45:133 B46:134 B47:135 B48:136 B49:137 B50:138+139+140 B51:141 B52:142 B53:143 B54:144 B55:145 B56:146 B57:147 B58:148 B59:149+150+151+152+153 B60:154 B61:155 B62:156 B63:157 B64:158 B65:159 B66:160+161 B67:162";
+
+/** 光碟軌（"A08"）→ 包含的舊編號（[8, 9, 10]） */
+export const DISC_TRACKS: Record<string, number[]> = Object.fromEntries(
+  DISC_LAYOUT.split(" ").map((x) => {
+    const [k, v] = x.split(":");
+    return [k, v.split("+").map(Number)];
+  }),
+);
+
+/** Notion 音檔網址 → 音檔代號：光碟版「7012019_DiscA_08.mp3」→「A08」；舊的「030_v3.mp3」→「030」 */
+export function audioKey(url: string): string | null {
+  const name = decodeURIComponent(new URL(url).pathname.split("/").pop() ?? "");
+  const disc = /_Disc([AB])_(\d+)\.mp3$/i.exec(name);
+  if (disc) return `${disc[1].toUpperCase()}${disc[2].padStart(2, "0")}`;
+  const no = trackNumber(url);
+  return no ? String(no).padStart(3, "0") : null;
+}
+
+/** 音檔代號包含哪些舊編號 */
+export const keyTracks = (key: string): number[] => DISC_TRACKS[key] ?? (/^\d{3}$/.test(key) ? [Number(key)] : []);
+
+export type AudioRow = Track & { key: string | null; parts: Track[] };
+
+/** 一課的播放列：同一個音檔的幾段合成一列（やってみよう 1〜3）；keys＝Notion 裡有的音檔代號 */
+export function lessonRows(n: number, keys: Iterable<string>): AudioRow[] {
+  const keyOf = new Map<number, string>();
+  for (const k of keys) for (const no of keyTracks(k)) keyOf.set(no, k);
+  const rows: AudioRow[] = [];
+  for (const t of lessonTracks(n)) {
+    const key = keyOf.get(t.no) ?? null;
+    const last = rows.at(-1);
+    if (key && last?.key === key) last.parts.push(t);
+    else rows.push({ ...t, key, parts: [t] });
+  }
+  for (const r of rows) r.label = mergeLabels(r.parts.map((p) => p.label));
+  return rows;
+}
+
+/** 「やってみよう 1」「やってみよう 3」→「やってみよう 1〜3」 */
+function mergeLabels(labels: string[]): string {
+  if (labels.length === 1) return labels[0];
+  const parts = labels.map((l) => /^(\S+) (.+)$/.exec(l));
+  if (parts.every((m) => m && m[1] === parts[0]![1])) return `${parts[0]![1]} ${parts[0]![2]}〜${parts.at(-1)![2]}`;
+  return labels.join("＋");
+}
+
 /** Notion 音檔的檔名（網址最後一段）→ 編號：「030_v3.mp3」→ 30 */
 export function trackNumber(url: string): number | null {
   const name = decodeURIComponent(new URL(url).pathname.split("/").pop() ?? "");

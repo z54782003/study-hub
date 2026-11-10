@@ -12,7 +12,7 @@ import { byTime, eventsOnDay, nextEventDay, type CalendarEvent } from "./calenda
 import { GROUP_OF, VERB_CLASSES, conjugate, formsFor, parseVerb, type Verb, type VerbClass, type VerbForm } from "./conjugate";
 import { VOA_BASE, VOA_FEEDS, parseVoaArticle, parseVoaFeed, type VoaArticle, type VoaFeedKey, type VoaItem } from "./voa";
 import { TADOKU_URL, parseTadoku, parseTadokuBook, type TadokuBook, type TadokuDetail } from "./tadoku";
-import { lessonTitle, lessonTracks, parseIndexPage, parseTranscript, trackNumber, type IndexBlock, type Track, type TranscriptPart } from "./lessonAudio";
+import { audioKey, lessonRows, lessonTitle, parseIndexPage, parseTranscript, type AudioRow, type IndexBlock, type TranscriptPart } from "./lessonAudio";
 import { parseNoteGrammar, type GrammarPoint, type NoteBlock, type Seg } from "./noteGrammar";
 import { EN_OTHER, EN_TOPICS } from "./reviewSource";
 import { pickPreviewPage, summarizePreview, type ChildPage, type SimpleBlock } from "./preview";
@@ -1265,12 +1265,12 @@ async function allChildren(id: string) {
 // Notion 檔案網址一小時後失效。快取過期時 unstable_cache 會先回舊的（網址已失效）再背景更新，
 // 所以另外記下失效時間，快到期就直接重抓；頁面上的音檔一律走 /api/lesson-audio/[no] 轉到當下有效的網址。
 async function loadLessonAudioIndex() {
-  const urls: Record<number, string> = {};
+  const urls: Record<string, string> = {};
   let expires = Infinity;
   for (const b of await allChildren(LESSON_AUDIO_PAGE)) {
     if (b.type === "audio" && b.audio.type === "file") {
-      const no = trackNumber(b.audio.file.url);
-      if (no) urls[no] = b.audio.file.url;
+      const key = audioKey(b.audio.file.url);
+      if (key) urls[key] = b.audio.file.url;
       const t = Date.parse(b.audio.file.expiry_time);
       if (t < expires) expires = t;
     }
@@ -1278,20 +1278,20 @@ async function loadLessonAudioIndex() {
   return { urls, expires: Number.isFinite(expires) ? expires : 0 };
 }
 
-const cachedLessonAudioIndex = unstable_cache(loadLessonAudioIndex, ["lesson-audio-index-v2"], { revalidate: 1800, tags: ["lesson-audio"] });
+const cachedLessonAudioIndex = unstable_cache(loadLessonAudioIndex, ["lesson-audio-index-v3"], { revalidate: 1800, tags: ["lesson-audio"] });
 
 /** 音檔網址：快取裡的還有 10 分鐘以上才用，否則直接向 Notion 重抓 */
-async function lessonAudioIndex(): Promise<{ urls: Record<number, string>; fresh: boolean }> {
+async function lessonAudioIndex(): Promise<{ urls: Record<string, string>; fresh: boolean }> {
   const cached = await cachedLessonAudioIndex();
   if (cached.expires - Date.now() > 10 * 60_000) return { urls: cached.urls, fresh: false };
   return { urls: (await loadLessonAudioIndex()).urls, fresh: true };
 }
 
-/** /api/lesson-audio/[no]：回傳這個編號當下有效的 Notion 網址；拿到新的就順便更新快取 */
-export async function lessonAudioUrl(no: number): Promise<string | null> {
+/** /api/lesson-audio/[key]：回傳這個音檔（"A08"）當下有效的 Notion 網址；拿到新的就順便更新快取 */
+export async function lessonAudioUrl(key: string): Promise<string | null> {
   const { urls, fresh } = await lessonAudioIndex();
   if (fresh) revalidateTag("lesson-audio");
-  return urls[no] ?? null;
+  return urls[key] ?? null;
 }
 
 // 課文從「初中級課本索引｜L〇」讀（日本語計畫頁底下，一課一頁）
@@ -1321,15 +1321,14 @@ const cachedTranscript = unstable_cache(
   { revalidate: 3600 },
 );
 
-export type LessonAudio = { n: number; title: string; tracks: (Track & { url: string | null })[]; transcript: TranscriptPart[] };
+export type LessonAudio = { n: number; title: string; tracks: (AudioRow & { url: string | null })[]; transcript: TranscriptPart[] };
 
 export async function getLessonAudio(n: number): Promise<LessonAudio> {
-  const tracks = lessonTracks(n);
   if (useMock())
     return {
       n,
       title: lessonTitle(n),
-      tracks: tracks.map((t) => ({ ...t, url: null })),
+      tracks: lessonRows(n, ["A01", "A02", "A08", "A09"]).map((t) => ({ ...t, url: t.key ? `/api/lesson-audio/${t.key}` : null })),
       transcript: parseTranscript([
         { type: "heading_2", text: "聞いてみよう" },
         { type: "heading_3", text: "（場面）" },
@@ -1350,7 +1349,7 @@ export async function getLessonAudio(n: number): Promise<LessonAudio> {
   return {
     n,
     title: page?.title.match(new RegExp(`｜L${n}\\s+([^（(]+)`))?.[1].trim() || lessonTitle(n),
-    tracks: tracks.map((t) => ({ ...t, url: urls[t.no] ? `/api/lesson-audio/${t.no}` : null })),
+    tracks: lessonRows(n, Object.keys(urls)).map((t) => ({ ...t, url: t.key ? `/api/lesson-audio/${t.key}` : null })),
     transcript: page ? await cachedTranscript(page.id).catch(() => []) : [],
   };
 }

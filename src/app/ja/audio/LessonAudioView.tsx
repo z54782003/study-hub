@@ -2,9 +2,9 @@
 import { useState } from "react";
 import { AudioPlayer } from "@/components/AudioPlayer";
 import { Icon } from "@/components/Icon";
-import type { Track, TranscriptPart } from "@/lib/lessonAudio";
+import type { AudioRow, Track, TranscriptPart } from "@/lib/lessonAudio";
 
-type Row = Track & { url: string | null };
+type Row = AudioRow & { url: string | null };
 
 type Scene = TranscriptPart["scenes"][number];
 
@@ -72,7 +72,7 @@ function TrackRow({ t, active, onPick }: { t: Row; active: boolean; onPick: () =
       <span className="min-w-0 flex-1 text-[15px] font-semibold" lang="ja">
         {t.label}
       </span>
-      <span className="shrink-0 text-xs text-muted tabular-nums">{t.url ? String(t.no).padStart(3, "0") : "沒有檔案"}</span>
+      <span className="shrink-0 text-xs text-muted tabular-nums">{t.url ? t.key : "沒有檔案"}</span>
     </button>
   );
 }
@@ -103,7 +103,12 @@ export function LessonAudioView({ tracks, transcript, st }: { tracks: Row[]; tra
   // チャレンジ／やってみよう各音檔有自己的スクリプト（課本索引「## 音檔スクリプト」底下）
   // 「ST1 1」「ST1 やってみよう 2」：跟音檔標籤對應
   const scripts = transcript.filter((p) => p.heading === "チャレンジ").flatMap((p) => p.scenes);
-  const sceneText = (t: Row) => (t.st ? scripts.find((s) => s.title === `ST${t.st} ${t.label.replace(/^チャレンジ /, "")}`) : undefined);
+  // 一軌包含好幾段（やってみよう 1〜3）時，把各段的スクリプト接起來
+  const sceneText = (t: Row): Scene | undefined => {
+    if (!t.st) return undefined;
+    const found = t.parts.flatMap((p) => scripts.filter((s) => s.title === `ST${t.st} ${p.label.replace(/^チャレンジ /, "")}`));
+    return found.length ? { title: null, lines: found.flatMap((s, i) => (i ? [{ speaker: null, text: "＊＊＊" }, ...s.lines] : s.lines)) } : undefined;
+  };
 
   return (
     <>
