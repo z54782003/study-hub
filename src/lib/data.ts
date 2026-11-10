@@ -1262,21 +1262,37 @@ async function allChildren(id: string) {
   return out;
 }
 
-// Notion 檔案網址一小時後失效，快取 30 分鐘
-const cachedLessonAudioIndex = unstable_cache(
-  async () => {
-    const urls: Record<number, string> = {};
-    for (const b of await allChildren(LESSON_AUDIO_PAGE)) {
-      if (b.type === "audio" && b.audio.type === "file") {
-        const no = trackNumber(b.audio.file.url);
-        if (no) urls[no] = b.audio.file.url;
-      }
+// Notion 檔案網址一小時後失效。快取過期時 unstable_cache 會先回舊的（網址已失效）再背景更新，
+// 所以另外記下失效時間，快到期就直接重抓；頁面上的音檔一律走 /api/lesson-audio/[no] 轉到當下有效的網址。
+async function loadLessonAudioIndex() {
+  const urls: Record<number, string> = {};
+  let expires = Infinity;
+  for (const b of await allChildren(LESSON_AUDIO_PAGE)) {
+    if (b.type === "audio" && b.audio.type === "file") {
+      const no = trackNumber(b.audio.file.url);
+      if (no) urls[no] = b.audio.file.url;
+      const t = Date.parse(b.audio.file.expiry_time);
+      if (t < expires) expires = t;
     }
-    return { urls };
-  },
-  ["lesson-audio-index"],
-  { revalidate: 1800 },
-);
+  }
+  return { urls, expires: Number.isFinite(expires) ? expires : 0 };
+}
+
+const cachedLessonAudioIndex = unstable_cache(loadLessonAudioIndex, ["lesson-audio-index-v2"], { revalidate: 1800, tags: ["lesson-audio"] });
+
+/** 音檔網址：快取裡的還有 10 分鐘以上才用，否則直接向 Notion 重抓 */
+async function lessonAudioIndex(): Promise<{ urls: Record<number, string>; fresh: boolean }> {
+  const cached = await cachedLessonAudioIndex();
+  if (cached.expires - Date.now() > 10 * 60_000) return { urls: cached.urls, fresh: false };
+  return { urls: (await loadLessonAudioIndex()).urls, fresh: true };
+}
+
+/** /api/lesson-audio/[no]：回傳這個編號當下有效的 Notion 網址；拿到新的就順便更新快取 */
+export async function lessonAudioUrl(no: number): Promise<string | null> {
+  const { urls, fresh } = await lessonAudioIndex();
+  if (fresh) revalidateTag("lesson-audio");
+  return urls[no] ?? null;
+}
 
 // 課文從「初中級課本索引｜L〇」讀（日本語計畫頁底下，一課一頁）
 const cachedIndexPages = unstable_cache(
@@ -1329,11 +1345,12 @@ export async function getLessonAudio(n: number): Promise<LessonAudio> {
     };
   // 課本索引讀不到時，音檔照樣能聽
   const [{ urls }, pages] = await Promise.all([cachedLessonAudioIndex(), cachedIndexPages().catch(() => [])]);
+  // 網址本身會過期，頁面上只放自己的轉址路徑（播放時才換成有效網址）
   const page = pages.find((p) => new RegExp(`｜L${n}\\s`).test(p.title));
   return {
     n,
     title: page?.title.match(new RegExp(`｜L${n}\\s+([^（(]+)`))?.[1].trim() || lessonTitle(n),
-    tracks: tracks.map((t) => ({ ...t, url: urls[t.no] ?? null })),
+    tracks: tracks.map((t) => ({ ...t, url: urls[t.no] ? `/api/lesson-audio/${t.no}` : null })),
     transcript: page ? await cachedTranscript(page.id).catch(() => []) : [],
   };
 }
