@@ -96,13 +96,14 @@ describe("disc audio", () => {
   it("reads the disc track from the file name", () => {
     expect(audioKey("https://s3.example.com/a/b/7012019_DiscA_08.mp3?X-Amz=1")).toBe("A08");
     expect(audioKey("https://s3.example.com/a/b/7012019_DiscB_67.mp3")).toBe("B67");
+    expect(audioKey("https://s3.example.com/a/b/7012019_DiscC_61.mp3")).toBe("C61");
     expect(audioKey("https://s3.example.com/a/b/030_v3.mp3")).toBe("030");
     expect(audioKey("https://s3.example.com/a/b/7024084_Script_Answer.pdf")).toBeNull();
   });
-  it("covers lessons 1–10 in order, every old number once", () => {
+  it("covers lessons 1–15 in order, every old number once", () => {
     const all = Object.values(DISC_TRACKS).flat();
-    expect(all).toEqual(Array.from({ length: 162 }, (_, i) => i + 1));
-    expect(Object.keys(DISC_TRACKS)).toHaveLength(133);
+    expect(all).toEqual(Array.from({ length: 234 }, (_, i) => i + 1));
+    expect(Object.keys(DISC_TRACKS)).toHaveLength(194);
   });
   it("joins the parts of one disc track into one row", () => {
     const rows = lessonRows(1, Object.keys(DISC_TRACKS));
@@ -113,7 +114,7 @@ describe("disc audio", () => {
     expect(lessonRows(2, Object.keys(DISC_TRACKS)).find((r) => r.key === "A25")?.label).toBe("チャレンジ 2〜3");
   });
   it("leaves lessons without audio as rows with no file", () => {
-    const rows = lessonRows(11, Object.keys(DISC_TRACKS));
+    const rows = lessonRows(11, []);
     expect(rows.length).toBe(lessonTracks(11).length);
     expect(rows.every((r) => r.key === null)).toBe(true);
   });

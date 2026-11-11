@@ -72,7 +72,7 @@ function TrackRow({ t, active, onPick }: { t: Row; active: boolean; onPick: () =
       <span className="min-w-0 flex-1 text-[15px] font-semibold" lang="ja">
         {t.label}
       </span>
-      <span className="shrink-0 text-xs text-muted tabular-nums">{t.url ? t.key : "沒有檔案"}</span>
+      {!t.url && <span className="shrink-0 text-xs text-muted">沒有檔案</span>}
     </button>
   );
 }
