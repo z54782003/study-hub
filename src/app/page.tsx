@@ -115,6 +115,9 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
           href: "/review/due",
           autoDone: reviewTotal === 0,
         },
+    "pending-notes": t.pendingNotes
+      ? { id: "pending-notes", title: "還沒複習的課堂筆記", sub: `初中級・最舊：${t.pendingNotes.oldest}`, tag: `${t.pendingNotes.count} 篇`, href: "/ja/notes" }
+      : null,
     nhk: { id: "nhk", title: "NHK Easy 5 分", sub: "NHK 網站", href: NHK_EASY_URL, external: true },
     ted: t.past ? { id: "ted", title: "TED" } : { id: "ted", title: "TED", sub: t.ted ? t.ted.title : "Log 裡沒有待做的 talk", href: t.ted?.url },
     reading: t.past
@@ -128,7 +131,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
         },
   };
   // 每個階段只有一件必做（stage.mustTasks），其他照這個順序放「有空再做」
-  const ORDER = ["class-note", "exam", "beginner-vocab", "n2-grammar", "n3", "preview", "review", "nhk", "ted", "reading"];
+  const ORDER = ["class-note", "exam", "beginner-vocab", "n2-grammar", "n3", "preview", "review", "pending-notes", "nhk", "ted", "reading"];
   const pick = (ids: string[]) => ids.flatMap((id) => (tasks[id] ? [tasks[id]] : []));
   const mustRows: TaskRow[] = pick(stage.mustTasks);
   // 上課那條分隔線放在「看今天的課堂筆記」前面

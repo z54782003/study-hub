@@ -24,7 +24,12 @@ export default async function JapanesePage() {
         <EntryCard inGroup href={NHK_EASY_URL} icon="news" title="NHK Easy" detail="NHK 網站・在新分頁開啟" external />
       </EntryGroup>
 
-      <h2 className="mt-6 mb-2 text-xl font-bold">最近的課堂筆記</h2>
+      <h2 className="mt-6 mb-2 flex items-baseline text-xl font-bold">
+        最近的課堂筆記
+        <Link href="/ja/notes" className="ml-auto text-sm font-semibold text-accent">
+          還沒複習的 ›
+        </Link>
+      </h2>
       {notes.length === 0 ? (
         <p className="text-sm text-muted">讀不到課堂筆記</p>
       ) : (

@@ -71,6 +71,7 @@ export function mockToday(day: string): TodayData {
             homework:
               "①文法ノート 大8〜13番（〜ために／〜んですか／疑問詞＋んですか／どうして〜んですか—〜んです／〜んです選択／〜なければなりません）＝今日の宿題（先生：授業中に8番から着手→残りは家で）。②（先生の注意）宿題はなるべくやってきた方がいい。※提出日・期限の指示は録音に無し。",
           },
+    pendingNotes: { count: 2, oldest: "10/9（金）できる L1｜ST1 新しい一歩" },
     review: {
       quiz: 20,
       n3: reviewParts(stageFor(day), false).n3 ? 20 : 0,

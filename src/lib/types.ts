@@ -20,6 +20,8 @@ export type TodayData = {
   n3: { count: number; grammar: { name: string; url: string | null }[] } | null;
   classNote: (Link & { id: string; review: string | null; status: string | null; summary: string; homework: string }) | null;
   review: { quiz: number; n3: number; grammar: number };
+  /** 初中級還沒複習（複習＝未複習）的課堂筆記；oldest＝最舊那篇的標題 */
+  pendingNotes: { count: number; oldest: string } | null;
   ted: (Link & { progress: string | null }) | null;
   books: (Link & { type: string | null })[];
   errors: string[];

@@ -825,6 +825,7 @@ export async function getToday(day = today()): Promise<TodayData> {
     ),
     past ? ([] as Page[]) : safe("Books", () => queryAll(DS.books, { property: "Status", select: { equals: "Reading" } }), [] as Page[]),
   ]);
+  const pendingNotes = past ? [] : await safe("ISI 課堂筆記（未複習）", () => pendingClassNotes("初中級"), [] as ClassNoteLink[]);
 
   const n3On = await safe("N3 單字", () => n3WordsActive(day), false);
   // 過去的日子：今天的文型只記當天，回看不到
@@ -871,6 +872,7 @@ export async function getToday(day = today()): Promise<TodayData> {
       n3: review.filter((i) => i.kind === "n3").length,
       grammar: review.filter((i) => i.kind === "grammar").length,
     },
+    pendingNotes: pendingNotes.length ? { count: pendingNotes.length, oldest: pendingNotes[0].title } : null,
     ted: tedPage ? { title: text(tedPage, "Talk"), url: `/ted/${tedPage.id}`, progress: select(tedPage, "進度") } : null,
     books: books.map((p) => ({ title: text(p, "Name"), url: p.url, type: select(p, "Type") })),
     errors,
@@ -1148,6 +1150,21 @@ export async function recentClassNotes(n: number): Promise<ClassNoteLink[]> {
   if (useMock())
     return [{ id: MOCK_NOTE_ID, title: "10/23 L3 ST2", lesson: "L3", level: "初中級", date: "2026-10-23", url: "#", review: "未複習" }];
   const pages = await queryAll(DS.isiNotes, undefined, [{ property: "日期", direction: "descending" }], n);
+  return pages.map(toClassNoteLink);
+}
+
+/** 還沒複習的課堂筆記（複習＝未複習），從最舊的開始 */
+export async function pendingClassNotes(level: string): Promise<ClassNoteLink[]> {
+  if (useMock())
+    return [
+      { id: MOCK_NOTE_ID, title: "10/9（金）できる L1｜ST1 新しい一歩", lesson: "L1", level, date: "2026-10-09", url: "#", review: "未複習" },
+      { id: MOCK_NOTE_ID, title: "10/23 L3 ST2", lesson: "L3", level, date: "2026-10-23", url: "#", review: "未複習" },
+    ];
+  const pages = await queryAll(
+    DS.isiNotes,
+    { and: [{ property: "レベル", select: { equals: level } }, { property: "複習", select: { equals: "未複習" } }] },
+    [{ property: "日期", direction: "ascending" }],
+  );
   return pages.map(toClassNoteLink);
 }
 
