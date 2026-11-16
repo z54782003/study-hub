@@ -1,4 +1,4 @@
-import { REMINDERS, STAGES, type Stage } from "./config";
+import { EXAMS, REMINDERS, STAGES, TERMS, type Stage, type Term } from "./config";
 
 /**
  * 某一天屬於哪個階段：第一個 end ≥ day 的階段。
@@ -45,3 +45,9 @@ const md = (iso: string) => `${Number(iso.slice(5, 7))}/${Number(iso.slice(8, 10
 
 /** 這一天要顯示的提醒 */
 export const remindersOn = (day: string, list = REMINDERS) => list.filter((r) => r.from <= day && day <= r.to);
+
+/** 這一天在哪個學期（放假中回傳 null） */
+export const termFor = (day: string, terms: Term[] = TERMS): Term | null => terms.find((t) => t.start <= day && day <= t.end) ?? null;
+
+/** 考試表裡今天以後還有沒有考試；沒有就請使用者更新考試表 */
+export const hasUpcomingExam = (day: string, exams = EXAMS) => exams.some((e) => e.date >= day);

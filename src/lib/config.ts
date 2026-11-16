@@ -140,32 +140,57 @@ export const N3_DUE_LIMIT = 10;
 // 每天第一次讀到的 25 個固定到當天結束；沒考完的隔天還是排在最前面。哪些階段出新字見 STAGES.n3Words。
 export const N3_BATCH_SIZE = 25;
 
-// 10 月期考試與重要日期（日本語計畫頁）
-export const EXAMS: { date: string; name: string; scope: string }[] = [
-  { date: "2026-10-13", name: "動詞の形テスト", scope: "可能動詞" },
-  { date: "2026-10-21", name: "漢字テスト", scope: "HSJⅠ 8・9章" },
-  { date: "2026-10-27", name: "動詞の形テスト", scope: "意向形" },
-  { date: "2026-11-04", name: "アチーブテスト", scope: "1〜3課 語彙・文法" },
-  { date: "2026-11-05", name: "漢字テスト", scope: "HSJⅡ 1・2章" },
-  { date: "2026-11-06", name: "作文", scope: "「私の失敗」（5課）" },
-  { date: "2026-11-11", name: "アチーブテスト", scope: "1〜5課 読解・聴解" },
-  { date: "2026-11-16", name: "動詞の形テスト", scope: "尊敬動詞" },
-  { date: "2026-11-17", name: "アチーブテスト／作文", scope: "4〜6課 語彙・文法／「私の国と違うこと」（7課）" },
-  { date: "2026-11-19", name: "漢字テスト", scope: "HSJⅡ 3・4章" },
-  { date: "2026-11-20", name: "作文", scope: "「うれしかったこと」（8課）" },
-  { date: "2026-11-26", name: "動詞の形テスト", scope: "条件形" },
-  { date: "2026-12-02", name: "動詞の形テスト／ビジネス日本語アチーブ", scope: "受身形／ビジネス 2・7課" },
-  { date: "2026-12-03", name: "アチーブテスト／作文", scope: "7〜9課 語彙・文法／「おすすめのお土産」（10課）" },
-  { date: "2026-12-07", name: "漢字テスト", scope: "HSJⅡ 5・6章" },
-  { date: "2026-12-08", name: "アチーブテスト", scope: "6〜10課 読解" },
-  { date: "2026-12-09", name: "動詞の形テスト／ビジネス日本語アチーブ", scope: "命令形・禁止形／ビジネス 9課" },
-  { date: "2026-12-10", name: "アチーブテスト", scope: "6〜10課 聴解" },
-  { date: "2026-12-11", name: "期末試験", scope: "ビジネス日本語（ロールプレイ・記述）" },
-  { date: "2026-12-15", name: "アチーブテスト", scope: "10〜12課 語彙・文法" },
-  { date: "2026-12-16", name: "期末試験", scope: "作文・聴解" },
-  { date: "2026-12-17", name: "期末試験", scope: "語彙・文法・読解" },
-  { date: "2026-12-18", name: "期末試験／漢字テスト", scope: "口頭表現／HSJⅡ 7・8章" },
+// ── 學期設定（ISI）：起訖、上課時間、考試表 ─────────────────────────
+export type Exam = { date: string; name: string; scope: string };
+export type Term = {
+  name: string;
+  start: string;
+  end: string;
+  /** 今日頁「看今天的課堂筆記」上面那條分隔線；null＝還不知道 */
+  classTime: string | null;
+  /** 考試與重要日期（日本語計畫頁）；拿到考試表再補 */
+  exams: Exam[];
+};
+
+export const TERMS: Term[] = [
+  {
+    name: "10 月期（初中級）",
+    start: "2026-10-07",
+    end: "2026-12-18",
+    classTime: "13:00–16:10",
+    exams: [
+      { date: "2026-10-13", name: "動詞の形テスト", scope: "可能動詞" },
+      { date: "2026-10-21", name: "漢字テスト", scope: "HSJⅠ 8・9章" },
+      { date: "2026-10-27", name: "動詞の形テスト", scope: "意向形" },
+      { date: "2026-11-04", name: "アチーブテスト", scope: "1〜3課 語彙・文法" },
+      { date: "2026-11-05", name: "漢字テスト", scope: "HSJⅡ 1・2章" },
+      { date: "2026-11-06", name: "作文", scope: "「私の失敗」（5課）" },
+      { date: "2026-11-11", name: "アチーブテスト", scope: "1〜5課 読解・聴解" },
+      { date: "2026-11-16", name: "動詞の形テスト", scope: "尊敬動詞" },
+      { date: "2026-11-17", name: "アチーブテスト／作文", scope: "4〜6課 語彙・文法／「私の国と違うこと」（7課）" },
+      { date: "2026-11-19", name: "漢字テスト", scope: "HSJⅡ 3・4章" },
+      { date: "2026-11-20", name: "作文", scope: "「うれしかったこと」（8課）" },
+      { date: "2026-11-26", name: "動詞の形テスト", scope: "条件形" },
+      { date: "2026-12-02", name: "動詞の形テスト／ビジネス日本語アチーブ", scope: "受身形／ビジネス 2・7課" },
+      { date: "2026-12-03", name: "アチーブテスト／作文", scope: "7〜9課 語彙・文法／「おすすめのお土産」（10課）" },
+      { date: "2026-12-07", name: "漢字テスト", scope: "HSJⅡ 5・6章" },
+      { date: "2026-12-08", name: "アチーブテスト", scope: "6〜10課 読解" },
+      { date: "2026-12-09", name: "動詞の形テスト／ビジネス日本語アチーブ", scope: "命令形・禁止形／ビジネス 9課" },
+      { date: "2026-12-10", name: "アチーブテスト", scope: "6〜10課 聴解" },
+      { date: "2026-12-11", name: "期末試験", scope: "ビジネス日本語（ロールプレイ・記述）" },
+      { date: "2026-12-15", name: "アチーブテスト", scope: "10〜12課 語彙・文法" },
+      { date: "2026-12-16", name: "期末試験", scope: "作文・聴解" },
+      { date: "2026-12-17", name: "期末試験", scope: "語彙・文法・読解" },
+      { date: "2026-12-18", name: "期末試験／漢字テスト", scope: "口頭表現／HSJⅡ 7・8章" },
+    ],
+  },
+  // 1 月期、4 月期：結束日和上課時間還不知道（結束日先抓到下一期開學前一天、6 月底），考試表拿到再補
+  { name: "1 月期", start: "2027-01-07", end: "2027-04-07", classTime: null, exams: [] },
+  { name: "4 月期", start: "2027-04-08", end: "2027-06-30", classTime: null, exams: [] },
 ];
+
+/** 所有學期的考試，照日期排 */
+export const EXAMS: Exam[] = TERMS.flatMap((t) => t.exams).sort((a, b) => a.date.localeCompare(b.date));
 
 // N3 文型順序（操作手冊「N3 自補」）：STAGES.grammar.from 起每個平日學「第一個還沒學過的」，週末複習這週學過的
 export const GRAMMAR_ORDER = [

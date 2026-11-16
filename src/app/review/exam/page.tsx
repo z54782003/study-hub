@@ -1,6 +1,7 @@
 import { EntryCard } from "@/components/EntryCard";
 import { EXAMS } from "@/lib/config";
 import { today } from "@/lib/data";
+import { hasUpcomingExam } from "@/lib/stages";
 import { diffDays } from "@/lib/dates";
 import { examChapters, examLessons, sourceQuery } from "@/lib/reviewSource";
 import { BackLink } from "@/components/BackLink";
@@ -63,7 +64,7 @@ export default function ExamPage() {
       <BackLink href="/review">複習</BackLink>
       <h1 className="mt-1 mb-1 text-[28px] leading-[34px] font-bold">考試複習</h1>
       <p className="mb-4 text-sm text-muted">未來 30 天的考試；アチーブ的「語彙・文法」點進去選語彙題或文法題，其他點了直接開始。單字卡在「單字・漢字」。</p>
-      {upcoming.length === 0 && <p className="text-muted">這一期沒有接下來的考試了</p>}
+      {upcoming.length === 0 && <p className="text-muted">{hasUpcomingExam(day) ? "30 天內沒有考試。" : "考試表裡沒有接下來的考試了，請更新考試表。"}</p>}
       <div className="space-y-2.5">
         {upcoming.flatMap((e) =>
           // 「動詞の形テスト／ビジネス日本語アチーブ」這種一天兩場的拆開

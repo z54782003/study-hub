@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { STAGES } from "./config";
-import { grammarOn, remindersOn, n3WordsOn, n3WordsStart, needsDebtCheck, reviewParts, stageFor } from "./stages";
+import { grammarOn, hasUpcomingExam, remindersOn, termFor, n3WordsOn, n3WordsStart, needsDebtCheck, reviewParts, stageFor } from "./stages";
 
 describe("stages", () => {
   it("are contiguous and in order", () => {
@@ -54,5 +54,13 @@ describe("stages", () => {
     expect(remindersOn("2027-03-25").map((r) => r.text)).toEqual(["做 N3 模擬卷（決定 7 月報 N2 或 N3）"]);
     expect(remindersOn("2027-03-31")).toHaveLength(1);
     expect(remindersOn("2027-04-01")).toEqual([]);
+  });
+  it("finds the term and whether the exam table runs out", () => {
+    expect(termFor("2026-11-17")?.classTime).toBe("13:00–16:10");
+    expect(termFor("2026-12-25")).toBeNull(); // 寒假
+    expect(termFor("2027-01-07")?.name).toBe("1 月期");
+    expect(termFor("2027-04-08")?.name).toBe("4 月期");
+    expect(hasUpcomingExam("2026-12-18")).toBe(true);
+    expect(hasUpcomingExam("2026-12-19")).toBe(false);
   });
 });

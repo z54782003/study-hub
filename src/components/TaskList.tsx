@@ -14,7 +14,7 @@ export type Task = {
   /** 由資料判斷已完成（例如複習已清空），不需手動勾 */
   autoDone?: boolean;
 };
-/** 字串＝分隔線（例如「13:00–16:10 上課」） */
+/** 字串＝分隔線（例如「13:00–16:10 上課」，上課時間在 config 的 TERMS） */
 export type TaskRow = Task | string;
 
 // 手動打勾的狀態只存在這台裝置（per-viewer 便利功能）；真正的學習紀錄都寫回 Notion。

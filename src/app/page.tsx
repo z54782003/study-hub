@@ -4,7 +4,7 @@ import { TaskList, type Task, type TaskRow } from "@/components/TaskList";
 import { EXAMS, NHK_EASY_URL } from "@/lib/config";
 import { noteReviewed } from "@/lib/noteReview";
 import { sourceQuery } from "@/lib/reviewSource";
-import { remindersOn, stageFor } from "@/lib/stages";
+import { remindersOn, stageFor, termFor } from "@/lib/stages";
 import type { CalendarEvent } from "@/lib/calendar";
 import Link from "next/link";
 import { getToday, today } from "@/lib/data";
@@ -136,7 +136,8 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
   const mustRows: TaskRow[] = pick(stage.mustTasks);
   // 上課那條分隔線放在「看今天的課堂筆記」前面
   const classAt = mustRows.findIndex((r) => typeof r !== "string" && r.id === "class-note");
-  if (classAt >= 0) mustRows.splice(classAt, 0, "13:00–16:10 上課");
+  const classTime = termFor(t.date)?.classTime;
+  if (classAt >= 0) mustRows.splice(classAt, 0, classTime ? `${classTime} 上課` : "上課（時間未定）");
   const optionalRows = pick(ORDER.filter((id) => !stage.mustTasks.includes(id)));
 
   return (
@@ -171,7 +172,11 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
             </div>
           </a>
         ) : (
-          <div className="card rounded-2xl px-3.5 py-3 text-sm text-muted">這一期沒有接下來的考試</div>
+          <a href="/review/exam" className="block rounded-2xl bg-exam-soft px-3.5 py-3 text-exam">
+            <div className="text-xs font-bold">沒有接下來的考試</div>
+            <div className="mt-1 text-sm font-semibold text-ink">請更新考試表</div>
+            <div className="text-[13px] text-ink-2">拿到新學期的考試表後補上</div>
+          </a>
         )}
         <div className="card rounded-2xl px-3.5 py-3">
           <div className="text-xs font-bold text-ink-2">{stage.countdown}</div>
