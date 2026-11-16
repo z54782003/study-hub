@@ -3,6 +3,7 @@ import { BackLink } from "@/components/BackLink";
 import { getClassNote } from "@/lib/data";
 import { formatJP } from "@/lib/dates";
 import { keyPoints, type GrammarPoint, type Seg } from "@/lib/noteGrammar";
+import { NoteReview } from "./NoteReview";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "課堂筆記・Study Hub" };
@@ -104,6 +105,7 @@ export default async function ClassNotePage({ params }: { params: Promise<{ id: 
           ))}
         </div>
       )}
+      <NoteReview id={note.id} initial={note.review} />
       <a href={note.url} target="_blank" rel="noreferrer" className="mt-4 inline-block text-sm font-semibold text-accent">
         在 Notion 看完整筆記 ↗
       </a>

@@ -6,6 +6,9 @@ import type { N3Detail } from "./n3Detail";
 import type { ReviewItem, TodayData, VocabItem } from "./types";
 import type { TedTalk } from "./ted";
 
+/** 預覽用的課堂筆記 id（API 只收 UUID 形式） */
+export const MOCK_NOTE_ID = "00000000-0000-4000-8000-0000000000c1";
+
 export function mockToday(day: string): TodayData {
   return {
     date: day,
@@ -56,6 +59,9 @@ export function mockToday(day: string): TodayData {
       process.env.MOCK_CLASS === "preview"
         ? null
         : {
+            id: MOCK_NOTE_ID,
+            // MOCK_NOTE_REVIEW=1 看「已複習→自動打勾」的樣子
+            review: process.env.MOCK_NOTE_REVIEW ? "1回目 ✅" : "未複習",
             title:
               "10/26（月）できる L3｜ST2 夢に向かって・〜ために・〜んです／〜んですが・疑問詞＋んですか・〜なければなりません・漢字（体・色・黄・赤）／本冊p.48–51",
             url: "#",

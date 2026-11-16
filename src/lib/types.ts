@@ -18,7 +18,7 @@ export type TodayData = {
     | (Link & { lesson: string | null; exam: string | null; grammarTitle: string | null; grammar: string[]; grammarNote: string | null })
     | null;
   n3: { count: number; grammar: { name: string; url: string | null }[] } | null;
-  classNote: (Link & { status: string | null; summary: string; homework: string }) | null;
+  classNote: (Link & { id: string; review: string | null; status: string | null; summary: string; homework: string }) | null;
   review: { quiz: number; n3: number; grammar: number };
   ted: (Link & { progress: string | null }) | null;
   books: (Link & { type: string | null })[];

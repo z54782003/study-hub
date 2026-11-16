@@ -2,6 +2,7 @@ import { ClassCard } from "@/components/ClassCard";
 import { Icon, type IconName } from "@/components/Icon";
 import { TaskList, type Task, type TaskRow } from "@/components/TaskList";
 import { EXAMS, NHK_EASY_URL } from "@/lib/config";
+import { noteReviewed } from "@/lib/noteReview";
 import { sourceQuery } from "@/lib/reviewSource";
 import { remindersOn, stageFor } from "@/lib/stages";
 import type { CalendarEvent } from "@/lib/calendar";
@@ -69,13 +70,14 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
   const school = stage.school && !t.weekend;
 
   const tasks: Record<string, Task | null> = {
+    // 點進 App 裡的筆記頁（文法整理＋「標記已複習」）；標成 1回目 以後自動打勾
     "class-note": school
       ? {
           id: "class-note",
           title: "看今天的課堂筆記",
-          sub: t.classNote ? `${t.classNote.title}${t.classNote.status ? `・${t.classNote.status}` : ""}` : "下課後（尚未建立）",
-          href: t.classNote?.url,
-          external: true,
+          sub: t.classNote ? `${t.classNote.title}${t.classNote.review ? `・${t.classNote.review}` : ""}` : "下課後（尚未建立）",
+          href: t.classNote ? `/ja/notes/${t.classNote.id}` : undefined,
+          autoDone: noteReviewed(t.classNote?.review ?? null),
         }
       : null,
     exam: nextExam

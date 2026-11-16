@@ -7,7 +7,7 @@ import { gradeWithAi } from "./ai";
 import { groupBySection, sectionTitle, type IndexSection } from "./lessonOrder";
 import { parseDetail, type N3Detail } from "./n3Detail";
 import { autoGrade, gradeChoice, parseChoices } from "./grading";
-import { mockAnswer, mockHistory, mockN3Detail, mockJournal, mockReview, mockToday, mockVocab } from "./mock";
+import { MOCK_NOTE_ID, mockAnswer, mockHistory, mockN3Detail, mockJournal, mockReview, mockToday, mockVocab } from "./mock";
 import { byTime, eventsOnDay, nextEventDay, type CalendarEvent } from "./calendar";
 import { GROUP_OF, VERB_CLASSES, conjugate, formsFor, parseVerb, type Verb, type VerbClass, type VerbForm } from "./conjugate";
 import { VOA_BASE, VOA_FEEDS, parseVoaArticle, parseVoaFeed, type VoaArticle, type VoaFeedKey, type VoaItem } from "./voa";
@@ -16,6 +16,7 @@ import { audioKey, lessonRows, lessonTitle, parseIndexPage, parseTranscript, typ
 import { parseNoteGrammar, type GrammarPoint, type NoteBlock, type Seg } from "./noteGrammar";
 import { EN_OTHER, EN_TOPICS } from "./reviewSource";
 import { findChildPages } from "./childPages";
+import { NOTE_REVIEW_OPTIONS } from "./noteReview";
 import { grammarOn, n3WordsOn, needsDebtCheck, reviewParts, stageFor } from "./stages";
 import { pickPreviewPage, summarizePreview, type ChildPage, type SimpleBlock } from "./preview";
 import { date, getPage, hasNotion, multiSelect, notion, num, queryAll, relationIds, select, text, updatePage, w, type Page } from "./notion";
@@ -856,6 +857,8 @@ export async function getToday(day = today()): Promise<TodayData> {
       : null,
     classNote: note
       ? {
+          id: note.id,
+          review: select(note, "複習"),
           title: text(note, "課堂標題"),
           url: note.url,
           status: select(note, "狀態"),
@@ -1129,20 +1132,33 @@ export async function getHistory(days: number): Promise<{ today: string; attempt
   };
 }
 
-export type ClassNoteLink = { id: string; title: string; lesson: string; level: string | null; date: string | null; url: string };
+export type ClassNoteLink = { id: string; title: string; lesson: string; level: string | null; date: string | null; url: string; review: string | null };
+
+const toClassNoteLink = (p: Page): ClassNoteLink => ({
+  id: p.id,
+  title: text(p, "課堂標題"),
+  lesson: text(p, "課次"),
+  level: select(p, "レベル"),
+  date: date(p, "日期"),
+  url: p.url,
+  review: select(p, "複習"),
+});
 
 export async function recentClassNotes(n: number): Promise<ClassNoteLink[]> {
   if (useMock())
-    return [{ id: "c1", title: "10/23 L3 ST2", lesson: "L3", level: "初中級", date: "2026-10-23", url: "#" }];
+    return [{ id: MOCK_NOTE_ID, title: "10/23 L3 ST2", lesson: "L3", level: "初中級", date: "2026-10-23", url: "#", review: "未複習" }];
   const pages = await queryAll(DS.isiNotes, undefined, [{ property: "日期", direction: "descending" }], n);
-  return pages.map((p) => ({
-    id: p.id,
-    title: text(p, "課堂標題"),
-    lesson: text(p, "課次"),
-    level: select(p, "レベル"),
-    date: date(p, "日期"),
-    url: p.url,
-  }));
+  return pages.map(toClassNoteLink);
+}
+
+/** 課堂筆記「標記已複習」：寫回「複習」欄；只接受 Notion 現有的選項 */
+export async function setClassNoteReview(id: string, value: string): Promise<void> {
+  if (!NOTE_REVIEW_OPTIONS.includes(value)) throw new Error(`「複習」沒有這個選項：${value}`);
+  if (useMock()) return;
+  const page = await getPage(id);
+  const source = page.parent.type === "data_source_id" ? page.parent.data_source_id.replace(/-/g, "") : "";
+  if (source !== DS.isiNotes.replace(/-/g, "")) throw new Error("不是 ISI 課堂筆記的頁面");
+  await updatePage(id, { 複習: w.select(value) });
 }
 
 export type ClassNoteDetail = ClassNoteLink & { grammar: GrammarPoint[] };
@@ -1202,15 +1218,7 @@ export async function getClassNote(id: string): Promise<ClassNoteDetail | null> 
   const page = await getPage(id).catch(() => null);
   const source = page?.parent.type === "data_source_id" ? page.parent.data_source_id.replace(/-/g, "") : "";
   if (!page || source !== DS.isiNotes.replace(/-/g, "")) return null;
-  return {
-    id: page.id,
-    title: text(page, "課堂標題"),
-    lesson: text(page, "課次"),
-    level: select(page, "レベル"),
-    date: date(page, "日期"),
-    url: page.url,
-    grammar: await cachedNoteGrammar(id, page.last_edited_time),
-  };
+  return { ...toClassNoteLink(page), grammar: await cachedNoteGrammar(id, page.last_edited_time) };
 }
 
 export type TedLink = { id: string; title: string; progress: string | null };
