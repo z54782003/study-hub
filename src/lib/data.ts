@@ -1,7 +1,7 @@
 import "server-only";
 import { revalidateTag, unstable_cache } from "next/cache";
 import { isFullBlock } from "@notionhq/client";
-import { DS, EXAMS, GRAMMAR_ORDER, LESSON_AUDIO_PAGE, TEXTBOOK_INDEX_PARENTS, N3_BATCH_SAMPLE, N3_DUE_LIMIT, QUIZ_DAILY_LIMIT, TZ, W3_PARENT_PAGE } from "./config";
+import { DS, EXAMS, GRAMMAR_ORDER, LESSON_AUDIO_PAGE, TEXTBOOK_INDEX_PARENTS, N3_BATCH_SIZE, N3_DUE_LIMIT, QUIZ_DAILY_LIMIT, TZ, W3_PARENT_PAGE } from "./config";
 import { addDays, diffDays, formatJP, isWeekend, todayISO } from "./dates";
 import { gradeWithAi } from "./ai";
 import { groupBySection, sectionTitle, type IndexSection } from "./lessonOrder";
@@ -20,10 +20,9 @@ import { n3WordsOn, needsDebtCheck, reviewParts, stageFor } from "./stages";
 import { pickPreviewPage, summarizePreview, type ChildPage, type SimpleBlock } from "./preview";
 import { date, getPage, hasNotion, multiSelect, notion, num, queryAll, relationIds, select, text, updatePage, w, type Page } from "./notion";
 import {
-  dailySample,
   grammarIndexForDate,
   matchGrammar,
-  n3BatchRange,
+  n3Progress,
   n3NextLevel,
   quizUpdate,
   vocabUpdate,
@@ -94,7 +93,7 @@ async function quizDebt(day: string): Promise<Page[]> {
 /** 這天出不出新的 N3 單字：寒假清債要等題庫積壓（到期的 ❌／未作答）清空，或到 1/1 */
 async function n3WordsActive(day: string): Promise<boolean> {
   const stage = stageFor(day);
-  if (!needsDebtCheck(stage, day)) return n3WordsOn(stage, day, false);
+  if (useMock() || !needsDebtCheck(stage, day)) return n3WordsOn(stage, day, false);
   return n3WordsOn(stage, day, (await quizWeakDue(day, 5)).length === 0);
 }
 
@@ -108,7 +107,7 @@ const N3_LEVEL_FILTER = {
 // N3 文法補強只有 52 筆、很少變：快取一小時，複習答題改了熟悉度就清掉
 const cachedGrammarAll = unstable_cache(() => queryAll(DS.n3Grammar), ["n3-grammar-all"], { revalidate: 3600, tags: ["n3-grammar"] });
 
-// N3／N2+ 字的編號（排序好）：把「第幾個字」換算成編號範圍。資料庫前段多是 N5，直接用編號切會很不平均
+// N3／N2+ 字的編號（排序好）：算「已學幾個／剩幾個」用
 const cachedN3Numbers = unstable_cache(
   async () =>
     (await queryAll(DS.n3Words, N3_LEVEL_FILTER, [{ property: "編號 / 번호", direction: "ascending" }], 5000))
@@ -118,24 +117,55 @@ const cachedN3Numbers = unstable_cache(
   { revalidate: 86400 },
 );
 
-async function n3Batch(day: string): Promise<Page[]> {
-  const range = n3BatchRange(day);
-  if (!range) return [];
-  const nos = await cachedN3Numbers();
-  if (range.lo >= nos.length) return [];
-  const lo = range.lo > 0 ? nos[range.lo - 1] : 0;
-  const hi = nos[Math.min(range.hi, nos.length) - 1];
-  return queryAll(
+// 熟悉度_K 沒填（大部分的字）也算未學
+const N3_UNLEARNED = {
+  or: [
+    { property: "熟悉度_K", status: { equals: "未學" } },
+    { property: "熟悉度_K", status: { is_empty: true as const } },
+  ],
+};
+
+/**
+ * 編號 after 以後、未學的前 25 個字的編號範圍。key 含日期：每天第一次算的結果固定到當天結束，
+ * 不然一答題熟悉度就變了，批次會一直往後換。after＝-1 是今天的批次，after＝今天最後一個編號是下一批預覽。
+ */
+const cachedN3BatchRange = unstable_cache(
+  async (_day: string, after: number): Promise<{ lo: number; hi: number } | null> => {
+    const nos = (
+      await queryAll(
+        DS.n3Words,
+        { and: [N3_LEVEL_FILTER, N3_UNLEARNED, { property: "編號 / 번호", number: { greater_than: after } }] },
+        [{ property: "編號 / 번호", direction: "ascending" }],
+        N3_BATCH_SIZE,
+      )
+    )
+      .slice(0, N3_BATCH_SIZE)
+      .map((p) => num(p, "編號 / 번호"));
+    return nos.length ? { lo: nos[0], hi: nos[nos.length - 1] } : null;
+  },
+  ["n3-batch-range-v2"],
+  { revalidate: 2 * 86400 },
+);
+
+/** 編號範圍內的字（每次重讀，熟悉度、上次複習才是最新的） */
+const n3Range = (r: { lo: number; hi: number }) =>
+  queryAll(
     DS.n3Words,
     {
       and: [
-        { property: "編號 / 번호", number: { greater_than: lo } },
-        { property: "編號 / 번호", number: { less_than_or_equal_to: hi } },
+        { property: "編號 / 번호", number: { greater_than_or_equal_to: r.lo } },
+        { property: "編號 / 번호", number: { less_than_or_equal_to: r.hi } },
         N3_LEVEL_FILTER,
       ],
     },
     [{ property: "編號 / 번호", direction: "ascending" }],
   );
+
+/** 今天的 N3 新字（這個階段不出新字就是空的） */
+async function n3Batch(day: string): Promise<Page[]> {
+  if (!(await n3WordsActive(day))) return [];
+  const range = await cachedN3BatchRange(day, -1);
+  return range ? n3Range(range) : [];
 }
 
 async function n3Due(day: string): Promise<Page[]> {
@@ -207,7 +237,7 @@ const toGrammar = (p: Page): GrammarItem => ({
 /**
  * 今晚複習，依學習階段：
  * 期末衝刺＝只有題庫到期題；寒假清債＝只有題庫的 ❌／未作答（N3 單字開始後再加 N3）；
- * 1 月期以後＝題庫到期題 → N3 到期字 → 今日批次抽 10 → 文型。
+ * 1 月期以後＝題庫到期題 → N3 到期字 → 今日批次 25 個 → 文型。
  */
 export async function getReviewQueue(): Promise<ReviewItem[]> {
   const day = today();
@@ -226,30 +256,45 @@ export async function getReviewQueue(): Promise<ReviewItem[]> {
   ]);
   const dueItems = due.slice(0, N3_DUE_LIMIT).map((p) => toN3(p, "due"));
   const dueIds = new Set(dueItems.map((i) => i.id));
-  const batchItems = dailySample(
-    batch.filter((p) => !dueIds.has(p.id) && date(p, "上次複習_K") !== day).map((p) => toN3(p, "batch")),
-    N3_BATCH_SAMPLE,
-    day,
-  );
+  // 今日批次全部考：考過熟悉度才會離開「未學」，沒考的隔天還會排在批次最前面
+  const batchItems = batch.filter((p) => !dueIds.has(p.id) && date(p, "上次複習_K") !== day).map((p) => toN3(p, "batch"));
   return [...quiz.map(toQuiz), ...dueItems, ...batchItems, ...grammar.map(toGrammar)];
 }
 
-/** Morning brief：今日 N3 批次（唯讀） */
-/** 某一天的 N3 批次（預設今天；可以回頭看前幾天的） */
-export async function getN3Batch(day = today()): Promise<{ words: N3WordItem[]; grammar: GrammarItem[] }> {
+export type N3BatchView = {
+  /** 這個階段（這天）有沒有出新字 */
+  active: boolean;
+  words: N3WordItem[];
+  grammar: GrammarItem[];
+  progress: { learned: number; total: number; left: number; days: number };
+};
+
+/** /n3：今天的 N3 新字（唯讀）；next＝預覽下一批 25 個（還沒開始出新字時就是第一批） */
+export async function getN3Batch(next = false): Promise<N3BatchView> {
+  const day = today();
   if (useMock()) {
     const items = mockReview();
+    const active = await n3WordsActive(day);
     return {
+      active,
       words: items.filter((i): i is N3WordItem => i.kind === "n3"),
-      grammar: items.filter((i): i is GrammarItem => i.kind === "grammar"),
+      grammar: next || !active ? [] : items.filter((i): i is GrammarItem => i.kind === "grammar"),
+      progress: n3Progress([18, 19, 28, 42], 18, N3_BATCH_SIZE),
     };
   }
-  const [batch, grammarAll] = await Promise.all([n3Batch(day), cachedGrammarAll()]);
+  const active = await n3WordsActive(day);
+  const [nos, todayRange, grammarAll] = await Promise.all([cachedN3Numbers(), cachedN3BatchRange(day, -1), cachedGrammarAll()]);
+  const progress = n3Progress(nos, todayRange?.lo ?? null, N3_BATCH_SIZE);
+  // 還沒開始出新字：「下一批」就是第一批
+  const range = next && active ? (todayRange ? await cachedN3BatchRange(day, todayRange.hi) : null) : todayRange;
+  const words = range ? (await n3Range(range)).map((p) => toN3(p, "batch")) : [];
   const idx = grammarIndexForDate(day);
-  const name = idx === null ? null : GRAMMAR_ORDER[idx];
+  const name = idx === null || next || !active ? null : GRAMMAR_ORDER[idx];
   return {
-    words: batch.map((p) => toN3(p, "batch")),
+    active,
+    words,
     grammar: name ? grammarAll.filter((p) => matchGrammar(name, text(p, "文型 / 문형"))).map(toGrammar) : [],
+    progress,
   };
 }
 
@@ -741,7 +786,8 @@ export async function getToday(day = today()): Promise<TodayData> {
       [] as Page[],
     ),
     past ? ([] as ReviewItem[]) : safe("今晚複習", getReviewQueue, [] as ReviewItem[]),
-    safe("N3 單字", () => n3Batch(day), [] as Page[]),
+    // 過去的日子讀不到那天的批次（批次只記當天），只顯示一列
+    past ? ([] as Page[]) : safe("N3 單字", () => n3Batch(day), [] as Page[]),
     safe("N3 文法", cachedGrammarAll, [] as Page[]),
     safe("ISI 課堂筆記", () => queryAll(DS.isiNotes, { property: "日期", date: { equals: day } }), [] as Page[]),
     past
@@ -760,7 +806,8 @@ export async function getToday(day = today()): Promise<TodayData> {
     past ? ([] as Page[]) : safe("Books", () => queryAll(DS.books, { property: "Status", select: { equals: "Reading" } }), [] as Page[]),
   ]);
 
-  const grammarNames = todaysGrammarNames(day);
+  const n3On = await safe("N3 單字", () => n3WordsActive(day), false);
+  const grammarNames = n3On ? todaysGrammarNames(day) : [];
   const tedPage = ted.find((p) => !text(p, "Talk").includes("模板"));
   const note = notes[0];
 
@@ -777,10 +824,10 @@ export async function getToday(day = today()): Promise<TodayData> {
     calendar: calendar?.today ?? null,
     nextCalendar: calendar?.next ?? null,
     preview,
-    // 期末衝刺暫停 N3 單字：不顯示那一列
-    n3: stageFor(day).n3Words !== false && n3BatchRange(day)
+    // 這個階段不出新字（期末衝刺）：不顯示那一列
+    n3: n3On
       ? {
-          count: batch.length,
+          count: past ? N3_BATCH_SIZE : batch.length,
           grammar: grammarNames.map((name) => ({
             name,
             url: grammarAll.find((p) => matchGrammar(name, text(p, "文型 / 문형")))?.url ?? null,

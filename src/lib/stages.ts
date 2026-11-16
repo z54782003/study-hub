@@ -26,3 +26,16 @@ export const needsDebtCheck = (stage: Stage, day: string) => typeof stage.n3Word
 export function reviewParts(stage: Stage, n3WordsActive: boolean): { quiz: Stage["quiz"]; n3: boolean; grammar: boolean } {
   return { quiz: stage.quiz, n3: stage.n3Review || n3WordsActive, grammar: stage.n3Review };
 }
+
+/** 還沒出新 N3 單字時，說明什麼時候開始（/n3 頁用） */
+export function n3WordsStart(day: string, stages: Stage[] = STAGES): string {
+  const cur = stageFor(day, stages);
+  for (const s of stages.slice(stages.indexOf(cur))) {
+    const w = s.n3Words;
+    if (w === true) return s === cur ? "今天開始" : `${s.name}（${md(s.start)}）開始`;
+    if (typeof w === "object") return `${s === cur ? "" : s.name}題庫積壓清空或 ${md(w.from)} 開始，先到的那天`;
+  }
+  return "單字量之後再定";
+}
+
+const md = (iso: string) => `${Number(iso.slice(5, 7))}/${Number(iso.slice(8, 10))}`;

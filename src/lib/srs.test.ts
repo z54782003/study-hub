@@ -4,7 +4,7 @@ import {
   dailySample,
   grammarIndexForDate,
   matchGrammar,
-  n3BatchRange,
+  n3Progress,
   n3NextLevel,
   quizNextInterval,
   quizUpdate,
@@ -72,12 +72,11 @@ describe("N3", () => {
     expect(n3NextLevel("熟悉", true)).toBe("精通");
     expect(n3NextLevel("精通", false)).toBe("忘記");
   });
-  it("batch ranges restart on 10/27 and finish on 12/31", () => {
-    expect(n3BatchRange("2026-10-26")).toBeNull();
-    expect(n3BatchRange("2026-10-27")).toEqual({ lo: 0, hi: 40 });
-    expect(n3BatchRange("2026-10-28")).toEqual({ lo: 40, hi: 80 });
-    expect(n3BatchRange("2026-12-31")).toEqual({ lo: 2600, hi: 2640 });
-    expect(n3BatchRange("2027-01-01")).toBeNull();
+  it("progress counts the words before today's batch as learned", () => {
+    const nos = [18, 19, 28, 206.5, 300, 301];
+    expect(n3Progress(nos, 18, 25)).toEqual({ learned: 0, total: 6, left: 6, days: 1 });
+    expect(n3Progress(nos, 206.5, 2)).toEqual({ learned: 3, total: 6, left: 3, days: 2 });
+    expect(n3Progress(nos, null, 25)).toEqual({ learned: 6, total: 6, left: 0, days: 0 });
   });
   it("one grammar a day from 10/27, weekends included", () => {
     expect(grammarIndexForDate("2026-10-26")).toBeNull();

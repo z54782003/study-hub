@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { STAGES } from "./config";
-import { n3WordsOn, needsDebtCheck, reviewParts, stageFor } from "./stages";
+import { n3WordsOn, n3WordsStart, needsDebtCheck, reviewParts, stageFor } from "./stages";
 
 describe("stages", () => {
   it("are contiguous and in order", () => {
@@ -37,5 +37,10 @@ describe("stages", () => {
     expect(reviewParts(stageFor("2027-01-02"), true)).toEqual({ quiz: "debt", n3: true, grammar: false });
     expect(reviewParts(stageFor("2027-01-07"), true)).toEqual({ quiz: "due", n3: true, grammar: true });
     expect(reviewParts(stageFor("2027-05-01"), false)).toEqual({ quiz: "due", n3: true, grammar: true });
+  });
+  it("explains when N3 words start", () => {
+    expect(n3WordsStart("2026-11-20")).toBe("寒假清債題庫積壓清空或 1/1 開始，先到的那天");
+    expect(n3WordsStart("2026-12-20")).toBe("題庫積壓清空或 1/1 開始，先到的那天");
+    expect(n3WordsStart("2027-05-01")).toBe("單字量之後再定");
   });
 });

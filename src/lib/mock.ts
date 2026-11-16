@@ -1,7 +1,7 @@
 // 本機預覽用的假資料（MOCK=1 且沒有 NOTION_TOKEN 時才會用到）。
 import { EXAMS } from "./config";
 import { addDays, diffDays, formatJP, isWeekend } from "./dates";
-import { stageFor } from "./stages";
+import { reviewParts, stageFor } from "./stages";
 import type { N3Detail } from "./n3Detail";
 import type { ReviewItem, TodayData, VocabItem } from "./types";
 import type { TedTalk } from "./ted";
@@ -65,7 +65,11 @@ export function mockToday(day: string): TodayData {
             homework:
               "①文法ノート 大8〜13番（〜ために／〜んですか／疑問詞＋んですか／どうして〜んですか—〜んです／〜んです選択／〜なければなりません）＝今日の宿題（先生：授業中に8番から着手→残りは家で）。②（先生の注意）宿題はなるべくやってきた方がいい。※提出日・期限の指示は録音に無し。",
           },
-    review: { quiz: 20, n3: 20, grammar: 2 },
+    review: {
+      quiz: 20,
+      n3: reviewParts(stageFor(day), false).n3 ? 20 : 0,
+      grammar: reviewParts(stageFor(day), false).grammar ? 2 : 0,
+    },
     ted: { title: "How to make stress your friend", url: "/ted/mock", progress: "今天做" },
     books: [
       { title: "コンビニ人間", url: "#", type: "Graded reader" },

@@ -127,17 +127,18 @@ export const STAGES: Stage[] = [
 
 // 操作手冊 W2：題庫每天最多 20 題（當天已經答過的也算進去）
 export const QUIZ_DAILY_LIMIT = 20;
-// N3 night quiz：今日批次抽 10 題＋到期字最多 10 題
-export const N3_BATCH_SAMPLE = 10;
+// N3 night quiz：今日批次全部考（考過熟悉度才會離開「未學」）＋到期字最多 10 題
 export const N3_DUE_LIMIT = 10;
 
-// N3 自補：10/27 重新開始（第 0 天），N3／N2+ 的字（約 2,600 個）依編號順序每天 40 個，12/31 背完
-export const N3_START = "2026-10-27";
-export const N3_END = "2026-12-31";
-export const N3_PER_DAY = 40;
+// N3 單字：JLPT Level 是 N3／N2+、熟悉度_K 是「未學」或空白的，依編號由小到大每天取 25 個。
+// 每天第一次讀到的 25 個固定到當天結束；沒考完的隔天還是排在最前面。哪些階段出新字見 STAGES.n3Words。
+export const N3_BATCH_SIZE = 25;
 
-/** 今日頁右邊那格的倒數：N3 單字背完（不考 JLPT） */
-export const COUNTDOWN = { date: N3_END, name: "N3 單字背完" };
+// N3 文型的舊排程起點（第 0 天）；第 5 項改成「第一個還沒學過的」之後拿掉
+export const N3_START = "2026-10-27";
+
+/** 今日頁右邊那格的倒數（第 6 項改成目前階段的結束日） */
+export const COUNTDOWN = { date: "2026-12-31", name: "N3 單字背完" };
 
 // 10 月期考試與重要日期（日本語計畫頁）
 export const EXAMS: { date: string; name: string; scope: string }[] = [

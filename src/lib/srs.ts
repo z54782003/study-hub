@@ -1,4 +1,4 @@
-import { GRAMMAR_ORDER, N3_END, N3_PER_DAY, N3_START } from "./config";
+import { GRAMMAR_ORDER, N3_START } from "./config";
 import { addDays, diffDays, weekday } from "./dates";
 
 // ── 日文題庫 SRS（操作手冊 W2）────────────────────────────
@@ -54,11 +54,16 @@ export function n3NextLevel(current: string | null, correct: boolean): N3Level {
   }
 }
 
-/** 第 d 天（N3_START 為 0，週末照算）要背第幾個到第幾個 N3 字：[lo, hi)，依編號排序後的名次；12/31 以後回傳 null（純複習期）。 */
-export function n3BatchRange(today: string): { lo: number; hi: number } | null {
-  const d = diffDays(N3_START, today);
-  if (d < 0 || today > N3_END) return null;
-  return { lo: N3_PER_DAY * d, hi: N3_PER_DAY * (d + 1) };
+/**
+ * N3 單字進度：nos＝所有 N3／N2+ 字的編號（由小到大），lo＝今日批次第一個字的編號。
+ * 編號比今日批次小的都算學過；沒有批次（全部學完）時 lo 給 null。
+ */
+export function n3Progress(nos: number[], lo: number | null, perDay: number): { learned: number; total: number; left: number; days: number } {
+  const total = nos.length;
+  const at = lo === null ? -1 : nos.findIndex((n) => n >= lo);
+  const learned = at < 0 ? total : at;
+  const left = total - learned;
+  return { learned, total, left, days: Math.ceil(left / perDay) };
 }
 
 /** 第 d 天學第 d 個文型（0-based）；超出 52 個回傳 null。 */
