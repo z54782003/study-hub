@@ -33,6 +33,97 @@ export const TEXTBOOK_INDEX_PARENTS = process.env.TEXTBOOK_INDEX_PARENTS?.split(
 
 export const TZ = process.env.APP_TZ ?? "Asia/Tokyo";
 
+// ── 學習計畫的四個階段（日本語計畫頁 2026-11-16 改版）────────────────
+// 每個階段只有一件「每天必做」，其他都是有空再做。目前階段用今天的日期決定（src/lib/stages.ts）。
+export type Stage = {
+  no: 1 | 2 | 3 | 4;
+  name: string;
+  start: string;
+  end: string;
+  /** 計畫頁寫的每天必做 */
+  must: string;
+  /** 這個階段暫停的項目（計畫頁原文） */
+  paused: string[];
+  /** 首頁右上倒數卡的標題（倒數到 end） */
+  countdown: string;
+  /** 有上課：今日頁顯示預習、課堂筆記 */
+  school: boolean;
+  /** 今日頁「必做」那一組的任務 id；其餘任務放「有空再做」 */
+  mustTasks: string[];
+  /** 到期複習的題庫題：due＝到期題（❌／未作答優先，不夠再補 ✅）；debt＝只出 ❌ 和未作答（清積壓） */
+  quiz: "due" | "debt";
+  /** 新的 N3 單字（每天 25 個）：true／false，或「題庫積壓清空、或到 from 那天，先到的那天」才開始 */
+  n3Words: boolean | { afterDebt: true; from: string };
+  /** N3 到期單字、忘記的文型進到期複習 */
+  n3Review: boolean;
+  /** 新的 N3 文型：from 起每個平日 1 個 */
+  grammar: { from: string } | false;
+};
+
+export const STAGES: Stage[] = [
+  {
+    no: 1,
+    name: "期末衝刺",
+    start: "2026-11-17",
+    end: "2026-12-18",
+    must: "看當天課堂筆記＋隔天考試範圍（20 分）",
+    paused: ["N3 單字與文型", "題庫清積壓", "初級單字測驗", "口說"],
+    countdown: "期末",
+    school: true,
+    mustTasks: ["class-note", "exam"],
+    quiz: "due",
+    n3Words: false,
+    n3Review: false,
+    grammar: false,
+  },
+  {
+    no: 2,
+    name: "寒假清債",
+    start: "2026-12-19",
+    end: "2027-01-06",
+    must: "初級單字測驗 1 課＋題庫錯題 20 題",
+    paused: ["N3 文型"],
+    countdown: "寒假結束",
+    school: false,
+    mustTasks: ["beginner-vocab", "review"],
+    quiz: "debt",
+    n3Words: { afterDebt: true, from: "2027-01-01" },
+    n3Review: true,
+    grammar: false,
+  },
+  {
+    no: 3,
+    name: "1 月期",
+    start: "2027-01-07",
+    end: "2027-04-07",
+    must: "N3 單字 25 個＋平日 1 個文型",
+    paused: [],
+    countdown: "1 月期結束",
+    school: true,
+    mustTasks: ["n3"],
+    quiz: "due",
+    n3Words: true,
+    n3Review: true,
+    grammar: { from: "2027-01-07" },
+  },
+  {
+    no: 4,
+    name: "4 月期",
+    start: "2027-04-08",
+    end: "2027-06-30",
+    must: "N2 文法 1 個（單字量之後再定）",
+    paused: [],
+    countdown: "4 月期結束",
+    school: true,
+    mustTasks: ["n2-grammar"],
+    quiz: "due",
+    // 單字量之後再定：先不出新的 N3 單字，到期的照樣複習
+    n3Words: false,
+    n3Review: true,
+    grammar: false,
+  },
+];
+
 // 操作手冊 W2：每天最多 20 題
 export const QUIZ_DAILY_LIMIT = 20;
 // N3 night quiz：今日批次抽 10 題＋到期字最多 10 題
