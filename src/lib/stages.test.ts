@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { STAGES } from "./config";
-import { n3WordsOn, needsDebtCheck, stageFor } from "./stages";
+import { n3WordsOn, needsDebtCheck, reviewParts, stageFor } from "./stages";
 
 describe("stages", () => {
   it("are contiguous and in order", () => {
@@ -30,5 +30,12 @@ describe("stages", () => {
     expect(needsDebtCheck(s2, "2026-12-20")).toBe(true);
     expect(needsDebtCheck(s2, "2027-01-01")).toBe(false);
     expect(needsDebtCheck(stageFor("2027-01-07"), "2027-01-07")).toBe(false);
+  });
+  it("decides what goes into the due review", () => {
+    expect(reviewParts(stageFor("2026-11-20"), false)).toEqual({ quiz: "due", n3: false, grammar: false });
+    expect(reviewParts(stageFor("2026-12-20"), false)).toEqual({ quiz: "debt", n3: false, grammar: false });
+    expect(reviewParts(stageFor("2027-01-02"), true)).toEqual({ quiz: "debt", n3: true, grammar: false });
+    expect(reviewParts(stageFor("2027-01-07"), true)).toEqual({ quiz: "due", n3: true, grammar: true });
+    expect(reviewParts(stageFor("2027-05-01"), false)).toEqual({ quiz: "due", n3: true, grammar: true });
   });
 });

@@ -54,7 +54,7 @@ export type Stage = {
   quiz: "due" | "debt";
   /** 新的 N3 單字（每天 25 個）：true／false，或「題庫積壓清空、或到 from 那天，先到的那天」才開始 */
   n3Words: boolean | { afterDebt: true; from: string };
-  /** N3 到期單字、忘記的文型進到期複習 */
+  /** N3 到期單字、忘記的文型進到期複習（不論有沒有新字；有新字的日子一律會複習 N3 單字） */
   n3Review: boolean;
   /** 新的 N3 文型：from 起每個平日 1 個 */
   grammar: { from: string } | false;
@@ -88,7 +88,8 @@ export const STAGES: Stage[] = [
     mustTasks: ["beginner-vocab", "review"],
     quiz: "debt",
     n3Words: { afterDebt: true, from: "2027-01-01" },
-    n3Review: true,
+    // 到期複習只出題庫錯題；N3 單字開始後才加進 N3 單字（文型暫停）
+    n3Review: false,
     grammar: false,
   },
   {
@@ -124,7 +125,7 @@ export const STAGES: Stage[] = [
   },
 ];
 
-// 操作手冊 W2：每天最多 20 題
+// 操作手冊 W2：題庫每天最多 20 題（當天已經答過的也算進去）
 export const QUIZ_DAILY_LIMIT = 20;
 // N3 night quiz：今日批次抽 10 題＋到期字最多 10 題
 export const N3_BATCH_SAMPLE = 10;

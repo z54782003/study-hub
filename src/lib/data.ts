@@ -16,7 +16,7 @@ import { audioKey, lessonRows, lessonTitle, parseIndexPage, parseTranscript, typ
 import { parseNoteGrammar, type GrammarPoint, type NoteBlock, type Seg } from "./noteGrammar";
 import { EN_OTHER, EN_TOPICS } from "./reviewSource";
 import { findChildPages } from "./childPages";
-import { stageFor } from "./stages";
+import { n3WordsOn, needsDebtCheck, reviewParts, stageFor } from "./stages";
 import { pickPreviewPage, summarizePreview, type ChildPage, type SimpleBlock } from "./preview";
 import { date, getPage, hasNotion, multiSelect, notion, num, queryAll, relationIds, select, text, updatePage, w, type Page } from "./notion";
 import {
@@ -53,29 +53,49 @@ export function today(): string {
 // ── 讀取 ──────────────────────────────────────────
 
 // 題庫積壓可能上百題（2026-10-26 有 777 題到期），所以先只拿 ❌／未作答，不夠 20 題才補 ✅ 對過的。
-async function quizDue(day: string): Promise<Page[]> {
-  const due = { property: "下次複習", date: { on_or_before: day } };
-  const sorts = [{ property: "下次複習", direction: "ascending" as const }];
-  const pick = (pages: Page[]) => pages.filter((p) => date(p, "上次測驗") !== day);
+// 每天最多 QUIZ_DAILY_LIMIT 題：今天已經答過的先扣掉，答完 20 題就不再出。
+const QUIZ_DUE = (day: string) => ({ property: "下次複習", date: { on_or_before: day } });
+const QUIZ_SORTS = [{ property: "下次複習", direction: "ascending" as const }];
+const QUIZ_WEAK = {
+  or: [
+    { property: "上次結果", select: { does_not_equal: "✅ 對" } },
+    { property: "上次結果", select: { is_empty: true as const } },
+  ],
+};
+const notTestedToday = (day: string) => (pages: Page[]) => pages.filter((p) => date(p, "上次測驗") !== day);
 
-  const urgent = pick(
-    await queryAll(DS.quiz, {
-        and: [
-          due,
-          {
-            or: [
-              { property: "上次結果", select: { does_not_equal: "✅ 對" } },
-              { property: "上次結果", select: { is_empty: true } },
-            ],
-          },
-        ],
-      }, sorts, QUIZ_DAILY_LIMIT),
+/** 到期的 ❌／未作答（階段 2 的「題庫錯題」；也用來判斷積壓清空沒） */
+async function quizWeakDue(day: string, limit: number): Promise<Page[]> {
+  if (limit <= 0) return [];
+  return notTestedToday(day)(await queryAll(DS.quiz, { and: [QUIZ_DUE(day), QUIZ_WEAK] }, QUIZ_SORTS, limit));
+}
+
+async function quizLeftToday(day: string): Promise<number> {
+  const done = await queryAll(DS.quiz, { property: "上次測驗", date: { equals: day } }, undefined, QUIZ_DAILY_LIMIT);
+  return Math.max(QUIZ_DAILY_LIMIT - done.length, 0);
+}
+
+/** 到期題：❌／未作答優先，不夠再補 ✅ 對過的 */
+async function quizDue(day: string): Promise<Page[]> {
+  const left = await quizLeftToday(day);
+  const urgent = await quizWeakDue(day, left);
+  if (urgent.length >= left) return urgent.slice(0, left);
+  const rest = notTestedToday(day)(
+    await queryAll(DS.quiz, { and: [QUIZ_DUE(day), { property: "上次結果", select: { equals: "✅ 對" } }] }, QUIZ_SORTS, left),
   );
-  if (urgent.length >= QUIZ_DAILY_LIMIT) return urgent.slice(0, QUIZ_DAILY_LIMIT);
-  const rest = pick(
-    await queryAll(DS.quiz, { and: [due, { property: "上次結果", select: { equals: "✅ 對" } }] }, sorts, QUIZ_DAILY_LIMIT),
-  );
-  return [...urgent, ...rest].slice(0, QUIZ_DAILY_LIMIT);
+  return [...urgent, ...rest].slice(0, left);
+}
+
+/** 寒假清債：只出 ❌ 和未作答，每天 20 題 */
+async function quizDebt(day: string): Promise<Page[]> {
+  return quizWeakDue(day, await quizLeftToday(day));
+}
+
+/** 這天出不出新的 N3 單字：寒假清債要等題庫積壓（到期的 ❌／未作答）清空，或到 1/1 */
+async function n3WordsActive(day: string): Promise<boolean> {
+  const stage = stageFor(day);
+  if (!needsDebtCheck(stage, day)) return n3WordsOn(stage, day, false);
+  return n3WordsOn(stage, day, (await quizWeakDue(day, 5)).length === 0);
 }
 
 const N3_LEVEL_FILTER = {
@@ -184,11 +204,26 @@ const toGrammar = (p: Page): GrammarItem => ({
   status: grammarBase(select(p, "熟悉度 / 숙련도")),
 });
 
-/** 今晚複習：題庫到期題 → N3 到期字 → 今日批次抽 10 → 文型 */
+/**
+ * 今晚複習，依學習階段：
+ * 期末衝刺＝只有題庫到期題；寒假清債＝只有題庫的 ❌／未作答（N3 單字開始後再加 N3）；
+ * 1 月期以後＝題庫到期題 → N3 到期字 → 今日批次抽 10 → 文型。
+ */
 export async function getReviewQueue(): Promise<ReviewItem[]> {
   const day = today();
-  if (useMock()) return mockReview();
-  const [quiz, batch, due, grammar] = await Promise.all([quizDue(day), n3Batch(day), n3Due(day), grammarForReview(day)]);
+  const stage = stageFor(day);
+  if (useMock()) {
+    const parts = reviewParts(stage, false);
+    return mockReview().filter((i) => i.kind === "quiz" || (i.kind === "n3" ? parts.n3 : parts.grammar));
+  }
+  const quizP = stage.quiz === "debt" ? quizDebt(day) : quizDue(day);
+  const parts = reviewParts(stage, stage.n3Review || (await n3WordsActive(day)));
+  const [quiz, batch, due, grammar] = await Promise.all([
+    quizP,
+    parts.n3 ? n3Batch(day) : ([] as Page[]),
+    parts.n3 ? n3Due(day) : ([] as Page[]),
+    parts.grammar ? grammarForReview(day) : ([] as Page[]),
+  ]);
   const dueItems = due.slice(0, N3_DUE_LIMIT).map((p) => toN3(p, "due"));
   const dueIds = new Set(dueItems.map((i) => i.id));
   const batchItems = dailySample(

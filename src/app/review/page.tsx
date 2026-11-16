@@ -2,6 +2,7 @@ import { EntryCard } from "@/components/EntryCard";
 import { EXAMS } from "@/lib/config";
 import { getMistakes, getReviewQueue, today } from "@/lib/data";
 import { diffDays } from "@/lib/dates";
+import { stageFor } from "@/lib/stages";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "複習・Study Hub" };
@@ -10,6 +11,9 @@ export default async function ReviewHub() {
   const [queue, mistakes] = await Promise.all([getReviewQueue().catch(() => null), getMistakes().catch(() => null)]);
   const day = today();
   const nextExam = EXAMS.find((e) => diffDays(day, e.date) >= 0);
+  const stage = stageFor(day);
+  const dueDetail =
+    stage.quiz === "debt" ? "題庫錯題（❌／未作答）每天 20 題" : stage.n3Review ? "題庫到期題＋N3 單字＋今日文型" : "題庫到期題（每天 20 題）";
   return (
     <>
       <h1 className="mb-4 text-[28px] leading-[34px] font-bold">複習</h1>
@@ -19,7 +23,7 @@ export default async function ReviewHub() {
           icon="repeat"
           tone="due"
           title="今日到期"
-          detail={queue?.length === 0 ? "今天到期的都做完了" : "題庫到期題＋N3 單字＋今日文型"}
+          detail={queue?.length === 0 ? "今天到期的都做完了" : dueDetail}
           badge={queue === null ? "?" : queue.length}
           disabled={queue?.length === 0}
         />

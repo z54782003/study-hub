@@ -17,3 +17,12 @@ export function n3WordsOn(stage: Stage, day: string, debtCleared: boolean): bool
 
 /** 這個階段的 N3 單字規則要不要先查題庫積壓 */
 export const needsDebtCheck = (stage: Stage, day: string) => typeof stage.n3Words === "object" && day < stage.n3Words.from;
+
+/**
+ * 到期複習要出哪幾種題：
+ * 期末衝刺＝題庫到期題；寒假清債＝題庫 ❌／未作答（N3 單字開始後加 N3 單字）；
+ * 1 月期＝題庫＋N3 單字＋文型；4 月期＝題庫＋N3 到期字＋忘記的文型。
+ */
+export function reviewParts(stage: Stage, n3WordsActive: boolean): { quiz: Stage["quiz"]; n3: boolean; grammar: boolean } {
+  return { quiz: stage.quiz, n3: stage.n3Review || n3WordsActive, grammar: stage.n3Review };
+}
