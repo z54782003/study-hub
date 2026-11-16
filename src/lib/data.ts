@@ -17,6 +17,7 @@ import { parseNoteGrammar, type GrammarPoint, type NoteBlock, type Seg } from ".
 import { EN_OTHER, EN_TOPICS } from "./reviewSource";
 import { findChildPages } from "./childPages";
 import { NOTE_REVIEW_OPTIONS } from "./noteReview";
+import { EVIU_STATUSES, eviuProgress, type EviuUnit } from "./eviu";
 import { grammarOn, n3WordsOn, needsDebtCheck, reviewParts, stageFor } from "./stages";
 import { pickPreviewPage, summarizePreview, type ChildPage, type SimpleBlock } from "./preview";
 import { date, getPage, hasNotion, multiSelect, notion, num, queryAll, relationIds, select, text, updatePage, w, type Page } from "./notion";
@@ -1240,11 +1241,17 @@ export async function getClassNote(id: string): Promise<ClassNoteDetail | null> 
 
 export type TedLink = { id: string; title: string; progress: string | null };
 
-export async function getEnglishHub(): Promise<{ ted: TedLink[]; books: (Link & { type: string | null })[]; errors: string[] }> {
+export async function getEnglishHub(): Promise<{
+  ted: TedLink[];
+  books: (Link & { type: string | null })[];
+  eviu: ReturnType<typeof eviuProgress> | null;
+  errors: string[];
+}> {
   if (useMock())
     return {
       ted: [{ id: "mock", title: "How to make stress your friend", progress: "今天做" }],
       books: [{ title: "Atomic Habits", url: "#", type: "Book" }],
+      eviu: eviuProgress(await getEviuUnits()),
       errors: [],
     };
   const errors: string[] = [];
@@ -1253,9 +1260,10 @@ export async function getEnglishHub(): Promise<{ ted: TedLink[]; books: (Link & 
       errors.push(`${label}：${e instanceof Error ? e.message : String(e)}`);
       return fallback;
     });
-  const [ted, books] = await Promise.all([
+  const [ted, books, eviu] = await Promise.all([
     safe("TED Log", () => queryAll(DS.tedLog, undefined, [{ timestamp: "created_time", direction: "descending" }], 40), [] as Page[]),
     safe("Books", () => queryAll(DS.books, { property: "Status", select: { equals: "Reading" } }), [] as Page[]),
+    safe("EVIU Units", getEviuUnits, null),
   ]);
   const order: Record<string, number> = { 今天做: 0, 待做: 2 };
   return {
@@ -1264,8 +1272,49 @@ export async function getEnglishHub(): Promise<{ ted: TedLink[]; books: (Link & 
       .map((p) => ({ id: p.id, title: text(p, "Talk"), progress: select(p, "進度") }))
       .sort((a, b) => (order[a.progress ?? ""] ?? 9) - (order[b.progress ?? ""] ?? 9)),
     books: books.map((p) => ({ title: text(p, "Name"), url: p.url, type: select(p, "Type") })),
+    eviu: eviu && eviuProgress(eviu),
     errors,
   };
+}
+
+// ── English Vocabulary in Use ───────────────────────────
+
+const toEviu = (p: Page): EviuUnit => ({
+  id: p.id,
+  no: num(p, "No."),
+  unit: text(p, "Unit"),
+  theme: select(p, "Theme"),
+  status: select(p, "Status"),
+  studied: date(p, "Studied"),
+  url: p.url,
+});
+
+/** EVIU 的 100 個單元，依 No. 排序 */
+export async function getEviuUnits(): Promise<EviuUnit[]> {
+  if (useMock())
+    return Array.from({ length: 6 }, (_, i) => ({
+      id: `00000000-0000-4000-8000-00000000e0${String(i + 1).padStart(2, "0")}`,
+      no: i + 1,
+      unit: ["Learning vocabulary", "Keeping a vocabulary notebook", "Using your dictionary", "English language words", "Classroom language", "Countries, nationalities and languages"][i],
+      theme: i < 5 ? "Learning" : "The world around us",
+      status: i < 2 ? "Reviewing" : i === 2 ? "Studying" : "Not started",
+      studied: i < 3 ? "2026-11-0" + (i + 1) : null,
+      url: "#",
+    }));
+  return (await queryAll(DS.eviu, undefined, [{ property: "No.", direction: "ascending" }], 200)).map(toEviu);
+}
+
+/** 單元標成 Studying／Reviewing／Done（或改回 Not started），並填 Studied 日期（null＝清掉） */
+export async function setEviuUnit(id: string, change: { status?: string; studied?: string | null }): Promise<void> {
+  if (change.status !== undefined && !(EVIU_STATUSES as readonly string[]).includes(change.status)) throw new Error(`Status 沒有這個選項：${change.status}`);
+  if (useMock()) return;
+  const page = await getPage(id);
+  const source = page.parent.type === "data_source_id" ? page.parent.data_source_id.replace(/-/g, "") : "";
+  if (source !== DS.eviu.replace(/-/g, "")) throw new Error("不是 EVIU Units 的頁面");
+  const props: Record<string, unknown> = {};
+  if (change.status !== undefined) props.Status = w.select(change.status);
+  if (change.studied !== undefined) props.Studied = change.studied ? w.date(change.studied) : { date: null };
+  await updatePage(id, props);
 }
 
 // ── 多読書庫 ─────────────────────────────────────────
