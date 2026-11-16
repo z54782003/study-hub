@@ -5,6 +5,7 @@ import type { Cue } from "@/lib/subtitles";
 import type { TedTalk } from "@/lib/ted";
 import { WordSheet } from "./WordSheet";
 import { useRecorder } from "./useRecorder";
+import { useTedDone } from "./useTedDone";
 import { Icon } from "../Icon";
 
 type Mode = "both" | "en" | "blind";
@@ -38,7 +39,22 @@ function tokens(text: string): { word: boolean; s: string }[] {
   return text.split(/([A-Za-z][A-Za-z'’-]*)/).filter(Boolean).map((s) => ({ word: /^[A-Za-z]/.test(s), s }));
 }
 
-export function TedPlayer({ tedUrl, title, notionUrl }: { tedUrl: string; title: string; notionUrl?: string }) {
+export function TedPlayer({
+  id,
+  progress,
+  tedUrl,
+  title,
+  notionUrl,
+}: {
+  /** TED Log 的頁面 id：做完寫回「進度」＝完成、「完成日」；/play 貼網址的沒有 */
+  id?: string;
+  progress?: string | null;
+  tedUrl: string;
+  title: string;
+  notionUrl?: string;
+}) {
+  const tedDone = useTedDone(id ?? "", progress ?? null);
+  const [ended, setEnded] = useState(false);
   const [talk, setTalk] = useState<TedTalk | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [active, setActive] = useState(-1);
@@ -446,14 +462,33 @@ export function TedPlayer({ tedUrl, title, notionUrl }: { tedUrl: string; title:
           </h1>
           {talk?.speaker && <p className="truncate text-[11px] text-muted">{talk.speaker}</p>}
         </div>
+        {id && (
+        <button
+          type="button"
+          onClick={tedDone.toggle}
+          disabled={tedDone.busy}
+          aria-pressed={tedDone.done}
+          title={tedDone.done ? "取消完成（進度改回原本的）" : "做完了：TED Log 進度改成「完成」、填完成日"}
+          className={`flex h-9 shrink-0 items-center gap-1 rounded-[10px] px-2.5 text-sm font-semibold ${tedDone.done ? "bg-ok-soft text-ok" : "bg-accent-soft text-accent"}`}
+        >
+          <Icon name="check" size={16} stroke={2.6} />
+          {tedDone.busy ? "…" : tedDone.done ? (tedDone.progress ?? "完成") : "完成"}
+        </button>
+        )}
         {notionUrl && notionUrl !== "#" ? (
           <a href={notionUrl} target="_blank" rel="noreferrer" className="grid h-11 place-items-center px-2 text-sm font-semibold text-accent">
             筆記 ↗
           </a>
         ) : (
-          <span className="w-11" />
+          <span className="w-2" />
         )}
       </header>
+      {tedDone.error && <p className="px-3 pb-1 text-center text-xs text-bad">寫回 TED Log 失敗：{tedDone.error}</p>}
+      {id && ended && !tedDone.done && (
+        <button type="button" onClick={tedDone.toggle} disabled={tedDone.busy} className="btn-primary mx-3 mb-2 min-h-11 text-sm">
+          看完了？標記完成（TED Log 進度＝完成）
+        </button>
+      )}
 
       <div className="relative aspect-video max-h-[45vh] w-full shrink-0 bg-[#0e0f12] md:max-h-[40vh] md:overflow-hidden md:rounded-2xl">
         <video
@@ -461,6 +496,7 @@ export function TedPlayer({ tedUrl, title, notionUrl }: { tedUrl: string; title:
           playsInline
           controls={false}
           onPlay={() => setPlaying(true)}
+          onEnded={() => setEnded(true)}
           onPause={() => setPlaying(false)}
           onTimeUpdate={(e) => setTime(e.currentTarget.currentTime)}
           onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}

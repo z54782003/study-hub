@@ -17,5 +17,5 @@ export default async function TedPage({ params }: { params: Promise<{ id: string
         </a>
       </div>
     );
-  return <TedPlayer tedUrl={entry.link} title={entry.title} notionUrl={entry.notionUrl} />;
+  return <TedPlayer id={entry.id} progress={entry.progress} tedUrl={entry.link} title={entry.title} notionUrl={entry.notionUrl} />;
 }

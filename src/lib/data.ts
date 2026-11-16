@@ -17,6 +17,7 @@ import { parseNoteGrammar, type GrammarPoint, type NoteBlock, type Seg } from ".
 import { EN_OTHER, EN_TOPICS } from "./reviewSource";
 import { findChildPages } from "./childPages";
 import { NOTE_REVIEW_OPTIONS } from "./noteReview";
+import { tedDoneChange } from "./tedLog";
 import { EVIU_STATUSES, eviuProgress, type EviuUnit } from "./eviu";
 import { grammarOn, n3WordsOn, needsDebtCheck, reviewParts, stageFor } from "./stages";
 import { pickPreviewPage, summarizePreview, type ChildPage, type SimpleBlock } from "./preview";
@@ -1076,10 +1077,27 @@ export async function logJournal(minutes: number): Promise<void> {
 
 // ── TED／單字庫 ─────────────────────────────────────
 
-export async function getTedLogEntry(id: string): Promise<{ title: string; link: string; notionUrl: string }> {
-  if (useMock()) return { title: "How to make stress your friend", link: "https://www.ted.com/talks/mock", notionUrl: "#" };
+export async function getTedLogEntry(id: string): Promise<{ id: string; title: string; link: string; notionUrl: string; progress: string | null }> {
+  if (useMock()) return { id, title: "How to make stress your friend", link: "https://www.ted.com/talks/mock", notionUrl: "#", progress: "今天做" };
   const p = await getPage(id);
-  return { title: text(p, "Talk"), link: text(p, "連結"), notionUrl: p.url };
+  return { id: p.id, title: text(p, "Talk"), link: text(p, "連結"), notionUrl: p.url, progress: select(p, "進度") };
+}
+
+/** TED 做完（或取消）：寫回 TED Log 的「進度」和「完成日」，回傳寫完的進度 */
+export async function setTedDone(id: string, done: boolean, prev?: string | null): Promise<string | null> {
+  const day = today();
+  if (useMock()) return done ? "完成" : (prev ?? "今天做");
+  const page = await getPage(id);
+  const source = page.parent.type === "data_source_id" ? page.parent.data_source_id.replace(/-/g, "") : "";
+  if (source !== DS.tedLog.replace(/-/g, "")) throw new Error("不是 TED Log 的頁面");
+  const current = { progress: select(page, "進度"), doneDate: date(page, "完成日") };
+  const change = tedDoneChange(current, done, day, prev);
+  if (!change) return current.progress;
+  const props: Record<string, unknown> = {};
+  if (change.progress) props["進度"] = w.status(change.progress);
+  if (change.doneDate !== undefined) props["完成日"] = change.doneDate ? w.date(change.doneDate) : { date: null };
+  await updatePage(id, props);
+  return change.progress ?? current.progress;
 }
 
 /** 從播放器把單字加進 📖 單字庫；同語言同名已存在就不重複建。中文翻譯等欄位交給 Notion AI 自動填入。 */
@@ -1249,7 +1267,7 @@ export async function getEnglishHub(): Promise<{
 }> {
   if (useMock())
     return {
-      ted: [{ id: "mock", title: "How to make stress your friend", progress: "今天做" }],
+      ted: [{ id: "00000000-0000-4000-8000-0000000000d1", title: "How to make stress your friend", progress: "今天做" }],
       books: [{ title: "Atomic Habits", url: "#", type: "Book" }],
       eviu: eviuProgress(await getEviuUnits()),
       errors: [],
