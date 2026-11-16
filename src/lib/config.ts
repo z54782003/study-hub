@@ -44,7 +44,7 @@ export type Stage = {
   must: string;
   /** 這個階段暫停的項目（計畫頁原文） */
   paused: string[];
-  /** 首頁右上倒數卡的標題（倒數到 end） */
+  /** 首頁右上倒數卡的標題（倒數到這個階段的 end） */
   countdown: string;
   /** 有上課：今日頁顯示預習、課堂筆記 */
   school: boolean;
@@ -133,9 +133,6 @@ export const N3_DUE_LIMIT = 10;
 // N3 單字：JLPT Level 是 N3／N2+、熟悉度_K 是「未學」或空白的，依編號由小到大每天取 25 個。
 // 每天第一次讀到的 25 個固定到當天結束；沒考完的隔天還是排在最前面。哪些階段出新字見 STAGES.n3Words。
 export const N3_BATCH_SIZE = 25;
-
-/** 今日頁右邊那格的倒數（第 6 項改成目前階段的結束日） */
-export const COUNTDOWN = { date: "2026-12-31", name: "N3 單字背完" };
 
 // 10 月期考試與重要日期（日本語計畫頁）
 export const EXAMS: { date: string; name: string; scope: string }[] = [

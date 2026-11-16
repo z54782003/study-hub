@@ -1,7 +1,7 @@
 import { ClassCard } from "@/components/ClassCard";
 import { Icon, type IconName } from "@/components/Icon";
 import { TaskList, type Task, type TaskRow } from "@/components/TaskList";
-import { COUNTDOWN, EXAMS, NHK_EASY_URL } from "@/lib/config";
+import { EXAMS, NHK_EASY_URL } from "@/lib/config";
 import { sourceQuery } from "@/lib/reviewSource";
 import { stageFor } from "@/lib/stages";
 import type { CalendarEvent } from "@/lib/calendar";
@@ -57,11 +57,11 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
   const dayWord = t.past ? "這天" : "今天";
   const reviewTotal = t.review.quiz + t.review.n3 + t.review.grammar;
   const [, m, d] = t.date.split("-").map(Number);
-  // 倒數：左＝最近一場學校考試，右＝N3 單字背完
+  // 倒數：左＝最近一場學校考試，右＝目前學習階段的結束日（期末衝刺＝期末 12/18）
   const exam = EXAMS.map((e) => ({ ...e, daysLeft: diffDays(t.date, e.date) })).find((e) => e.daysLeft >= 0);
-  const countdownDays = diffDays(t.date, COUNTDOWN.date);
-
   const stage = stageFor(t.date);
+  const countdownDays = diffDays(t.date, stage.end);
+
   // 下一場考試（今天以後）：期末衝刺的必做是「看課堂筆記＋隔天考試範圍」
   const nextExam = EXAMS.map((e) => ({ ...e, daysLeft: diffDays(t.date, e.date) })).find((e) => e.daysLeft >= 1);
   // 寒假清債：初級單字測驗一天一課，L1→L15 輪流
@@ -169,12 +169,13 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
           <div className="card rounded-2xl px-3.5 py-3 text-sm text-muted">這一期沒有接下來的考試</div>
         )}
         <div className="card rounded-2xl px-3.5 py-3">
-          <div className="text-xs font-bold text-ink-2">{COUNTDOWN.name}</div>
+          <div className="text-xs font-bold text-ink-2">{stage.countdown}</div>
           <div className="flex items-baseline gap-1">
-            <span className="text-[28px] leading-9 font-bold tabular-nums">{countdownDays}</span>
-            <span className="text-sm font-semibold text-ink-2">天</span>
+            {/* 最後一個階段結束後還沒排新計畫：顯示「已結束」 */}
+            <span className="text-[28px] leading-9 font-bold tabular-nums">{countdownDays < 0 ? "已結束" : countdownDays === 0 ? "今天" : countdownDays}</span>
+            {countdownDays > 0 && <span className="text-sm font-semibold text-ink-2">天</span>}
           </div>
-          <div className="text-[13px] text-ink-2">{formatJP(COUNTDOWN.date)}</div>
+          <div className="text-[13px] text-ink-2">{formatJP(stage.end)}</div>
         </div>
       </section>
 
