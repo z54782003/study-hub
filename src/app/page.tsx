@@ -1,7 +1,9 @@
 import { ClassCard } from "@/components/ClassCard";
 import { Icon, type IconName } from "@/components/Icon";
-import { TaskList, type TaskRow } from "@/components/TaskList";
+import { TaskList, type Task, type TaskRow } from "@/components/TaskList";
 import { COUNTDOWN, EXAMS, NHK_EASY_URL } from "@/lib/config";
+import { sourceQuery } from "@/lib/reviewSource";
+import { stageFor } from "@/lib/stages";
 import type { CalendarEvent } from "@/lib/calendar";
 import Link from "next/link";
 import { getToday, today } from "@/lib/data";
@@ -59,39 +61,61 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
   const exam = EXAMS.map((e) => ({ ...e, daysLeft: diffDays(t.date, e.date) })).find((e) => e.daysLeft >= 0);
   const countdownDays = diffDays(t.date, COUNTDOWN.date);
 
-  const rows: TaskRow[] = [
-    ...(!t.weekend
-      ? [{ id: "preview", title: "預習", sub: t.preview ? t.preview.title : "今天的預習頁還沒產生", href: t.preview?.url, external: true }]
-      : []),
-    ...(t.n3
-      ? [{ id: "n3", title: `N3 單字 ${t.n3.count} 個`, sub: t.n3.grammar.length ? `文型：${t.n3.grammar.map((g) => g.name).join("、")}` : "今日批次", href: t.past ? `/n3?day=${t.date}` : "/n3" }]
-      : []),
-    { id: "nhk", title: "NHK Easy 5 分", sub: "NHK 網站", href: NHK_EASY_URL, external: true },
-    ...(!t.weekend ? ["13:00–16:10 上課"] : []),
-    ...(!t.weekend
-      ? [
-          {
-            id: "class-note",
-            title: "看今天的課堂筆記",
-            sub: t.classNote ? `${t.classNote.title}${t.classNote.status ? `・${t.classNote.status}` : ""}` : "下課後（尚未建立）",
-            href: t.classNote?.url,
-            external: true,
-          },
-        ]
-      : []),
+  const stage = stageFor(t.date);
+  // 下一場考試（今天以後）：期末衝刺的必做是「看課堂筆記＋隔天考試範圍」
+  const nextExam = EXAMS.map((e) => ({ ...e, daysLeft: diffDays(t.date, e.date) })).find((e) => e.daysLeft >= 1);
+  // 寒假清債：初級單字測驗一天一課，L1→L15 輪流
+  const beginnerLesson = (Math.max(diffDays(stage.start, t.date), 0) % 15) + 1;
+  const school = stage.school && !t.weekend;
+
+  const tasks: Record<string, Task | null> = {
+    "class-note": school
+      ? {
+          id: "class-note",
+          title: "看今天的課堂筆記",
+          sub: t.classNote ? `${t.classNote.title}${t.classNote.status ? `・${t.classNote.status}` : ""}` : "下課後（尚未建立）",
+          href: t.classNote?.url,
+          external: true,
+        }
+      : null,
+    exam: nextExam
+      ? {
+          id: "exam",
+          title: "準備下一場考試",
+          sub: `${daysText(nextExam.daysLeft)} ${formatJP(nextExam.date)}・${nextExam.name}（${nextExam.scope}）`,
+          href: "/review/exam",
+        }
+      : null,
+    "beginner-vocab":
+      stage.mustTasks.includes("beginner-vocab")
+        ? {
+            id: "beginner-vocab",
+            title: `初級單字測驗 L${beginnerLesson}`,
+            sub: "一天一課，L1–L15 輪流",
+            href: `/review/session?${sourceQuery({ src: "vocab", lang: "ja", level: "初級", lessons: [beginnerLesson], count: 50 })}`,
+          }
+        : null,
+    "n2-grammar": stage.mustTasks.includes("n2-grammar") ? { id: "n2-grammar", title: "N2 文法 1 個", sub: "N2 文法資料還沒建立" } : null,
+    preview: school ? { id: "preview", title: "預習", sub: t.preview ? t.preview.title : "今天的預習頁還沒產生", href: t.preview?.url, external: true } : null,
+    n3: t.n3
+      ? { id: "n3", title: `N3 單字 ${t.n3.count} 個`, sub: t.n3.grammar.length ? `文型：${t.n3.grammar.map((g) => g.name).join("、")}` : "今日批次", href: t.past ? undefined : "/n3" }
+      : null,
     // 過去的日子：到期複習、TED、閱讀只剩打勾紀錄（內容是「現在」的狀態，看不到當天的）
-    t.past
-      ? { id: "review", title: "到期複習", sub: "看這天的作答紀錄", href: `/history?m=${t.date.slice(0, 7)}&d=${t.date}` }
+    review: t.past
+      ? { id: "review", title: stage.quiz === "debt" ? "題庫錯題 20 題" : "到期複習", sub: "看這天的作答紀錄", href: `/history?m=${t.date.slice(0, 7)}&d=${t.date}` }
       : {
           id: "review",
-          title: reviewTotal ? "今日到期複習" : "今日到期：全部完成",
-          sub: reviewTotal ? `題庫 ${t.review.quiz}・N3 單字 ${t.review.n3}・文型 ${t.review.grammar}` : undefined,
+          title: stage.quiz === "debt" ? (reviewTotal ? "題庫錯題 20 題" : "題庫錯題：今天的做完了") : reviewTotal ? "今日到期複習" : "今日到期：全部完成",
+          sub: reviewTotal
+            ? [`題庫 ${t.review.quiz}`, t.review.n3 && `N3 單字 ${t.review.n3}`, t.review.grammar && `文型 ${t.review.grammar}`].filter(Boolean).join("・")
+            : undefined,
           tag: reviewTotal ? `${reviewTotal} 張` : undefined,
           href: "/review/due",
           autoDone: reviewTotal === 0,
         },
-    t.past ? { id: "ted", title: "TED" } : { id: "ted", title: "TED", sub: t.ted ? t.ted.title : "Log 裡沒有待做的 talk", href: t.ted?.url },
-    t.past
+    nhk: { id: "nhk", title: "NHK Easy 5 分", sub: "NHK 網站", href: NHK_EASY_URL, external: true },
+    ted: t.past ? { id: "ted", title: "TED" } : { id: "ted", title: "TED", sub: t.ted ? t.ted.title : "Log 裡沒有待做的 talk", href: t.ted?.url },
+    reading: t.past
       ? { id: "reading", title: "閱讀 30 分" }
       : {
           id: "reading",
@@ -100,7 +124,15 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
           href: t.books[0]?.url,
           external: !!t.books[0],
         },
-  ];
+  };
+  // 每個階段只有一件必做（stage.mustTasks），其他照這個順序放「有空再做」
+  const ORDER = ["class-note", "exam", "beginner-vocab", "n2-grammar", "n3", "preview", "review", "nhk", "ted", "reading"];
+  const pick = (ids: string[]) => ids.flatMap((id) => (tasks[id] ? [tasks[id]] : []));
+  const mustRows: TaskRow[] = pick(stage.mustTasks);
+  // 上課那條分隔線放在「看今天的課堂筆記」前面
+  const classAt = mustRows.findIndex((r) => typeof r !== "string" && r.id === "class-note");
+  if (classAt >= 0) mustRows.splice(classAt, 0, "13:00–16:10 上課");
+  const optionalRows = pick(ORDER.filter((id) => !stage.mustTasks.includes(id)));
 
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-3.5 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] md:items-start md:gap-x-5 md:[grid-auto-flow:dense]">
@@ -114,6 +146,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
           )}
           <div className="text-[13px] font-medium text-muted">
             {m}月{d}日 星期{WEEKDAY[new Date(`${t.date}T00:00:00Z`).getUTCDay()]}
+            ・{stage.name}
             {t.weekend && "・週末輕量"}
           </div>
           <h1 className="mt-0.5 text-[28px] leading-[34px] font-bold">{t.past ? "這天要做的事" : "今天要做的事"}</h1>
@@ -169,8 +202,8 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
       ))}
       </div>
 
-      {/* iPad：今天的課固定在右欄 */}
-      {!t.weekend && (
+      {/* iPad：今天的課固定在右欄（寒假沒課就不顯示） */}
+      {school && (
         <section aria-label={`${dayWord}的課`} className="card space-y-2.5 p-4 md:sticky md:top-4 md:col-start-2 md:row-span-6 md:row-start-2">
           <Heading
             icon="cap"
@@ -216,7 +249,13 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
       </section>
 
       <div className="md:col-start-1">
-        <TaskList date={t.date} rows={rows} title={`${dayWord}要做`} />
+        <TaskList
+          date={t.date}
+          groups={[
+            { title: "必做", rows: mustRows },
+            { title: "有空再做", rows: optionalRows },
+          ]}
+        />
       </div>
 
       {t.errors.length > 0 && (

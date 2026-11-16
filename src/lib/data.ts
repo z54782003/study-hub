@@ -16,6 +16,7 @@ import { audioKey, lessonRows, lessonTitle, parseIndexPage, parseTranscript, typ
 import { parseNoteGrammar, type GrammarPoint, type NoteBlock, type Seg } from "./noteGrammar";
 import { EN_OTHER, EN_TOPICS } from "./reviewSource";
 import { findChildPages } from "./childPages";
+import { stageFor } from "./stages";
 import { pickPreviewPage, summarizePreview, type ChildPage, type SimpleBlock } from "./preview";
 import { date, getPage, hasNotion, multiSelect, notion, num, queryAll, relationIds, select, text, updatePage, w, type Page } from "./notion";
 import {
@@ -741,7 +742,8 @@ export async function getToday(day = today()): Promise<TodayData> {
     calendar: calendar?.today ?? null,
     nextCalendar: calendar?.next ?? null,
     preview,
-    n3: n3BatchRange(day)
+    // 期末衝刺暫停 N3 單字：不顯示那一列
+    n3: stageFor(day).n3Words !== false && n3BatchRange(day)
       ? {
           count: batch.length,
           grammar: grammarNames.map((name) => ({

@@ -35,10 +35,16 @@ function TaskLink({ t, className, children }: { t: Task; className: string; chil
   );
 }
 
-/** 今日任務：順序固定、點圓圈打勾、點文字進功能；第一個沒勾的是「下一件」，底部主按鈕跟著它 */
-export function TaskList({ date, rows, title = "今天要做" }: { date: string; rows: TaskRow[]; title?: string }) {
+export type TaskGroup = { title: string; rows: TaskRow[] };
+
+/**
+ * 今日任務：分組（必做／有空再做），順序固定、點圓圈打勾、點文字進功能；
+ * 第一個沒勾的是「下一件」（先找前面的組），底部主按鈕跟著它
+ */
+export function TaskList({ date, groups }: { date: string; groups: TaskGroup[] }) {
   const [checked, setChecked] = useState<Record<string, boolean>>({});
-  const ids = rows.flatMap((r) => (typeof r === "string" ? [] : [r.id])).join(",");
+  const all = groups.flatMap((g) => g.rows);
+  const ids = all.flatMap((r) => (typeof r === "string" ? [] : [r.id])).join(",");
   useEffect(() => {
     const next: Record<string, boolean> = {};
     try {
@@ -47,10 +53,9 @@ export function TaskList({ date, rows, title = "今天要做" }: { date: string;
     setChecked(next);
   }, [date, ids]);
 
-  const tasks = rows.filter((r): r is Task => typeof r !== "string");
+  const isTask = (r: TaskRow): r is Task => typeof r !== "string";
   const isDone = (t: Task) => !!t.autoDone || !!checked[t.id];
-  const next = tasks.find((t) => !isDone(t));
-  const count = tasks.filter(isDone).length;
+  const next = all.filter(isTask).find((t) => !isDone(t));
 
   const toggle = (id: string) => {
     const on = !checked[id];
@@ -63,50 +68,59 @@ export function TaskList({ date, rows, title = "今天要做" }: { date: string;
 
   return (
     <>
-      <div className="mt-1.5 mb-2 flex items-baseline justify-between">
-        <h2 className="text-[15px] font-bold">{title}</h2>
-        <span className="text-[13px] text-ink-2 tabular-nums">
-          {count} / {tasks.length} 完成
-        </span>
-      </div>
-      <ul className="card overflow-hidden">
-        {rows.map((r) => {
-          if (typeof r === "string")
-            return (
-              <li key={r} className="flex items-center gap-2.5 border-b border-line bg-card-2 px-4 py-2 text-xs font-semibold text-muted">
-                <span className="h-px flex-1 bg-line" />
-                {r}
-                <span className="h-px flex-1 bg-line" />
-              </li>
-            );
-          const done = isDone(r);
-          const now = r === next;
+      {groups
+        .filter((g) => g.rows.some(isTask))
+        .map((g) => {
+          const tasks = g.rows.filter(isTask);
           return (
-            <li key={r.id} className={`flex items-center gap-0.5 border-b border-line py-1 pr-4 pl-1 last:border-b-0 ${now ? "bg-accent-soft" : ""}`}>
-              <button
-                type="button"
-                onClick={() => toggle(r.id)}
-                disabled={r.autoDone}
-                aria-pressed={done}
-                aria-label={`${done ? "取消完成" : "標為完成"}：${r.title}`}
-                className="grid size-11 shrink-0 place-items-center"
-              >
-                <span className={`grid size-[22px] place-items-center rounded-full ${done ? "bg-ok text-card" : "border-2 border-line"}`}>
-                  {done && <Icon name="check" size={14} stroke={3.2} />}
+            <section key={g.title} aria-label={g.title} className="mb-3.5 last:mb-0">
+              <div className="mt-1.5 mb-2 flex items-baseline justify-between">
+                <h2 className="text-[15px] font-bold">{g.title}</h2>
+                <span className="text-[13px] text-ink-2 tabular-nums">
+                  {tasks.filter(isDone).length} / {tasks.length} 完成
                 </span>
-              </button>
-              <TaskLink t={r} className="flex min-h-[52px] min-w-0 flex-1 items-center gap-2">
-                <span className="min-w-0 flex-1">
-                  <span className={`block text-[15px] leading-snug ${now ? "font-bold" : "font-semibold"} ${done ? "text-muted line-through" : ""}`}>{r.title}</span>
-                  {r.sub && <span className="block truncate text-xs text-muted">{r.sub}</span>}
-                </span>
-                {r.tag && !done && <span className="tag bg-due-soft text-due">{r.tag}</span>}
-                {r.external && <Icon name="external" size={16} stroke={2} className="shrink-0 text-muted" label="外部連結" />}
-              </TaskLink>
-            </li>
+              </div>
+              <ul className="card overflow-hidden">
+                {g.rows.map((r) => {
+                  if (typeof r === "string")
+                    return (
+                      <li key={r} className="flex items-center gap-2.5 border-b border-line bg-card-2 px-4 py-2 text-xs font-semibold text-muted">
+                        <span className="h-px flex-1 bg-line" />
+                        {r}
+                        <span className="h-px flex-1 bg-line" />
+                      </li>
+                    );
+                  const done = isDone(r);
+                  const now = r === next;
+                  return (
+                    <li key={r.id} className={`flex items-center gap-0.5 border-b border-line py-1 pr-4 pl-1 last:border-b-0 ${now ? "bg-accent-soft" : ""}`}>
+                      <button
+                        type="button"
+                        onClick={() => toggle(r.id)}
+                        disabled={r.autoDone}
+                        aria-pressed={done}
+                        aria-label={`${done ? "取消完成" : "標為完成"}：${r.title}`}
+                        className="grid size-11 shrink-0 place-items-center"
+                      >
+                        <span className={`grid size-[22px] place-items-center rounded-full ${done ? "bg-ok text-card" : "border-2 border-line"}`}>
+                          {done && <Icon name="check" size={14} stroke={3.2} />}
+                        </span>
+                      </button>
+                      <TaskLink t={r} className="flex min-h-[52px] min-w-0 flex-1 items-center gap-2">
+                        <span className="min-w-0 flex-1">
+                          <span className={`block text-[15px] leading-snug ${now ? "font-bold" : "font-semibold"} ${done ? "text-muted line-through" : ""}`}>{r.title}</span>
+                          {r.sub && <span className="block truncate text-xs text-muted">{r.sub}</span>}
+                        </span>
+                        {r.tag && !done && <span className="tag bg-due-soft text-due">{r.tag}</span>}
+                        {r.external && <Icon name="external" size={16} stroke={2} className="shrink-0 text-muted" label="外部連結" />}
+                      </TaskLink>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
           );
         })}
-      </ul>
 
       {/* 主按鈕＝第一個沒勾的任務，貼在分頁列上方 12px */}
       <div className="h-20" aria-hidden />

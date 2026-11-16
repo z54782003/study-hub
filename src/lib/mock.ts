@@ -1,6 +1,7 @@
 // 本機預覽用的假資料（MOCK=1 且沒有 NOTION_TOKEN 時才會用到）。
 import { EXAMS } from "./config";
 import { addDays, diffDays, formatJP, isWeekend } from "./dates";
+import { stageFor } from "./stages";
 import type { N3Detail } from "./n3Detail";
 import type { ReviewItem, TodayData, VocabItem } from "./types";
 import type { TedTalk } from "./ted";
@@ -49,7 +50,7 @@ export function mockToday(day: string): TodayData {
       grammarNote:
         "易混淆總整理：②③都是「打算做」，但②較婉轉像是正在思考、③是已經決定；⑥的「〜ために」是自己設定的目的，跟⑧「なければなりません」的「不得不做」語感不同——⑥是主動追求的目標，⑧是被迫的義務。",
     },
-    n3: { count: 38, grammar: [{ name: "〜たばかり", url: "#" }] },
+    n3: stageFor(day).n3Words !== false ? { count: 25, grammar: [{ name: "〜たばかり", url: "#" }] } : null,
     // MOCK_CLASS=preview 看課前（只有預習頁）的樣子
     classNote:
       process.env.MOCK_CLASS === "preview"
