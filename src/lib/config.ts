@@ -16,11 +16,20 @@ export const DS = {
 // 「每日預習（W3）」父頁，底下一天一頁，標題「MM/DD（曜）預習｜L〇 ST〇」
 export const W3_PARENT_PAGE = process.env.W3_PARENT_PAGE ?? "3f2097c576688100bc56d2f56e4d80c7";
 
-// 📼 課文音檔（できる日本語 初中級）：001–124 mp3（檔名就是編號）
+// 📼 課文音檔（できる日本語 初中級）：光碟版 mp3（7012019_DiscA_NN…）；頁面在「できる日本語 初中級」課程頁底下
 export const LESSON_AUDIO_PAGE = process.env.LESSON_AUDIO_PAGE ?? "406097c5-7668-810e-ade7-e0954334c539";
 
-// 🎯 日本語計畫頁：底下「初中級課本索引｜L〇」一課一頁，課文音檔頁從這裡讀課文
-export const TEXTBOOK_INDEX_PARENT = process.env.TEXTBOOK_INDEX_PARENT ?? "397097c5-7668-8187-8165-f7c1e1131929";
+// 課本索引頁（一課一頁）放在哪些頁：2026-11-16 起放在兩個課程頁的「課本索引｜L1–L15」toggle 裡，
+// 會往 toggle／分欄裡找（src/lib/childPages.ts）。依序：
+//   「できる日本語 初中級」課程頁 → 初中級課本索引｜L〇（單字分頁、課文音檔的課文）
+//   「できる日本語 初級」課程頁 → 課本索引｜L〇（初級單字分頁）
+//   🎯 日本語計畫頁（舊位置，留著當後備）
+// 環境變數 TEXTBOOK_INDEX_PARENTS 可用逗號分隔覆寫。
+export const TEXTBOOK_INDEX_PARENTS = process.env.TEXTBOOK_INDEX_PARENTS?.split(",").map((s) => s.trim()).filter(Boolean) ?? [
+  "3eb097c5-7668-8179-a03e-cadeed5578bc",
+  "3eb097c5-7668-817c-8e0b-ebf95a08161d",
+  "397097c5-7668-8187-8165-f7c1e1131929",
+];
 
 export const TZ = process.env.APP_TZ ?? "Asia/Tokyo";
 

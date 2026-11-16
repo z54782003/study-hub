@@ -1,7 +1,7 @@
 import "server-only";
 import { revalidateTag, unstable_cache } from "next/cache";
 import { isFullBlock } from "@notionhq/client";
-import { DS, EXAMS, GRAMMAR_ORDER, LESSON_AUDIO_PAGE, TEXTBOOK_INDEX_PARENT, N3_BATCH_SAMPLE, N3_DUE_LIMIT, QUIZ_DAILY_LIMIT, TZ, W3_PARENT_PAGE } from "./config";
+import { DS, EXAMS, GRAMMAR_ORDER, LESSON_AUDIO_PAGE, TEXTBOOK_INDEX_PARENTS, N3_BATCH_SAMPLE, N3_DUE_LIMIT, QUIZ_DAILY_LIMIT, TZ, W3_PARENT_PAGE } from "./config";
 import { addDays, diffDays, formatJP, isWeekend, todayISO } from "./dates";
 import { gradeWithAi } from "./ai";
 import { groupBySection, sectionTitle, type IndexSection } from "./lessonOrder";
@@ -15,6 +15,7 @@ import { TADOKU_URL, parseTadoku, parseTadokuBook, type TadokuBook, type TadokuD
 import { audioKey, lessonRows, lessonTitle, parseIndexPage, parseTranscript, type AudioRow, type IndexBlock, type TranscriptPart } from "./lessonAudio";
 import { parseNoteGrammar, type GrammarPoint, type NoteBlock, type Seg } from "./noteGrammar";
 import { EN_OTHER, EN_TOPICS } from "./reviewSource";
+import { findChildPages } from "./childPages";
 import { pickPreviewPage, summarizePreview, type ChildPage, type SimpleBlock } from "./preview";
 import { date, getPage, hasNotion, multiSelect, notion, num, queryAll, relationIds, select, text, updatePage, w, type Page } from "./notion";
 import {
@@ -558,13 +559,10 @@ export async function englishLevelCounts(): Promise<Record<string, number>> {
 }
 
 /** 日文分頁：某一課的單字（依加入順序＝課本順序） */
-// 課本索引頁（初中級：「初中級課本索引｜L〇 …」；初級：「課本索引｜L〇 …」）
+// 課本索引頁（初中級：「初中級課本索引｜L〇 …」；初級：「課本索引｜L〇 …」），在兩個課程頁的 toggle 裡
 const cachedLessonIndexPages = unstable_cache(
-  async () =>
-    (await allChildren(TEXTBOOK_INDEX_PARENT)).flatMap((b) =>
-      b.type === "child_page" && /課本索引｜L\d/.test(b.child_page.title) ? [{ id: b.id, title: b.child_page.title }] : [],
-    ),
-  ["lesson-index-pages"],
+  async () => textbookIndexPages((t) => /課本索引｜L\d/.test(t)),
+  ["lesson-index-pages-v2"],
   { revalidate: 86400 },
 );
 
@@ -1294,13 +1292,25 @@ export async function lessonAudioUrl(key: string): Promise<string | null> {
   return urls[key] ?? null;
 }
 
-// 課文從「初中級課本索引｜L〇」讀（日本語計畫頁底下，一課一頁）
+/**
+ * 在 TEXTBOOK_INDEX_PARENTS 底下（含 toggle／分欄裡）找標題符合的子頁。
+ * 某頁讀不到只記 log；一頁都沒找到就丟錯，讓 unstable_cache 不要把空結果快取一整天
+ * （呼叫端都有 catch，讀不到時畫面照樣顯示，只是沒有課本順序／課文）。
+ */
+async function textbookIndexPages(match: (title: string) => boolean) {
+  const pages = (
+    await findChildPages(TEXTBOOK_INDEX_PARENTS, allChildren, {
+      onError: (parent, e) => console.warn(`課本索引：讀不到 ${parent}（integration 有連線嗎？）`, e instanceof Error ? e.message : e),
+    })
+  ).filter((p) => match(p.title));
+  if (!pages.length) throw new Error("課本索引：所有 parent 底下都找不到索引頁");
+  return pages;
+}
+
+// 課文從「初中級課本索引｜L〇」讀（「できる日本語 初中級」課程頁的 toggle 裡，一課一頁）
 const cachedIndexPages = unstable_cache(
-  async () =>
-    (await allChildren(TEXTBOOK_INDEX_PARENT)).flatMap((b) =>
-      b.type === "child_page" && b.child_page.title.startsWith("初中級課本索引") ? [{ id: b.id, title: b.child_page.title }] : [],
-    ),
-  ["textbook-index-pages"],
+  async () => textbookIndexPages((t) => t.startsWith("初中級課本索引")),
+  ["textbook-index-pages-v2"],
   { revalidate: 86400 },
 );
 
