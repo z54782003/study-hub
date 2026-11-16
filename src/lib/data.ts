@@ -16,17 +16,18 @@ import { audioKey, lessonRows, lessonTitle, parseIndexPage, parseTranscript, typ
 import { parseNoteGrammar, type GrammarPoint, type NoteBlock, type Seg } from "./noteGrammar";
 import { EN_OTHER, EN_TOPICS } from "./reviewSource";
 import { findChildPages } from "./childPages";
-import { n3WordsOn, needsDebtCheck, reviewParts, stageFor } from "./stages";
+import { grammarOn, n3WordsOn, needsDebtCheck, reviewParts, stageFor } from "./stages";
 import { pickPreviewPage, summarizePreview, type ChildPage, type SimpleBlock } from "./preview";
 import { date, getPage, hasNotion, multiSelect, notion, num, queryAll, relationIds, select, text, updatePage, w, type Page } from "./notion";
 import {
-  grammarIndexForDate,
+  firstUnlearnedGrammar,
   matchGrammar,
   n3Progress,
   n3NextLevel,
   quizUpdate,
   vocabUpdate,
-  weekGrammarIndices,
+  weekGrammar,
+  type GrammarRow,
 } from "./srs";
 import type {
   AnswerPayload,
@@ -182,16 +183,35 @@ async function n3Due(day: string): Promise<Page[]> {
   );
 }
 
-function todaysGrammarNames(day: string): string[] {
-  const idx = isWeekend(day) ? weekGrammarIndices(day) : [grammarIndexForDate(day)].filter((i) => i !== null);
-  return idx.map((i) => GRAMMAR_ORDER[i as number]);
+const grammarRow = (p: Page): GrammarRow => ({
+  title: text(p, "文型 / 문형"),
+  status: grammarBase(select(p, "熟悉度 / 숙련도")),
+  last: date(p, "上次複習 / 지난 복습"),
+});
+
+/**
+ * 平日的新文型：GRAMMAR_ORDER 裡第一個還沒學過的。key 含日期：每天第一次算的結果固定到當天結束，
+ * 不然一答題熟悉度變了，今天的文型就跳到下一個。
+ */
+const cachedTodayGrammar = unstable_cache(
+  async (_day: string): Promise<string | null> => firstUnlearnedGrammar(GRAMMAR_ORDER, (await queryAll(DS.n3Grammar)).map(grammarRow)),
+  ["n3-grammar-today-v1"],
+  { revalidate: 2 * 86400 },
+);
+
+/** 今天的文型：這個階段有新文型才有；平日 1 個，週末複習這週學過的 */
+async function todaysGrammarNames(day: string): Promise<string[]> {
+  if (!grammarOn(stageFor(day), day)) return [];
+  if (isWeekend(day)) return weekGrammar(GRAMMAR_ORDER, (await cachedGrammarAll()).map(grammarRow), day);
+  const name = await cachedTodayGrammar(day);
+  return name ? [name] : [];
 }
 
 const grammarBase = (s: string | null) => (s ? s.split(" / ")[0] : null);
 
 async function grammarForReview(day: string): Promise<Page[]> {
   const all = await cachedGrammarAll();
-  const names = todaysGrammarNames(day);
+  const names = await todaysGrammarNames(day);
   const picked = all.filter(
     (p) =>
       names.some((n) => matchGrammar(n, text(p, "文型 / 문형"))) || grammarBase(select(p, "熟悉度 / 숙련도")) === "忘記",
@@ -288,12 +308,11 @@ export async function getN3Batch(next = false): Promise<N3BatchView> {
   // 還沒開始出新字：「下一批」就是第一批
   const range = next && active ? (todayRange ? await cachedN3BatchRange(day, todayRange.hi) : null) : todayRange;
   const words = range ? (await n3Range(range)).map((p) => toN3(p, "batch")) : [];
-  const idx = grammarIndexForDate(day);
-  const name = idx === null || next || !active ? null : GRAMMAR_ORDER[idx];
+  const names = next ? [] : await todaysGrammarNames(day);
   return {
     active,
     words,
-    grammar: name ? grammarAll.filter((p) => matchGrammar(name, text(p, "文型 / 문형"))).map(toGrammar) : [],
+    grammar: grammarAll.filter((p) => names.some((name) => matchGrammar(name, text(p, "文型 / 문형")))).map(toGrammar),
     progress,
   };
 }
@@ -807,7 +826,8 @@ export async function getToday(day = today()): Promise<TodayData> {
   ]);
 
   const n3On = await safe("N3 單字", () => n3WordsActive(day), false);
-  const grammarNames = n3On ? todaysGrammarNames(day) : [];
+  // 過去的日子：今天的文型只記當天，回看不到
+  const grammarNames = past ? [] : await safe("N3 文法", () => todaysGrammarNames(day), [] as string[]);
   const tedPage = ted.find((p) => !text(p, "Talk").includes("模板"));
   const note = notes[0];
 

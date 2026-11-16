@@ -134,9 +134,6 @@ export const N3_DUE_LIMIT = 10;
 // 每天第一次讀到的 25 個固定到當天結束；沒考完的隔天還是排在最前面。哪些階段出新字見 STAGES.n3Words。
 export const N3_BATCH_SIZE = 25;
 
-// N3 文型的舊排程起點（第 0 天）；第 5 項改成「第一個還沒學過的」之後拿掉
-export const N3_START = "2026-10-27";
-
 /** 今日頁右邊那格的倒數（第 6 項改成目前階段的結束日） */
 export const COUNTDOWN = { date: "2026-12-31", name: "N3 單字背完" };
 
@@ -167,7 +164,7 @@ export const EXAMS: { date: string; name: string; scope: string }[] = [
   { date: "2026-12-18", name: "期末試験／漢字テスト", scope: "口頭表現／HSJⅡ 7・8章" },
 ];
 
-// N3 文型順序（操作手冊「N3 自補」）：第 k 天學第 k 個（週末照排，12/17 學完）
+// N3 文型順序（操作手冊「N3 自補」）：STAGES.grammar.from 起每個平日學「第一個還沒學過的」，週末複習這週學過的
 export const GRAMMAR_ORDER = [
   "〜うちに", "〜かのように", "〜からこそ", "〜からといって", "〜がち", "〜きる", "〜ぎみ",
   "〜ことはない", "〜こともある", "〜しかない", "〜ず（に）", "〜たて", "〜たとたん", "〜たばかり",

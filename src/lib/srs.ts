@@ -1,4 +1,3 @@
-import { GRAMMAR_ORDER, N3_START } from "./config";
 import { addDays, diffDays, weekday } from "./dates";
 
 // ── 日文題庫 SRS（操作手冊 W2）────────────────────────────
@@ -66,21 +65,20 @@ export function n3Progress(nos: number[], lo: number | null, perDay: number): { 
   return { learned, total, left, days: Math.ceil(left / perDay) };
 }
 
-/** 第 d 天學第 d 個文型（0-based）；超出 52 個回傳 null。 */
-export function grammarIndexForDate(today: string): number | null {
-  const d = diffDays(N3_START, today);
-  return d >= 0 && d < GRAMMAR_ORDER.length ? d : null;
+/** N3 文型資料庫的一列，只取排文型需要的欄位；status＝熟悉度去掉韓文（「學習中」），last＝上次複習 */
+export type GrammarRow = { title: string; status: string | null; last: string | null };
+
+const learned = (r: GrammarRow) => !!r.status && r.status !== "未學";
+
+/** 照 order 的順序，第一個還沒學過（熟悉度空白或未學）的文型；全部學過回傳 null */
+export function firstUnlearnedGrammar(order: string[], rows: GrammarRow[]): string | null {
+  return order.find((name) => !rows.some((r) => matchGrammar(name, r.title) && learned(r))) ?? null;
 }
 
-/** 週末複習本週學過的：回傳本週一到今天的文型 index。 */
-export function weekGrammarIndices(today: string): number[] {
+/** 週末複習本週學過的：本週一到今天複習過（上次複習在這週）的文型，照 order 的順序 */
+export function weekGrammar(order: string[], rows: GrammarRow[], today: string): string[] {
   const monday = addDays(today, -((weekday(today) + 6) % 7));
-  const out: number[] = [];
-  for (let i = 0; i < 7; i++) {
-    const idx = grammarIndexForDate(addDays(monday, i));
-    if (idx !== null && addDays(monday, i) <= today) out.push(idx);
-  }
-  return out;
+  return order.filter((name) => rows.some((r) => matchGrammar(name, r.title) && learned(r) && r.last !== null && r.last >= monday && r.last <= today));
 }
 
 /**

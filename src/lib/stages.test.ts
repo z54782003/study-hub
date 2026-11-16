@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { STAGES } from "./config";
-import { n3WordsOn, n3WordsStart, needsDebtCheck, reviewParts, stageFor } from "./stages";
+import { grammarOn, n3WordsOn, n3WordsStart, needsDebtCheck, reviewParts, stageFor } from "./stages";
 
 describe("stages", () => {
   it("are contiguous and in order", () => {
@@ -42,5 +42,11 @@ describe("stages", () => {
     expect(n3WordsStart("2026-11-20")).toBe("寒假清債題庫積壓清空或 1/1 開始，先到的那天");
     expect(n3WordsStart("2026-12-20")).toBe("題庫積壓清空或 1/1 開始，先到的那天");
     expect(n3WordsStart("2027-05-01")).toBe("單字量之後再定");
+  });
+  it("new grammar only from 2027-01-07", () => {
+    expect(grammarOn(stageFor("2026-12-01"), "2026-12-01")).toBe(false);
+    expect(grammarOn(stageFor("2027-01-06"), "2027-01-06")).toBe(false);
+    expect(grammarOn(stageFor("2027-01-07"), "2027-01-07")).toBe(true);
+    expect(grammarOn(stageFor("2027-05-01"), "2027-05-01")).toBe(false);
   });
 });

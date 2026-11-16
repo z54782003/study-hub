@@ -15,6 +15,9 @@ export function n3WordsOn(stage: Stage, day: string, debtCleared: boolean): bool
   return debtCleared || day >= w.from;
 }
 
+/** 這一天有沒有新的 N3 文型（平日 1 個、週末複習這週的） */
+export const grammarOn = (stage: Stage, day: string) => !!stage.grammar && day >= stage.grammar.from;
+
 /** 這個階段的 N3 單字規則要不要先查題庫積壓 */
 export const needsDebtCheck = (stage: Stage, day: string) => typeof stage.n3Words === "object" && day < stage.n3Words.from;
 

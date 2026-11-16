@@ -2,14 +2,14 @@ import { describe, expect, it } from "vitest";
 import { addDays, diffDays, formatJP, todayISO } from "./dates";
 import {
   dailySample,
-  grammarIndexForDate,
+  firstUnlearnedGrammar,
   matchGrammar,
   n3Progress,
   n3NextLevel,
   quizNextInterval,
   quizUpdate,
   vocabUpdate,
-  weekGrammarIndices,
+  weekGrammar,
 } from "./srs";
 import { GRAMMAR_ORDER } from "./config";
 
@@ -78,16 +78,24 @@ describe("N3", () => {
     expect(n3Progress(nos, 206.5, 2)).toEqual({ learned: 3, total: 6, left: 3, days: 2 });
     expect(n3Progress(nos, null, 25)).toEqual({ learned: 6, total: 6, left: 0, days: 0 });
   });
-  it("one grammar a day from 10/27, weekends included", () => {
-    expect(grammarIndexForDate("2026-10-26")).toBeNull();
-    expect(grammarIndexForDate("2026-10-27")).toBe(0);
-    expect(grammarIndexForDate("2026-10-31")).toBe(4); // 土
-    expect(grammarIndexForDate("2026-12-17")).toBe(51);
-    expect(grammarIndexForDate("2026-12-18")).toBeNull();
+  it("next grammar is the first one in the order not learned yet", () => {
+    const order = ["〜うちに", "〜かのように", "〜からこそ"];
+    const row = (title: string, status: string | null, last: string | null = null) => ({ title, status, last });
+    expect(firstUnlearnedGrammar(order, [])).toBe("〜うちに");
+    expect(firstUnlearnedGrammar(order, [row("〜うちに／〜ないうちに", "學習中", "2027-01-07"), row("〜かのように（な）", "未學")])).toBe("〜かのように");
+    expect(firstUnlearnedGrammar(order, [row("〜うちに", "忘記"), row("〜かのように", "熟悉"), row("〜からこそ", "精通")])).toBeNull();
+    // 跳著學過的不影響：照順序第一個沒學的
+    expect(firstUnlearnedGrammar(order, [row("〜からこそ", "學習中")])).toBe("〜うちに");
   });
-  it("weekend reviews what this week covered", () => {
-    expect(weekGrammarIndices("2026-10-31")).toEqual([0, 1, 2, 3, 4]);
-    expect(weekGrammarIndices("2026-11-08")).toEqual([6, 7, 8, 9, 10, 11, 12]);
+  it("weekend reviews the grammar touched this week", () => {
+    const order = ["〜うちに", "〜かのように", "〜からこそ"];
+    const rows = [
+      { title: "〜うちに", status: "熟悉", last: "2027-01-08" }, // 上週五
+      { title: "〜かのように", status: "學習中", last: "2027-01-11" }, // 週一
+      { title: "〜からこそ", status: "忘記", last: "2027-01-15" }, // 週五
+    ];
+    expect(weekGrammar(order, rows, "2027-01-16")).toEqual(["〜かのように", "〜からこそ"]);
+    expect(weekGrammar(order, rows, "2027-01-17")).toEqual(["〜かのように", "〜からこそ"]);
   });
   it("matches every grammar in the order list to exactly one real Notion title", () => {
     // 2026-10-26 從「N3 文法補強」資料庫讀到的實際標題
