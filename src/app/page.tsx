@@ -3,7 +3,7 @@ import { Icon, type IconName } from "@/components/Icon";
 import { TaskList, type Task, type TaskRow } from "@/components/TaskList";
 import { EXAMS, NHK_EASY_URL } from "@/lib/config";
 import { sourceQuery } from "@/lib/reviewSource";
-import { stageFor } from "@/lib/stages";
+import { remindersOn, stageFor } from "@/lib/stages";
 import type { CalendarEvent } from "@/lib/calendar";
 import Link from "next/link";
 import { getToday, today } from "@/lib/data";
@@ -179,8 +179,15 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
         </div>
       </section>
 
-      {/* 提醒：7 天內的考試（今天以外）與作業截止 */}
+      {/* 提醒：計畫裡的提醒、7 天內的考試（今天以外）與作業截止 */}
       <div className="space-y-2 empty:hidden md:col-start-1">
+      {remindersOn(t.date).map((r) => (
+        <div key={r.text} className="flex min-h-12 items-center gap-2.5 rounded-[14px] bg-accent-soft px-3.5 py-2">
+          <Icon name="bell" className="shrink-0 text-accent" />
+          <span className="text-[13px] font-bold whitespace-nowrap text-accent">提醒</span>
+          <span className="min-w-0 text-sm font-semibold">{r.text}</span>
+        </div>
+      ))}
       {t.exams
         .filter((e) => !(exam && e.date === exam.date && e.name === exam.name))
         .map((e) => (

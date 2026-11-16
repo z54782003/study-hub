@@ -125,6 +125,12 @@ export const STAGES: Stage[] = [
   },
 ];
 
+// 今日頁的提醒：from～to（含）這幾天顯示在考試、作業提醒那一區
+export const REMINDERS: { from: string; to: string; text: string }[] = [
+  // 3 月最後一週（3/25–3/31）
+  { from: "2027-03-25", to: "2027-03-31", text: "做 N3 模擬卷（決定 7 月報 N2 或 N3）" },
+];
+
 // 操作手冊 W2：題庫每天最多 20 題（當天已經答過的也算進去）
 export const QUIZ_DAILY_LIMIT = 20;
 // N3 night quiz：今日批次全部考（考過熟悉度才會離開「未學」）＋到期字最多 10 題

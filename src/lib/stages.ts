@@ -1,4 +1,4 @@
-import { STAGES, type Stage } from "./config";
+import { REMINDERS, STAGES, type Stage } from "./config";
 
 /**
  * 某一天屬於哪個階段：第一個 end ≥ day 的階段。
@@ -42,3 +42,6 @@ export function n3WordsStart(day: string, stages: Stage[] = STAGES): string {
 }
 
 const md = (iso: string) => `${Number(iso.slice(5, 7))}/${Number(iso.slice(8, 10))}`;
+
+/** 這一天要顯示的提醒 */
+export const remindersOn = (day: string, list = REMINDERS) => list.filter((r) => r.from <= day && day <= r.to);
