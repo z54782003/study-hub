@@ -66,6 +66,9 @@ export type GrammarItem = {
 };
 
 /** 📖 單字庫的字（日文依課次、英文依熟悉度） */
+/** 預先產生的發音檔（Notion 單字庫「發音檔」欄）：url 一小時後失效，過期就走 fallback（App 的轉址路徑） */
+export type AudioRef = { url: string; expires: string | null; fallback: string };
+
 export type VocabItem = {
   kind: "vocab";
   id: string;
@@ -74,9 +77,11 @@ export type VocabItem = {
   meaning: string;
   pos: string | null;
   usage: string;
-  examples: { ja: string; zh: string }[];
+  examples: { ja: string; zh: string; audio?: AudioRef }[];
   lesson: string | null;
   lang: "ja" | "en";
+  /** 單字的發音檔；沒有（英文、帶「〜」、還沒產生、內容改過）就用瀏覽器發音 */
+  audio?: AudioRef;
   status: string | null;
   right: number;
   wrong: number;

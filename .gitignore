@@ -8,3 +8,5 @@ next-env.d.ts
 .vercel
 public/mock.mp4
 public/mock.webm
+# 日文發音音檔腳本的輸出（scripts/gen-audio.ts）
+audio-out/
