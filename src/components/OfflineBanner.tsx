@@ -19,7 +19,7 @@ export function OfflineBanner() {
     <div role="alert" className="sticky top-0 z-50 flex items-center gap-3 bg-due-soft px-4 pt-[max(env(safe-area-inset-top),0.5rem)] pb-2 text-sm">
       <span className="min-w-0 flex-1">
         <b className="text-due">連不上網路</b>
-        <span className="text-ink-2">・作答要連線才會寫進 Notion，恢復後點重試。</span>
+        <span className="text-ink-2">・看過的頁面還能看；作答要連線才會寫進 Notion，恢復後點重試。</span>
       </span>
       <button type="button" onClick={() => location.reload()} className="h-9 shrink-0 rounded-[10px] bg-accent px-3 font-semibold text-on-accent">
         重試

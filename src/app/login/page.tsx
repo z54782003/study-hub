@@ -16,7 +16,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         required
         className="w-full card px-4 py-3 text-base outline-none focus:border-accent"
       />
-      {error && <p className="text-sm text-bad">密碼不對</p>}
+      {error && <p role="alert" className="text-sm text-bad">{error === "locked" ? "錯太多次了，10 分鐘後再試" : "密碼不對"}</p>}
       <button className="w-full rounded-2xl bg-accent py-3 font-semibold text-on-accent">登入</button>
     </form>
   );

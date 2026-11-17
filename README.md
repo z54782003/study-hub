@@ -27,7 +27,7 @@
 ## 設定
 
 1. 建一個 Notion integration（https://www.notion.so/profile/integrations），複製 token。
-2. 把下列資料庫分享給它（資料庫右上角 ⋯ → Connections）：日文題庫、Vocabulary／單字庫、JLPT テスト 単語、N3 文法補強、ISI 課堂筆記＆錄音、TED Log、Books、Journal，以及「每日預習（W3）」頁。
+2. 把下列資料庫分享給它（資料庫右上角 ⋯ → Connections）：日文題庫、Vocabulary／單字庫、JLPT テスト 単語、N3 文法補強、ISI 課堂筆記＆錄音、TED Log、Books、Journal、Goals、Tasks（Life Planner），以及「每日預習（W3）」頁。
 3. 環境變數（見 `.env.example`）：`NOTION_TOKEN`、`APP_PASSWORD`、`APP_TZ`（預設 Asia/Tokyo）、`ICAL_URLS`（選填，行事曆）、`ANTHROPIC_API_KEY`（選填，AI 批改）。另外把「📝 作答紀錄（Study Hub）」資料庫也分享給 integration。
 
 ## 開發

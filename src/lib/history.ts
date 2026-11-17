@@ -58,3 +58,71 @@ export function shiftMonth(month: string, delta: number): string {
   const d = new Date(Date.UTC(y, m - 1 + delta, 1));
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
 }
+
+/** 一天的作答統計；kinds＝各類型的 [題數, 答對] */
+export type DayStat = { n: number; ok: number; kinds: Record<string, [number, number]> };
+
+/** 把作答紀錄整理成每天的統計（紀錄頁只快取這個，不快取整批作答） */
+export function dayStats(attempts: { day: string; kind: string; correct: boolean }[]): Record<string, DayStat> {
+  const out: Record<string, DayStat> = {};
+  for (const a of attempts) {
+    const d = (out[a.day] ??= { n: 0, ok: 0, kinds: {} });
+    const k = (d.kinds[a.kind || "其他"] ??= [0, 0]);
+    d.n++;
+    k[0]++;
+    if (a.correct) {
+      d.ok++;
+      k[1]++;
+    }
+  }
+  return out;
+}
+
+export type WeekSummary = {
+  /** 週一到週日，各天有沒有作答 */
+  days: { day: string; done: boolean; future: boolean }[];
+  studied: number;
+  n: number;
+  ok: number;
+  /** 各類型的題數與正確率，正確率低的在前 */
+  kinds: { kind: string; n: number; pct: number }[];
+};
+
+/** today 往前 weeksAgo 週的那一週（0＝這週）的回顧 */
+export function weekSummary(today: string, stats: Record<string, DayStat>, weeksAgo = 0): WeekSummary {
+  const mondayOffset = (weekday(today) + 6) % 7;
+  const monday = addDays(today, -mondayOffset - weeksAgo * 7);
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const day = addDays(monday, i);
+    return { day, done: !!stats[day]?.n, future: day > today };
+  });
+  const kinds: Record<string, [number, number]> = {};
+  let n = 0;
+  let ok = 0;
+  for (const { day } of days) {
+    const s = stats[day];
+    if (!s) continue;
+    n += s.n;
+    ok += s.ok;
+    for (const [k, [kn, kok]] of Object.entries(s.kinds)) {
+      const t = (kinds[k] ??= [0, 0]);
+      t[0] += kn;
+      t[1] += kok;
+    }
+  }
+  return {
+    days,
+    studied: days.filter((d) => d.done).length,
+    n,
+    ok,
+    kinds: Object.entries(kinds)
+      .map(([kind, [kn, kok]]) => ({ kind, n: kn, pct: Math.round((kok / kn) * 100) }))
+      .sort((a, b) => a.pct - b.pct || b.n - a.n),
+  };
+}
+
+/** "YYYY-MM" 的最後一天 */
+export function monthEnd(month: string): string {
+  const [y, m] = month.split("-").map(Number);
+  return `${month}-${String(new Date(Date.UTC(y, m, 0)).getUTCDate()).padStart(2, "0")}`;
+}

@@ -11,6 +11,8 @@ export const DS = {
   attempts: process.env.DS_ATTEMPTS ?? "0f5829ab-0ceb-4322-823e-71058525a2d4", // 📝 作答紀錄（Study Hub）
   tadokuLog: process.env.DS_TADOKU_LOG ?? "ff956b29-87b5-4995-8026-b2947331d885", // 📚 多読紀錄
   kanji: process.env.DS_KANJI ?? "a05cd8c3-2228-4aca-af1f-d7d6d95f3980", // 🈴 漢字庫（HSJ）
+  goals: process.env.DS_GOALS ?? "52f097c5-7668-82f0-9186-07bf435b1b7a", // 🏔 Goals（Life Planner：年→季→月）
+  tasks: process.env.DS_TASKS ?? "66220cad-19e4-4eae-9019-7c3708e8c599", // 📅 Tasks（Life Planner 的待辦）
   eviu: process.env.DS_EVIU ?? "26eff28f-4786-4617-bc65-7989cd6f5950", // 📚 EVIU Units（English Vocabulary in Use）
 };
 

@@ -138,7 +138,17 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
   const classAt = mustRows.findIndex((r) => typeof r !== "string" && r.id === "class-note");
   const classTime = termFor(t.date)?.classTime;
   if (classAt >= 0) mustRows.splice(classAt, 0, classTime ? `${classTime} 上課` : "上課（時間未定）");
-  const optionalRows = pick(ORDER.filter((id) => !stage.mustTasks.includes(id)));
+  const optionalRows: TaskRow[] = [
+    ...pick(ORDER.filter((id) => !stage.mustTasks.includes(id))),
+    // Life Planner 的 Tasks（日文／學習類、今天到期或逾期）；打勾只記在這台裝置，完成要到 Notion 改 Status
+    ...t.todos.map((todo) => ({
+      id: `todo-${todo.id}`,
+      title: todo.title,
+      sub: `Tasks・${todo.daysLate > 0 ? `逾期 ${todo.daysLate} 天` : "今天到期"}`,
+      href: todo.url,
+      external: true,
+    })),
+  ];
 
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-3.5 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] md:items-start md:gap-x-5 md:[grid-auto-flow:dense]">

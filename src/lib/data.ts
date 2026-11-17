@@ -18,6 +18,8 @@ import { EN_OTHER, EN_TOPICS } from "./reviewSource";
 import { findChildPages } from "./childPages";
 import { NOTE_REVIEW_OPTIONS } from "./noteReview";
 import { tedDoneChange } from "./tedLog";
+import { dayStats, monthEnd, shiftMonth, streak, type DayStat } from "./history";
+import { autoKind, quarterMonths, quarterOf, type AutoKind, type Quarter } from "./goals";
 import { EVIU_STATUSES, eviuProgress, type EviuUnit } from "./eviu";
 import { grammarOn, n3WordsOn, needsDebtCheck, reviewParts, stageFor } from "./stages";
 import { pickPreviewPage, summarizePreview, type ChildPage, type SimpleBlock } from "./preview";
@@ -776,6 +778,8 @@ async function calendarEvents(day: string): Promise<{ today: CalendarEvent[]; ne
   return { today: todays, next: todays.length ? null : nextEventDay(icsList, day, TZ) };
 }
 
+const TASK_AREAS = ["🇯🇵 Japanese", "📚 Learning"];
+
 /** 今日頁；day 給過去的日期＝從紀錄回看那天的內容 */
 export async function getToday(day = today()): Promise<TodayData> {
   const past = day < today();
@@ -793,7 +797,7 @@ export async function getToday(day = today()): Promise<TodayData> {
   };
   const weekend = isWeekend(day);
 
-  const [calendar, preview, homework, review, batch, grammarAll, notes, ted, books, pendingNotes, n3On, grammarNames] = await Promise.all([
+  const [calendar, preview, homework, review, batch, grammarAll, notes, ted, books, pendingNotes, n3On, grammarNames, plannerTasks] = await Promise.all([
     safe("行事曆", () => calendarEvents(day), null),
     weekend ? null : safe("每日預習", () => findPreviewPage(day), null),
     safe(
@@ -830,6 +834,27 @@ export async function getToday(day = today()): Promise<TodayData> {
     safe("N3 單字", () => n3WordsActive(day), false),
     // 過去的日子：今天的文型只記當天，回看不到
     past ? ([] as string[]) : safe("N3 文法", () => todaysGrammarNames(day), [] as string[]),
+    // Life Planner 的 Tasks：日文／學習類、今天到期或逾期、還沒完成的
+    past
+      ? ([] as Page[])
+      : safe(
+          "Tasks",
+          () =>
+            queryAll(
+              DS.tasks,
+              {
+                and: [
+                  { or: TASK_AREAS.map((a) => ({ property: "Area", select: { equals: a } })) },
+                  { property: "Due", date: { on_or_before: day } },
+                  { property: "Status", status: { does_not_equal: "Done" } },
+                  { property: "Status", status: { does_not_equal: "Cancelled" } },
+                ],
+              },
+              [{ property: "Due", direction: "ascending" }],
+              10,
+            ),
+          [] as Page[],
+        ),
   ]);
   const tedPage = ted.find((p) => !text(p, "Talk").includes("模板"));
   const note = notes[0];
@@ -876,6 +901,10 @@ export async function getToday(day = today()): Promise<TodayData> {
     pendingNotes: pendingNotes.length ? { count: pendingNotes.length, oldest: pendingNotes[0].title } : null,
     ted: tedPage ? { title: text(tedPage, "Talk"), url: `/ted/${tedPage.id}`, progress: select(tedPage, "進度") } : null,
     books: books.map((p) => ({ title: text(p, "Name"), url: p.url, type: select(p, "Type") })),
+    todos: plannerTasks.flatMap((p) => {
+      const due = date(p, "Due");
+      return due ? [{ id: p.id, title: text(p, "Name"), url: p.url, area: select(p, "Area"), daysLate: diffDays(due, day) }] : [];
+    }),
     errors,
   };
 }
@@ -1127,29 +1156,165 @@ export async function addVocab(word: string, sentence: string, lang: "en" | "ja"
 
 export type Attempt = { id: string; day: string; title: string; kind: string; correct: boolean; answer: string; reference: string; url: string };
 
-/** 📝 作答紀錄：最近 days 天（含今天） */
-export async function getHistory(days: number): Promise<{ today: string; attempts: Attempt[] }> {
+const toAttempt = (p: Page, fallbackDay: string): Attempt => ({
+  id: p.id,
+  day: date(p, "日期") ?? fallbackDay,
+  title: text(p, "題目"),
+  kind: select(p, "類型") ?? "",
+  correct: select(p, "結果") === "✅ 對",
+  answer: text(p, "我的答案"),
+  reference: text(p, "正確答案"),
+  url: text(p, "來源頁面") || p.url,
+});
+
+/** 📝 作答紀錄：from～to（含）這幾天 */
+async function attemptsBetween(from: string, to: string): Promise<Attempt[]> {
   const day = today();
-  if (useMock()) return { today: day, attempts: mockHistory(day) };
+  if (useMock()) return mockHistory(day).filter((a) => from <= a.day && a.day <= to);
   const pages = await queryAll(
     DS.attempts,
-    { property: "日期", date: { on_or_after: addDays(day, -(days - 1)) } },
+    { and: [{ property: "日期", date: { on_or_after: from } }, { property: "日期", date: { on_or_before: to } }] },
     [{ property: "日期", direction: "descending" }],
     5000,
   );
-  return {
-    today: day,
-    attempts: pages.map((p) => ({
-      id: p.id,
-      day: date(p, "日期") ?? day,
-      title: text(p, "題目"),
-      kind: select(p, "類型") ?? "",
-      correct: select(p, "結果") === "✅ 對",
-      answer: text(p, "我的答案"),
-      reference: text(p, "正確答案"),
-      url: text(p, "來源頁面") || p.url,
-    })),
-  };
+  return pages.map((p) => toAttempt(p, day));
+}
+
+// 過去的日子不會再有新的作答：每天的統計（題數、答對、各類型）快取起來，只有今天即時讀
+const cachedDayStats = unstable_cache(async (from: string, to: string) => dayStats(await attemptsBetween(from, to)), ["attempt-day-stats-v1"], {
+  revalidate: 7 * 86400,
+});
+const statsBetween = (from: string, to: string) => (useMock() ? attemptsBetween(from, to).then(dayStats) : cachedDayStats(from, to));
+
+/** 某個月每天的作答統計；todayStats＝今天的（即時讀的那份），只有當月會用到 */
+async function monthStats(month: string, day: string, todayStats: Record<string, DayStat>): Promise<Record<string, DayStat>> {
+  const first = `${month}-01`;
+  if (month < day.slice(0, 7)) return statsBetween(first, monthEnd(month));
+  if (month > day.slice(0, 7)) return {};
+  return { ...(day > first ? await statsBetween(first, addDays(day, -1)) : {}), ...todayStats };
+}
+
+export type HistoryView = {
+  today: string;
+  /** 每天的統計：要看的那個月、這個月和上個月（這週／上週），連續天數跨月時再往前 */
+  stats: Record<string, DayStat>;
+  /** 選的那一天的作答 */
+  dayItems: Attempt[];
+};
+
+/** 紀錄頁：月曆用每天的統計（過去的有快取），作答內容只讀選的那一天 */
+export async function getHistoryView(month: string, selected: string): Promise<HistoryView> {
+  const day = today();
+  const todays = await attemptsBetween(day, day);
+  const todayStats = dayStats(todays);
+  const thisMonth = day.slice(0, 7);
+  const months = [...new Set([month, thisMonth, shiftMonth(thisMonth, -1)])];
+  const [dayItems, ...loaded] = await Promise.all([
+    selected === day ? todays : attemptsBetween(selected, selected),
+    ...months.map((m) => monthStats(m, day, todayStats)),
+  ]);
+  const stats: Record<string, DayStat> = Object.assign({}, ...loaded);
+  // 連續天數：一路連到已讀的最早那個月的 1 號，就再往前讀一個月（最多一年）
+  let earliest = shiftMonth(thisMonth, -1);
+  for (let i = 0; i < 12 && streak(day, countsOf(stats)) >= diffDays(`${earliest}-01`, day); i++) {
+    earliest = shiftMonth(earliest, -1);
+    Object.assign(stats, await monthStats(earliest, day, todayStats));
+  }
+  return { today: day, stats, dayItems };
+}
+
+const countsOf = (stats: Record<string, DayStat>) => Object.fromEntries(Object.entries(stats).map(([d, s]) => [d, s.n]));
+
+// ── 本季目標（Life Planner 的 🏔 Goals）──────────────────────
+
+export type GoalView = {
+  id: string;
+  name: string;
+  area: string | null;
+  url: string;
+  target: number;
+  current: number;
+  /** App 算出來的（並寫回 Notion 的 Current）；false＝照 Notion 填的 */
+  auto: boolean;
+};
+
+const GOAL_AREAS = ["🇯🇵 Japanese", "🇬🇧 English"];
+
+/** 這一季有作答、或 Journal 勾了「🇯🇵 Class Review」的天數 */
+async function studyDays(q: Quarter, day: string): Promise<number> {
+  const todayStats = dayStats(await attemptsBetween(day, day));
+  const [journal, ...months] = await Promise.all([
+    queryAll(DS.journal, {
+      and: [
+        { property: "Date", date: { on_or_after: q.start } },
+        { property: "Date", date: { on_or_before: day } },
+        { property: "🇯🇵 Class Review", checkbox: { equals: true } },
+      ],
+    }),
+    ...quarterMonths(q, day).map((m) => monthStats(m, day, todayStats)),
+  ]);
+  const days = new Set(journal.flatMap((p) => date(p, "Date") ?? []));
+  for (const m of months) for (const [d, s] of Object.entries(m)) if (s.n && d >= q.start) days.add(d);
+  return days.size;
+}
+
+async function autoValue(kind: AutoKind, target: number, q: Quarter, day: string): Promise<number> {
+  if (kind === "ted") {
+    // TED Log：這一季有「完成日」的 talk
+    const done = await queryAll(DS.tedLog, {
+      and: [{ property: "完成日", date: { on_or_after: q.start } }, { property: "完成日", date: { on_or_before: q.end } }],
+    });
+    return done.length;
+  }
+  if (kind === "days") return studyDays(q, day);
+  // 積壓＝初級還沒複習的課堂筆記；清掉幾篇＝目標篇數 − 還剩幾篇
+  const left = await queryAll(DS.isiNotes, { and: [{ property: "レベル", select: { equals: "初級" } }, { property: "複習", select: { equals: "未複習" } }] });
+  return Math.max(target - left.length, 0);
+}
+
+async function loadGoals(day: string): Promise<GoalView[]> {
+  const q = quarterOf(day);
+  const pages = await queryAll(DS.goals, {
+    and: [
+      { property: "Level", select: { equals: "Quarter" } },
+      { property: "Period", select: { equals: q.period } },
+      { or: GOAL_AREAS.map((a) => ({ property: "Area", select: { equals: a } })) },
+    ],
+  });
+  return Promise.all(
+    pages.map(async (p): Promise<GoalView> => {
+      const base = { id: p.id, name: text(p, "Name"), area: select(p, "Area"), url: p.url, target: num(p, "Target") };
+      const kind = autoKind(base.name);
+      if (!kind) return { ...base, current: num(p, "Current"), auto: false };
+      const current = await autoValue(kind, base.target, q, day);
+      // 寫回 Goals 的 Current（數字有變才寫），Notion 的進度條跟著動
+      if (current !== num(p, "Current")) await updatePage(p.id, { Current: w.number(current) }).catch((e) => console.error("Goals 寫回失敗", e));
+      return { ...base, current, auto: true };
+    }),
+  );
+}
+
+const cachedGoals = unstable_cache(loadGoals, ["quarter-goals-v1"], { revalidate: 600, tags: ["goals"] });
+
+/** 紀錄頁「本季目標」：日文、英文的季度關鍵結果；讀不到（Goals 還沒連線）回傳 error */
+export async function getGoals(): Promise<{ quarter: Quarter; goals: GoalView[]; error: string | null }> {
+  const day = today();
+  const quarter = quarterOf(day);
+  if (useMock())
+    return {
+      quarter,
+      goals: [
+        { id: "g1", name: "Review Japanese 80 days", area: "🇯🇵 Japanese", url: "#", target: 80, current: 31, auto: true },
+        { id: "g2", name: "Clear ISI review backlog (22 classes)", area: "🇯🇵 Japanese", url: "#", target: 22, current: 12, auto: true },
+        { id: "g3", name: "Watch 36 TED talks", area: "🇬🇧 English", url: "#", target: 36, current: 4, auto: true },
+      ],
+      error: null,
+    };
+  try {
+    return { quarter, goals: await cachedGoals(day), error: null };
+  } catch (e) {
+    return { quarter, goals: [], error: e instanceof Error ? e.message : String(e) };
+  }
 }
 
 export type ClassNoteLink = { id: string; title: string; lesson: string; level: string | null; date: string | null; url: string; review: string | null };

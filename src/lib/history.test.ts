@@ -41,3 +41,42 @@ describe("shiftMonth", () => {
     expect(shiftMonth("2026-12", 1)).toBe("2027-01");
   });
 });
+
+import { dayStats, monthEnd, weekSummary } from "./history";
+
+describe("dayStats / weekSummary", () => {
+  const stats = dayStats([
+    { day: "2026-11-16", kind: "題庫", correct: true },
+    { day: "2026-11-16", kind: "題庫", correct: false },
+    { day: "2026-11-16", kind: "漢字", correct: true },
+    { day: "2026-11-17", kind: "", correct: false },
+    { day: "2026-11-10", kind: "題庫", correct: true },
+  ]);
+  it("counts per day and per kind", () => {
+    expect(stats["2026-11-16"]).toEqual({ n: 3, ok: 2, kinds: { 題庫: [2, 1], 漢字: [1, 1] } });
+    expect(stats["2026-11-17"].kinds).toEqual({ 其他: [1, 0] });
+  });
+  it("summarises the week, weakest kind first", () => {
+    const w = weekSummary("2026-11-17", stats); // 11/17 是週二
+    expect(w.days.map((d) => d.done)).toEqual([true, true, false, false, false, false, false]);
+    expect(w.days[2].future).toBe(true);
+    expect([w.studied, w.n, w.ok]).toEqual([2, 4, 2]);
+    expect(w.kinds).toEqual([
+      { kind: "其他", n: 1, pct: 0 },
+      { kind: "題庫", n: 2, pct: 50 },
+      { kind: "漢字", n: 1, pct: 100 },
+    ]);
+  });
+  it("looks at last week", () => {
+    const w = weekSummary("2026-11-17", stats, 1);
+    expect(w.days[0].day).toBe("2026-11-09");
+    expect([w.studied, w.n]).toEqual([1, 1]);
+  });
+});
+
+describe("monthEnd", () => {
+  it("handles month lengths", () => {
+    expect(monthEnd("2026-11")).toBe("2026-11-30");
+    expect(monthEnd("2028-02")).toBe("2028-02-29");
+  });
+});

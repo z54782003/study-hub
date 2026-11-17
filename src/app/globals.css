@@ -1,15 +1,15 @@
 @import "tailwindcss";
 
-/* Design tokens（Study Hub 設計稿）：安靜的紙面、一個藍色，狀態色只在需要時出現。
+/* Design tokens（Study Hub 設計稿）：暖色的紙面（配合 Life Planner）、一個藍色，狀態色只在需要時出現。
    既有名稱保留：card=surface、muted=ink-3、bad=ng。 */
 :root {
-  --bg: #f6f6f3;
-  --card: #ffffff;
-  --card-2: #efefea;
-  --line: #e2e1db;
-  --ink: #1b1c1e;
-  --ink-2: #4f535a;
-  --muted: #686c73;
+  --bg: #f7f4ee;
+  --card: #fffefb;
+  --card-2: #f0ebe2;
+  --line: #e5dfd4;
+  --ink: #1f1c19;
+  --ink-2: #55504a;
+  --muted: #6c665e;
   --accent: #3550a0;
   --on-accent: #ffffff;
   --accent-soft: #e7ecf8;
@@ -34,13 +34,13 @@
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #111214;
-    --card: #1a1c1f;
-    --card-2: #24272b;
-    --line: #30333a;
-    --ink: #ecedee;
-    --ink-2: #bcc0c7;
-    --muted: #9499a1;
+    --bg: #141210;
+    --card: #1d1a17;
+    --card-2: #292520;
+    --line: #38332c;
+    --ink: #efece8;
+    --ink-2: #c5bfb6;
+    --muted: #a0988d;
     --accent: #97abee;
     --on-accent: #101634;
     --accent-soft: #1f2947;
@@ -57,8 +57,8 @@
     --h3: #4d67be;
     --h4: #97abee;
     /* 深色不用陰影，改 1px 邊線 */
-    --shadow-card: 0 0 0 1px #2a2d33;
-    --shadow-sheet: 0 -1px 0 #30333a;
+    --shadow-card: 0 0 0 1px #302b25;
+    --shadow-sheet: 0 -1px 0 #38332c;
     --shadow-cta: none;
   }
 }
