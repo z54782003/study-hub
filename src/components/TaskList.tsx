@@ -13,6 +13,8 @@ export type Task = {
   tag?: string;
   /** 由資料判斷已完成（例如複習已清空），不需手動勾 */
   autoDone?: boolean;
+  /** 打勾寫回 Notion 的 Tasks（不存在裝置上）：done＝目前是不是 Done，prev＝取消時改回的 Status */
+  remote?: { id: string; done: boolean; prev: string | null };
 };
 /** 字串＝分隔線（例如「13:00–16:10 上課」，上課時間在 config 的 TERMS） */
 export type TaskRow = Task | string;
@@ -43,6 +45,10 @@ export type TaskGroup = { title: string; rows: TaskRow[] };
  */
 export function TaskList({ date, groups }: { date: string; groups: TaskGroup[] }) {
   const [checked, setChecked] = useState<Record<string, boolean>>({});
+  // 寫回 Notion 的任務：打勾狀態（還沒動過就照伺服器給的）、寫入中、失敗訊息
+  const [remoteDone, setRemoteDone] = useState<Record<string, boolean>>({});
+  const [busy, setBusy] = useState<Record<string, boolean>>({});
+  const [failed, setFailed] = useState<Record<string, string>>({});
   const all = groups.flatMap((g) => g.rows);
   const ids = all.flatMap((r) => (typeof r === "string" ? [] : [r.id])).join(",");
   useEffect(() => {
@@ -54,8 +60,30 @@ export function TaskList({ date, groups }: { date: string; groups: TaskGroup[] }
   }, [date, ids]);
 
   const isTask = (r: TaskRow): r is Task => typeof r !== "string";
-  const isDone = (t: Task) => !!t.autoDone || !!checked[t.id];
+  const isDone = (t: Task) => (t.remote ? (remoteDone[t.id] ?? t.remote.done) : !!t.autoDone || !!checked[t.id]);
   const next = all.filter(isTask).find((t) => !isDone(t));
+
+  const toggleRemote = async (t: Task) => {
+    if (!t.remote || busy[t.id]) return;
+    const on = !isDone(t);
+    // 先打勾，寫失敗再改回來
+    setRemoteDone((c) => ({ ...c, [t.id]: on }));
+    setBusy((c) => ({ ...c, [t.id]: true }));
+    setFailed(({ [t.id]: _, ...rest }) => rest);
+    try {
+      const r = await fetch("/api/tasks/done", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ id: t.remote.id, done: on, prev: t.remote.prev }),
+      });
+      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error ?? `HTTP ${r.status}`);
+    } catch (e) {
+      setRemoteDone((c) => ({ ...c, [t.id]: !on }));
+      setFailed((c) => ({ ...c, [t.id]: e instanceof Error ? e.message : String(e) }));
+    } finally {
+      setBusy((c) => ({ ...c, [t.id]: false }));
+    }
+  };
 
   const toggle = (id: string) => {
     const on = !checked[id];
@@ -96,20 +124,24 @@ export function TaskList({ date, groups }: { date: string; groups: TaskGroup[] }
                     <li key={r.id} className={`flex items-center gap-0.5 border-b border-line py-1 pr-4 pl-1 last:border-b-0 ${now ? "bg-accent-soft" : ""}`}>
                       <button
                         type="button"
-                        onClick={() => toggle(r.id)}
-                        disabled={r.autoDone}
+                        onClick={() => (r.remote ? toggleRemote(r) : toggle(r.id))}
+                        disabled={r.remote ? busy[r.id] : r.autoDone}
                         aria-pressed={done}
                         aria-label={`${done ? "取消完成" : "標為完成"}：${r.title}`}
                         className="grid size-11 shrink-0 place-items-center"
                       >
-                        <span className={`grid size-[22px] place-items-center rounded-full ${done ? "bg-ok text-card" : "border-2 border-line"}`}>
+                        <span className={`grid size-[22px] place-items-center rounded-full ${done ? "bg-ok text-card" : "border-2 border-line"} ${busy[r.id] ? "opacity-50" : ""}`}>
                           {done && <Icon name="check" size={14} stroke={3.2} />}
                         </span>
                       </button>
                       <TaskLink t={r} className="flex min-h-[52px] min-w-0 flex-1 items-center gap-2">
                         <span className="min-w-0 flex-1">
                           <span className={`block text-[15px] leading-snug ${now ? "font-bold" : "font-semibold"} ${done ? "text-muted line-through" : ""}`}>{r.title}</span>
-                          {r.sub && <span className="block truncate text-xs text-muted">{r.sub}</span>}
+                          {failed[r.id] ? (
+                            <span role="alert" className="block truncate text-xs text-bad">寫回 Notion 失敗：{failed[r.id]}</span>
+                          ) : (
+                            r.sub && <span className="block truncate text-xs text-muted">{r.sub}</span>
+                          )}
                         </span>
                         {r.tag && !done && <span className="tag bg-due-soft text-due">{r.tag}</span>}
                         {r.external && <Icon name="external" size={16} stroke={2} className="shrink-0 text-muted" label="外部連結" />}

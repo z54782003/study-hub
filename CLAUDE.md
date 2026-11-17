@@ -48,7 +48,7 @@
 - **本季目標**（紀錄頁，`src/lib/goals.ts`、`getGoals`）：讀 🏔 Goals（`DS.goals`）裡 Level＝Quarter、Period＝這一季（`Q4 2026`）、Area 是 🇯🇵 Japanese／🇬🇧 English 的關鍵結果。名稱含 TED／days／backlog 的由 App 算，數字有變就**寫回 Goals 的 Current**（10 分鐘快取）：
   - TED＝TED Log 這一季有「完成日」的支數；days＝這一季有作答、或 Journal 勾了「🇯🇵 Class Review」的天數；backlog＝Target −「初級」還是「未複習」的課堂筆記篇數。
   - 其他關鍵結果照 Notion 填的 Current 顯示，不寫回。每季要在 Goals 新增下一季的 KR（Period 選 Q1 2027…）。
-- **今日頁的 Tasks**：📅 Tasks（`DS.tasks`）裡 Area 是 🇯🇵 Japanese／📚 Learning、Due ≤ 今天、Status 不是 Done／Cancelled 的，放在「有空再做」最後；打勾只記在裝置上，不寫回 Status。
+- **今日頁的 Tasks**：📅 Tasks（`DS.tasks`）裡 Area 是 🇯🇵 Japanese／📚 Learning、Due ≤ 今天、Status 不是 Done／Cancelled 的，放在「有空再做」最後；打勾寫回 Notion（Status＝Done、Completed at＝今天；取消改回原本的 Status、清掉 Completed at），今天完成的當天還留在清單上。
 - Goals、Tasks 兩個資料庫要加 integration 連線，沒連會顯示讀取失敗。
 - **紀錄頁**：過去日子的每日統計（題數、答對、各類型）用 unstable_cache 快取，只有今天和選的那一天即時讀；「這週回顧」＝這週讀了幾天、各類型正確率、最弱的類型。
 - **離線**（`public/sw.js`）：看過的頁面連不上時用上次的內容（唯讀）；API、音檔、PDF 不快取。改了快取規則要把 `VERSION` 加一。

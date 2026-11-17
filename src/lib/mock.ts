@@ -78,7 +78,7 @@ export function mockToday(day: string): TodayData {
       grammar: reviewParts(stageFor(day), false).grammar ? 2 : 0,
     },
     ted: { title: "How to make stress your friend", url: "/ted/mock", progress: "今天做" },
-    todos: [{ id: "t1", title: "報名 JLPT 模擬考", url: "#", area: "🇯🇵 Japanese", daysLate: 2 }],
+    todos: [{ id: "00000000-0000-4000-8000-0000000000e1", title: "報名 JLPT 模擬考", url: "#", area: "🇯🇵 Japanese", daysLate: 2, status: "Queued" }],
     books: [
       { title: "コンビニ人間", url: "#", type: "Graded reader" },
       { title: "Atomic Habits", url: "#", type: "Book" },

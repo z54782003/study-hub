@@ -779,6 +779,7 @@ async function calendarEvents(day: string): Promise<{ today: CalendarEvent[]; ne
 }
 
 const TASK_AREAS = ["🇯🇵 Japanese", "📚 Learning"];
+const TASK_OPEN_STATUSES = ["Queued", "Today", "In progress"];
 
 /** 今日頁；day 給過去的日期＝從紀錄回看那天的內容 */
 export async function getToday(day = today()): Promise<TodayData> {
@@ -797,7 +798,7 @@ export async function getToday(day = today()): Promise<TodayData> {
   };
   const weekend = isWeekend(day);
 
-  const [calendar, preview, homework, review, batch, grammarAll, notes, ted, books, pendingNotes, n3On, grammarNames, plannerTasks] = await Promise.all([
+  const [calendar, preview, homework, review, batch, grammarAll, notes, ted, books, pendingNotes, n3On, grammarNames, plannerTasks, plannerDone] = await Promise.all([
     safe("行事曆", () => calendarEvents(day), null),
     weekend ? null : safe("每日預習", () => findPreviewPage(day), null),
     safe(
@@ -855,6 +856,21 @@ export async function getToday(day = today()): Promise<TodayData> {
             ),
           [] as Page[],
         ),
+    // 今天打勾完成的也留著（可以取消）
+    past
+      ? ([] as Page[])
+      : safe(
+          "Tasks",
+          () =>
+            queryAll(DS.tasks, {
+              and: [
+                { or: TASK_AREAS.map((a) => ({ property: "Area", select: { equals: a } })) },
+                { property: "Status", status: { equals: "Done" } },
+                { property: "Completed at", date: { equals: day } },
+              ],
+            }),
+          [] as Page[],
+        ),
   ]);
   const tedPage = ted.find((p) => !text(p, "Talk").includes("模板"));
   const note = notes[0];
@@ -901,9 +917,12 @@ export async function getToday(day = today()): Promise<TodayData> {
     pendingNotes: pendingNotes.length ? { count: pendingNotes.length, oldest: pendingNotes[0].title } : null,
     ted: tedPage ? { title: text(tedPage, "Talk"), url: `/ted/${tedPage.id}`, progress: select(tedPage, "進度") } : null,
     books: books.map((p) => ({ title: text(p, "Name"), url: p.url, type: select(p, "Type") })),
-    todos: plannerTasks.flatMap((p) => {
+    todos: [...plannerTasks, ...plannerDone].flatMap((p) => {
       const due = date(p, "Due");
-      return due ? [{ id: p.id, title: text(p, "Name"), url: p.url, area: select(p, "Area"), daysLate: diffDays(due, day) }] : [];
+      const status = select(p, "Status");
+      return due || status === "Done"
+        ? [{ id: p.id, title: text(p, "Name"), url: p.url, area: select(p, "Area"), daysLate: due ? diffDays(due, day) : 0, status }]
+        : [];
     }),
     errors,
   };
@@ -1101,6 +1120,16 @@ export async function logJournal(minutes: number): Promise<void> {
   }
   const hours = Math.round((num(entry, "Study hours") + minutes / 60) * 10) / 10;
   await updatePage(entry.id, { "🇯🇵 Class Review": w.checkbox(true), "Study hours": w.number(hours) });
+}
+
+/** Life Planner Tasks 打勾：Status 改成 Done、填 Completed at；取消改回原本的 Status（不知道就 Queued）、清掉 Completed at */
+export async function setPlannerTaskDone(id: string, done: boolean, prev: string | null): Promise<void> {
+  if (useMock()) return;
+  const page = await getPage(id);
+  const source = page.parent.type === "data_source_id" ? page.parent.data_source_id.replace(/-/g, "") : "";
+  if (source !== DS.tasks.replace(/-/g, "")) throw new Error("不是 Tasks 的頁面");
+  const back = prev && TASK_OPEN_STATUSES.includes(prev) ? prev : "Queued";
+  await updatePage(id, done ? { Status: w.status("Done"), "Completed at": w.date(today()) } : { Status: w.status(back), "Completed at": { date: null } });
 }
 
 // ── TED／單字庫 ─────────────────────────────────────

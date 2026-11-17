@@ -140,13 +140,14 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
   if (classAt >= 0) mustRows.splice(classAt, 0, classTime ? `${classTime} 上課` : "上課（時間未定）");
   const optionalRows: TaskRow[] = [
     ...pick(ORDER.filter((id) => !stage.mustTasks.includes(id))),
-    // Life Planner 的 Tasks（日文／學習類、今天到期或逾期）；打勾只記在這台裝置，完成要到 Notion 改 Status
+    // Life Planner 的 Tasks（日文／學習類、今天到期或逾期）；打勾寫回 Notion（Status＝Done、Completed at）
     ...t.todos.map((todo) => ({
       id: `todo-${todo.id}`,
       title: todo.title,
       sub: `Tasks・${todo.daysLate > 0 ? `逾期 ${todo.daysLate} 天` : "今天到期"}`,
       href: todo.url,
       external: true,
+      remote: { id: todo.id, done: todo.status === "Done", prev: todo.status === "Done" ? null : todo.status },
     })),
   ];
 

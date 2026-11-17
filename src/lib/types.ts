@@ -25,7 +25,7 @@ export type TodayData = {
   ted: (Link & { progress: string | null }) | null;
   books: (Link & { type: string | null })[];
   /** Life Planner Tasks：日文／學習類、今天到期（daysLate 0）或逾期的 */
-  todos: { id: string; title: string; url: string; area: string | null; daysLate: number }[];
+  todos: { id: string; title: string; url: string; area: string | null; daysLate: number; status: string | null }[];
   errors: string[];
 };
 
