@@ -1,17 +1,22 @@
 import { describe, expect, it } from "vitest";
 import {
   canonMoras,
+  contourText,
   finishSentence,
+  highMoras,
   FIXED_READINGS,
   kanaMoras,
   keepOneHits,
   misalignedSegments,
   notation,
   parseSentence,
+  PITCH_FALL,
+  PITCH_RISE,
   planSentence,
   planWord,
   readingCount,
   sentenceInput,
+  shapePitch,
   splitMoras,
   wordInput,
   type EnginePhrase,
@@ -122,5 +127,32 @@ describe("sentences", () => {
 describe("fixed readings", () => {
   it("covers every SPECIAL and WORD_KANA word from speech.ts", () => {
     for (const w of [...SPECIAL_WORDS, ...WORD_KANA_WORDS]) expect(FIXED_READINGS, w).toHaveProperty(w);
+  });
+});
+
+describe("pitch shaping", () => {
+  it("follows Tokyo accent: ⓪ low then high to the end, ① high then low, ② low-high-low…", () => {
+    const hl = (n: number, p: number) => highMoras(n, p).map((h) => (h ? "H" : "L")).join("");
+    expect(hl(5, 0)).toBe("LHHHH"); // できあがり⓪
+    expect(hl(2, 1)).toBe("HL"); // 雨①
+    expect(hl(2, 0)).toBe("LH"); // 飴⓪
+    expect(hl(2, 2)).toBe("LH"); // 橋②：單獨唸和平板一樣
+    expect(hl(4, 2)).toBe("LHLL"); // 中高型：第二拍之後下降
+    expect(hl(3, 9)).toBe("LHH"); // 聲調超過拍數 → 當尾高
+  });
+  it("keeps the plateau flat (no final dip) and makes the falls clear", () => {
+    // VOICEVOX 給的：できあがり⓪ 詞尾往下滑
+    const out = shapePitch([5.62, 5.9, 5.98, 5.95, 5.77], 0);
+    expect(out[0]).toBeCloseTo(5.98 - PITCH_RISE);
+    expect(out.slice(1)).toEqual([5.98, 5.98, 5.98, 5.98]);
+    // 雨①：引擎幾乎不降 → 第二拍低 PITCH_FALL
+    const ame = shapePitch([5.81, 5.8], 1);
+    expect(ame[0]).toBe(5.81);
+    expect(ame[1]).toBeCloseTo(5.81 - PITCH_FALL);
+  });
+  it("leaves unvoiced morae (pitch 0) alone", () => {
+    expect(shapePitch([5.6, 0, 5.9, 5.8], 0)).toEqual([5.9 - PITCH_RISE, 0, 5.9, 5.9]);
+    expect(shapePitch([0, 0], 1)).toEqual([0, 0]);
+    expect(contourText([5.6, 0, 5.9, 5.8], 0)).toBe("低無高高");
   });
 });

@@ -67,6 +67,7 @@
 - 單字庫「發音檔」欄（檔案）：`w-／e1-／e2-{內容雜湊8}-{設定雜湊6}.mp3`（`src/lib/jaAudioFiles.ts`）。App 只用內容雜湊和目前 Notion 文字對得上的（改過單字、讀音、聲調、例句就自動退回瀏覽器發音）；網址一小時失效，`Speak` 過期就走 `/api/vocab-audio/[id]/[kind]` 轉址。
 - 產生：`npm run gen-audio`（`scripts/gen-audio.ts`，只在使用者的 Mac 跑，要 VOICEVOX App 和 ffmpeg；雲端環境沒有引擎）。`--voice-test` 三個角色試聽；`--lesson "初中級 L1" --speaker 名字`；`--all` 可中斷接續（Notion 上已有、沒變的不重傳）；`--dry-run` 只比對。輸出在 `audio-out/`（不進 git）：report／keep-one CSV、`files/<課次>/` 可直接聽。
 - 比對邏輯在 `src/lib/jaAudio.ts`：單字比「音標/假名」「聲調」（0＝平板＝VOICEVOX 的拍數），不一致改用假名＋聲調（AquesTalk 風記法）；多讀音用第一個、標需抽查；帶「〜」跳過。例句依「漢字（かな）」＋讀音表逐拍對齊，對不上的詞改送讀音。讀音表 `FIXED_READINGS`＝原 SPECIAL＋WORD_KANA（測試確保涵蓋），SAY_AS 照用；KEEP_ONE 不轉，報告另列。
+- 音高塑形（`shapePitch`）：VOICEVOX 的重音起伏很弱（平板詞詞尾往下滑約 5 個半音、雨① 反而上升），有填「聲調」的單字合成前照東京式重音把每拍設成高／低（第一拍低 0.2、核後低 0.3，log F0），無聲的拍不動；報告「每拍高低」欄。檔名的設定雜湊只有這些單字帶 `PITCH_SHAPE`，改塑形規則就把它加一，只重產有聲調的單字。例句不塑形。
 - 用到音檔的地方：單字卡（單字、例句）、複習的單字詳解。搭配・用法、N3、漢字例詞、動詞表照舊瀏覽器發音。角色還沒選定（試聽 春日部つむぎ／冥鳴ひまり／青山龍星）；選定後 App 要加「VOICEVOX:角色名」標示。
 
 ## 課文音檔

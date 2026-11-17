@@ -86,6 +86,42 @@ export const engineReading = (phrases: EnginePhrase[]) => phrases.map((p) => p.m
 /** 重音寫成 AquesTalk 風：核的那一拍後面加 '（VOICEVOX 的平板＝核在最後一拍） */
 export const notation = (moras: string[], accent: number) => moras.map((m, i) => m + (i === accent - 1 ? "'" : "")).join("");
 
+// ── 單字的音高塑形 ───────────────────────────────────
+// VOICEVOX 的重音起伏很弱：平板詞詞尾會往下滑（できあがり⓪ 的「り」掉約 3 個半音），雨① 單獨唸幾乎不降。
+// 有填聲調的單字，合成前照東京式重音把每一拍拉成清楚的高／低。改了規則就把 PITCH_SHAPE 加一（只有有聲調的單字會重產）。
+export const PITCH_SHAPE = 1;
+/** 第一拍是低拍時比高拍低多少（log F0；0.2 ≈ 3.5 個半音） */
+export const PITCH_RISE = 0.2;
+/** 核之後的拍比高拍低多少（0.3 ≈ 5 個半音） */
+export const PITCH_FALL = 0.3;
+
+/**
+ * 東京式重音：每一拍高（true）或低（false）。pitch＝Notion 的聲調：0＝平板，n＝第 n 拍是核（之後下降）。
+ * 第一拍：①高，其他低；第二拍以後：平板或還沒過核是高、過了核是低。pitch 超過拍數當成尾高（單獨唸和平板一樣）。
+ */
+export function highMoras(count: number, pitch: number): boolean[] {
+  const core = pitch === 0 || pitch > count ? count : pitch;
+  return Array.from({ length: count }, (_, i) => (i === 0 ? core === 1 : i < core));
+}
+
+/**
+ * 把引擎給的每拍音高改成照聲調的高低：高拍＝引擎有聲拍裡最高的音，第一拍的低＝高－PITCH_RISE，核之後的低＝高－PITCH_FALL。
+ * 無聲的拍（音高 0：促音、無聲化母音）不動。
+ */
+export function shapePitch(pitches: number[], pitch: number): number[] {
+  const voiced = pitches.filter((p) => p > 0);
+  if (!voiced.length) return pitches;
+  const high = Math.max(...voiced);
+  const hl = highMoras(pitches.length, pitch);
+  return pitches.map((p, i) => (p <= 0 ? p : hl[i] ? high : high - (i === 0 ? PITCH_RISE : PITCH_FALL)));
+}
+
+/** 報告用：每拍「高／低」，無聲的拍標「無」 */
+export const contourText = (pitches: number[], pitch: number) =>
+  highMoras(pitches.length, pitch)
+    .map((h, i) => (pitches[i] <= 0 ? "無" : h ? "高" : "低"))
+    .join("");
+
 // ── 單字 ─────────────────────────────────────────────
 
 export const WORD_VERDICT = {
