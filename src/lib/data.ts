@@ -1051,7 +1051,9 @@ export async function submitAnswer(payload: AnswerPayload): Promise<void> {
     });
     // 關聯單字的熟悉度跟著題目對錯更新
     for (const vid of relationIds(page, "關聯單字")) {
-      const v = await getPage(vid);
+      // 關聯單字被刪掉（合併重複單字後在垃圾桶）或讀不到：跳過，不讓整題作答失敗
+      const v = await getPage(vid).catch((e) => (console.error("關聯單字讀取失敗", vid, e), null));
+      if (!v || v.in_trash || v.archived) continue;
       const vu = vocabUpdate(select(v, "熟悉度"), num(v, "答對次數"), num(v, "答錯次數"), correct);
       await updatePage(vid, {
         熟悉度: w.status(vu.status),
