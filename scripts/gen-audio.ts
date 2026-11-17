@@ -35,13 +35,16 @@ import {
   finishSentence,
   FIXED_READINGS,
   JA_AUDIO_RULES,
+  contourText,
   keepOneHits,
   notation,
   parseSentence,
+  PITCH_SHAPE,
   planSentence,
   planWord,
   SAY_AS_JA,
   sentenceInput,
+  shapePitch,
   WORD_VERDICT,
   wordInput,
   type EnginePhrase,
@@ -153,6 +156,7 @@ type Row = {
   pitch: string;
   engineAccent: string;
   notation: string;
+  contour: string;
   verdict: string;
   note: string;
   file: string;
@@ -180,9 +184,22 @@ async function makeWord(src: AudioSource, sp: Speaker, synth: boolean) {
       }
     }
   }
+  // 有聲調：照東京式重音把每拍拉成清楚的高低（引擎的起伏太弱，平板詞詞尾會往下滑）
+  let contour = "";
+  if (src.pitch !== null && q.accent_phrases.length === 1) {
+    // AccentPhrase 是 EnginePhrase 和引擎回傳的交集型別，moras 取引擎那一邊才有 pitch
+    const moras = q.accent_phrases[0].moras as Mora[];
+    const shaped = shapePitch(
+      moras.map((m) => m.pitch),
+      src.pitch,
+    );
+    moras.forEach((m, i) => (m.pitch = shaped[i]));
+    contour = contourText(shaped, src.pitch);
+  }
   return {
     plan,
     nota,
+    contour,
     input,
     wav: synth ? await synthesis(q, sp) : null,
   };
@@ -212,8 +229,8 @@ const csvCell = (v: string) => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` 
 function writeCsv(path: string, header: string[], rows: string[][]) {
   writeFileSync(path, "﻿" + [header, ...rows].map((r) => r.map(csvCell).join(",")).join("\n") + "\n");
 }
-const REPORT_HEADER = ["課次", "單字", "page id", "種類", "送引擎的文字", "我的讀音", "引擎讀音", "聲調", "引擎重音", "AquesTalk 記法", "判定", "說明", "mp3", "狀態"];
-const reportRow = (r: Row) => [r.lesson, r.word, r.pageId, KIND_LABEL[r.kind], r.input, r.mine, r.engine, r.pitch, r.engineAccent, r.notation, r.verdict, r.note, r.file, r.status];
+const REPORT_HEADER = ["課次", "單字", "page id", "種類", "送引擎的文字", "我的讀音", "引擎讀音", "聲調", "引擎重音", "AquesTalk 記法", "每拍高低（塑形後）", "判定", "說明", "mp3", "狀態"];
+const reportRow = (r: Row) => [r.lesson, r.word, r.pageId, KIND_LABEL[r.kind], r.input, r.mine, r.engine, r.pitch, r.engineAccent, r.notation, r.contour, r.verdict, r.note, r.file, r.status];
 const stamp = () => new Date().toISOString().replace(/[-:]/g, "").replace(/\..*/, "").replace("T", "-");
 const safeName = (s: string) => s.replace(/[\/\\:*?"<>|\s]/g, "_").slice(0, 40);
 
@@ -247,7 +264,7 @@ async function voiceTest(notion: Client | null) {
       const r = await makeWord({ ...w, ex1: "", ex2: "" }, sp, true);
       const file = join(dir, `${String(++n).padStart(2, "0")}_${w.label}.mp3`);
       writeFileSync(file, toMp3(r.wav!));
-      rows.push([name, w.label, r.input, r.plan.kana, r.plan.engineKana, String(w.pitch ?? ""), String(r.plan.engineAccent ?? ""), r.nota, r.plan.verdict, r.plan.note, file]);
+      rows.push([name, w.label, r.input, r.plan.kana, r.plan.engineKana, String(w.pitch ?? ""), String(r.plan.engineAccent ?? ""), [r.nota, r.contour].filter(Boolean).join(" "), r.plan.verdict, r.plan.note, file]);
     }
     for (const s of sentences) {
       const r = await makeSentence(s, sp, true);
@@ -331,8 +348,11 @@ async function run(notion: Client, lessons: string[], speakerName: string) {
   const force = flag("force");
   const limit = Number(opt("limit") ?? Infinity);
   const sp = await findSpeaker(speakerName);
-  const gen = genHash({ rules: JA_AUDIO_RULES, speaker: [sp.name, sp.id], synth: SYNTH, table: FIXED_READINGS, sayAs: SAY_AS_JA });
-  console.log(`語者：${sp.name}（style ${sp.id}），設定雜湊 ${gen}${dry ? "，只比對不上傳" : ""}`);
+  const settings = { rules: JA_AUDIO_RULES, speaker: [sp.name, sp.id], synth: SYNTH, table: FIXED_READINGS, sayAs: SAY_AS_JA };
+  const gen = genHash(settings);
+  // 有聲調的單字另外帶上音高塑形的版本：改塑形規則只重產這些，例句和沒聲調的單字不動
+  const genShaped = genHash({ ...settings, pitchShape: PITCH_SHAPE });
+  console.log(`語者：${sp.name}（style ${sp.id}），設定雜湊 ${gen}（有聲調的單字 ${genShaped}）${dry ? "，只比對不上傳" : ""}`);
 
   let stop = false;
   process.on("SIGINT", () => {
@@ -361,9 +381,9 @@ async function run(notion: Client, lessons: string[], speakerName: string) {
     const wanted = new Map<AudioKind, string>();
     for (const kind of AUDIO_KINDS) {
       const t = audioText(kind, src);
-      if (t) wanted.set(kind, audioFileName(kind, contentHash(kind, t), gen));
+      if (t) wanted.set(kind, audioFileName(kind, contentHash(kind, t), kind === "w" && src.pitch !== null ? genShaped : gen));
     }
-    const base = { lesson, word: src.word, pageId: page.id, input: "", mine: "", engine: "", pitch: src.pitch === null ? "" : String(src.pitch), engineAccent: "", notation: "", note: "", file: "" };
+    const base = { lesson, word: src.word, pageId: page.id, input: "", mine: "", engine: "", pitch: src.pitch === null ? "" : String(src.pitch), engineAccent: "", notation: "", contour: "", note: "", file: "" };
     if (/[〜～~]/.test(src.word)) rows.push({ ...base, kind: "w", verdict: WORD_VERDICT.skip, status: "跳過（App 用瀏覽器發音）" });
 
     const uploads: { kind: AudioKind; name: string; id: string }[] = [];
@@ -377,7 +397,7 @@ async function run(notion: Client, lessons: string[], speakerName: string) {
         const listen = join(OUT, "files", safeName(lesson || "未分類"), `${safeName(src.word)}_${KIND_LABEL[kind]}.mp3`);
         if (kind === "w") {
           const r = await makeWord(src, sp, !dry);
-          rows.push({ ...base, kind, input: r.input, mine: r.plan.kana, engine: r.plan.engineKana, engineAccent: String(r.plan.engineAccent ?? ""), notation: r.nota, verdict: r.plan.verdict, note: r.plan.note, file: dry ? "" : listen, status: dry ? "只比對" : "新產生" });
+          rows.push({ ...base, kind, input: r.input, mine: r.plan.kana, engine: r.plan.engineKana, engineAccent: String(r.plan.engineAccent ?? ""), notation: r.nota, contour: r.contour, verdict: r.plan.verdict, note: r.plan.note, file: dry ? "" : listen, status: dry ? "只比對" : "新產生" });
           if (r.wav) uploads.push({ kind, name, id: await save(notion, r.wav, name, listen) });
         } else {
           const text = kind === "e1" ? src.ex1 : src.ex2;
