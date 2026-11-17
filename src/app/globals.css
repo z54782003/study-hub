@@ -132,6 +132,8 @@ html, body { background: var(--bg); color: var(--ink); }
 body { -webkit-tap-highlight-color: transparent; font-family: var(--font-zh); }
 .ja, :lang(ja) { font-family: var(--font-ja); }
 .read { font-family: var(--font-read); }
+/* 鍵盤（iPad 外接鍵盤）操作時看得到焦點；觸控不顯示 */
+:where(a, button, summary, [tabindex]):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 rt { font-size: 0.5em; color: var(--muted); font-weight: 400; }
 
 /* 翻卡：240ms 翻面；減少動態效果時改淡入 */

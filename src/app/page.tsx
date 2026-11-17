@@ -159,7 +159,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
         </div>
       </header>
 
-      <section aria-label="考試倒數" className="grid grid-cols-[1.25fr_1fr] gap-2.5 md:col-start-1">
+      <section aria-label="考試倒數" className="grid grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] gap-2.5 md:col-start-1">
         {exam ? (
           <a href="/review/exam" className="block rounded-2xl bg-exam-soft px-3.5 py-3 text-exam">
             <div className="text-xs font-bold">{exam.date.slice(5).replace("-", "/")} 學校考試</div>
@@ -167,7 +167,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
               <span className="text-[28px] leading-9 font-bold tabular-nums">{exam.daysLeft === 0 ? "今天" : exam.daysLeft}</span>
               {exam.daysLeft > 0 && <span className="text-sm font-semibold">天</span>}
             </div>
-            <div className="truncate text-[13px] font-semibold text-ink" lang="ja">
+            <div className="line-clamp-2 text-[13px] leading-snug font-semibold text-ink" lang="ja">
               {exam.name}・{exam.scope}
             </div>
           </a>

@@ -7,7 +7,9 @@ export const metadata: Metadata = {
   title: "Study Hub",
   description: "每日學習清單：日文・英文・閱讀",
   manifest: "/manifest.webmanifest",
-  icons: { icon: "/icon.svg", apple: "/icon.svg" },
+  // iOS 的主畫面圖示不吃 SVG，要 PNG
+  icons: { icon: "/icon.svg", apple: "/apple-touch-icon.png" },
+  robots: { index: false, follow: false },
   appleWebApp: { capable: true, title: "Study", statusBarStyle: "default" },
 };
 

@@ -793,7 +793,7 @@ export async function getToday(day = today()): Promise<TodayData> {
   };
   const weekend = isWeekend(day);
 
-  const [calendar, preview, homework, review, batch, grammarAll, notes, ted, books] = await Promise.all([
+  const [calendar, preview, homework, review, batch, grammarAll, notes, ted, books, pendingNotes, n3On, grammarNames] = await Promise.all([
     safe("行事曆", () => calendarEvents(day), null),
     weekend ? null : safe("每日預習", () => findPreviewPage(day), null),
     safe(
@@ -826,12 +826,11 @@ export async function getToday(day = today()): Promise<TodayData> {
       [] as Page[],
     ),
     past ? ([] as Page[]) : safe("Books", () => queryAll(DS.books, { property: "Status", select: { equals: "Reading" } }), [] as Page[]),
+    past ? ([] as ClassNoteLink[]) : safe("ISI 課堂筆記（未複習）", () => pendingClassNotes("初中級"), [] as ClassNoteLink[]),
+    safe("N3 單字", () => n3WordsActive(day), false),
+    // 過去的日子：今天的文型只記當天，回看不到
+    past ? ([] as string[]) : safe("N3 文法", () => todaysGrammarNames(day), [] as string[]),
   ]);
-  const pendingNotes = past ? [] : await safe("ISI 課堂筆記（未複習）", () => pendingClassNotes("初中級"), [] as ClassNoteLink[]);
-
-  const n3On = await safe("N3 單字", () => n3WordsActive(day), false);
-  // 過去的日子：今天的文型只記當天，回看不到
-  const grammarNames = past ? [] : await safe("N3 文法", () => todaysGrammarNames(day), [] as string[]);
   const tedPage = ted.find((p) => !text(p, "Talk").includes("模板"));
   const note = notes[0];
 
