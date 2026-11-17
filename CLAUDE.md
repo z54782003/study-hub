@@ -52,6 +52,12 @@
 - 只寫假名時高低音不穩的詞（おかわり）：`SAY_AS` 改送標準漢字寫法（お代わり），單字按鈕、搭配、例句都適用。
 - 英文優先用英式語音（en-GB）。
 
+## 日文發音音檔（VOICEVOX 預先產生）
+- 單字庫「發音檔」欄（檔案）：`w-／e1-／e2-{內容雜湊8}-{設定雜湊6}.mp3`（`src/lib/jaAudioFiles.ts`）。App 只用內容雜湊和目前 Notion 文字對得上的（改過單字、讀音、聲調、例句就自動退回瀏覽器發音）；網址一小時失效，`Speak` 過期就走 `/api/vocab-audio/[id]/[kind]` 轉址。
+- 產生：`npm run gen-audio`（`scripts/gen-audio.ts`，只在使用者的 Mac 跑，要 VOICEVOX App 和 ffmpeg；雲端環境沒有引擎）。`--voice-test` 三個角色試聽；`--lesson "初中級 L1" --speaker 名字`；`--all` 可中斷接續（Notion 上已有、沒變的不重傳）；`--dry-run` 只比對。輸出在 `audio-out/`（不進 git）：report／keep-one CSV、`files/<課次>/` 可直接聽。
+- 比對邏輯在 `src/lib/jaAudio.ts`：單字比「音標/假名」「聲調」（0＝平板＝VOICEVOX 的拍數），不一致改用假名＋聲調（AquesTalk 風記法）；多讀音用第一個、標需抽查；帶「〜」跳過。例句依「漢字（かな）」＋讀音表逐拍對齊，對不上的詞改送讀音。讀音表 `FIXED_READINGS`＝原 SPECIAL＋WORD_KANA（測試確保涵蓋），SAY_AS 照用；KEEP_ONE 不轉，報告另列。
+- 用到音檔的地方：單字卡（單字、例句）、複習的單字詳解。搭配・用法、N3、漢字例詞、動詞表照舊瀏覽器發音。角色還沒選定（試聽 春日部つむぎ／冥鳴ひまり／青山龍星）；選定後 App 要加「VOICEVOX:角色名」標示。
+
 ## 課文音檔
 - 光碟版音檔 `7012019_DiscA_NN.mp3`／`DiscB`／`DiscC`：A 片＝第 1–5 課、B 片＝第 6–10 課、C 片＝第 11–15 課。播放列只顯示段落名稱（不顯示軌號）。一軌可能包含好幾個舊編號（やってみよう 整組一軌），對照表 `DISC_TRACKS`（`src/lib/lessonAudio.ts`，用各軌長度和官方スクリプト 001–234 的編號比對出來）；`lessonRows` 把同一軌的段落合成一列（やってみよう 1〜3）。
 - Notion 檔案網址一小時後失效：頁面只放 `/api/lesson-audio/[軌號 A08]`，播放時才轉到有效網址；快取的網址剩不到 10 分鐘就直接向 Notion 重抓（`lessonAudioIndex`）。

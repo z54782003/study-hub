@@ -87,6 +87,10 @@ const KEEP_ONE = new Set("聞見書読話飲買待言思動棚".split(""));
 
 const SPECIAL = new Set("今日 明日 昨日 今朝 今年 今夜 一日 二日 一人 二人 大人 上手 下手 部屋 眼鏡 土産 果物 景色 一昨日 明後日 二十日 二十歳 八百屋 紅葉 博士 何人 何日 見学会 丈夫 飲み放題 一万円札 五千円札 千円札 時速".split(" "));
 
+/** 產生音檔的讀音表（src/lib/jaAudio.ts FIXED_READINGS）要涵蓋這些詞，測試會檢查 */
+export const SPECIAL_WORDS: readonly string[] = [...SPECIAL];
+export const WORD_KANA_WORDS: readonly string[] = [...WORD_KANA];
+
 /** SPECIAL 裡漢字夾假名的詞（飲み放題）：例句寫成「飲（の）み放題（ほうだい）」時整個換成讀音 */
 const SPECIAL_MIXED: [RegExp, (...m: string[]) => string][] = [...SPECIAL]
   .filter((w) => /[\u3040-\u309f]/.test(w))
