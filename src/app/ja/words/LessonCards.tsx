@@ -203,7 +203,7 @@ export function LessonCards({
                 {w.reading}
               </span>
             )}
-            <Speak text={lang === "en" ? w.word : speakableJa(w.reading, w.word)} lang={lang} label="播放讀音" />
+            <Speak text={lang === "en" ? w.word : speakableJa(w.reading, w.word)} lang={lang} audio={w.audio} label="播放讀音" />
           </div>
         </div>
         {(w.pos || verb.type || masu) && (
@@ -263,7 +263,7 @@ export function LessonCards({
                   </p>
                   {e.zh && <p className="text-sm text-ink-2">{e.zh}</p>}
                 </div>
-                <Speak text={e.ja} lang={lang} keep={lang === "ja" ? keepWordJa(w.word) : undefined} label={`播放例句${k + 1}`} />
+                <Speak text={e.ja} lang={lang} keep={lang === "ja" ? keepWordJa(w.word) : undefined} audio={e.audio} label={`播放例句${k + 1}`} />
               </div>
             ))}
           </section>

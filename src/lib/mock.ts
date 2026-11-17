@@ -168,9 +168,11 @@ export function mockVocab(): VocabItem[] {
       pos: "n. 名詞",
       usage: "目標を立てる／目標に向かって／目標を達成する",
       examples: [
-        { ja: "今年の目標を立てました。", zh: "我訂了今年的目標。" },
+        // 預覽：第一句有發音檔（/mock-audio/ 不存在，播不了會退回瀏覽器發音；測試時由 playwright 攔截）
+        { ja: "今年の目標を立てました。", zh: "我訂了今年的目標。", audio: { url: "/mock-audio/e1.mp3", expires: "2999-01-01T00:00:00Z", fallback: "/mock-audio/e1.mp3" } },
         { ja: "目標に向かって毎日勉強しています。", zh: "朝著目標每天唸書。" },
       ],
+      audio: { url: "/mock-audio/w.mp3", expires: "2999-01-01T00:00:00Z", fallback: "/mock-audio/w.mp3" },
       lesson: "初中級 L3",
       lang: "ja",
       status: "學習中",

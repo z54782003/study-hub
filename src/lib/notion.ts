@@ -83,6 +83,19 @@ export function num(p: Page, name: string): number {
   return v?.type === "number" ? (v.number ?? 0) : 0;
 }
 
+/** 數字欄；沒填是 null（num() 會當成 0） */
+export function numOrNull(p: Page, name: string): number | null {
+  const v = prop(p, name);
+  return v?.type === "number" ? v.number : null;
+}
+
+/** 檔案欄裡 Notion 託管的檔案（網址一小時後失效） */
+export function files(p: Page, name: string): { name: string; url: string; expires: string | null }[] {
+  const v = prop(p, name);
+  if (v?.type !== "files") return [];
+  return v.files.flatMap((f) => (f.type === "file" ? [{ name: f.name, url: f.file.url, expires: f.file.expiry_time ?? null }] : []));
+}
+
 export function relationIds(p: Page, name: string): string[] {
   const v = prop(p, name);
   return v?.type === "relation" ? v.relation.map((r) => r.id) : [];

@@ -757,7 +757,7 @@ function VocabDetail({ item }: { item: VocabItem }) {
       <div className="text-center">
         <p className="flex items-center justify-center gap-1 text-2xl" lang={lang}>
           {item.reading}
-          <Speak text={lang === "ja" ? speakableJa(item.reading, item.word) : item.word} lang={lang} />
+          <Speak text={lang === "ja" ? speakableJa(item.reading, item.word) : item.word} lang={lang} audio={item.audio} />
         </p>
         <p className="text-xl font-semibold">{item.meaning || "（中文翻譯還沒補）"}</p>
         <p className="text-sm text-muted">{[item.pos, item.lesson, item.status].filter(Boolean).join("・")}</p>
