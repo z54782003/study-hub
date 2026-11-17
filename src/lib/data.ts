@@ -16,6 +16,7 @@ import { audioKey, lessonRows, lessonTitle, parseIndexPage, parseTranscript, typ
 import { parseNoteGrammar, type GrammarPoint, type NoteBlock, type Seg } from "./noteGrammar";
 import { EN_OTHER, EN_TOPICS } from "./reviewSource";
 import { findChildPages } from "./childPages";
+import { AUDIO_PROPERTY, currentAudio, type AudioKind, type AudioSource } from "./jaAudioFiles";
 import { NOTE_REVIEW_OPTIONS } from "./noteReview";
 import { tedDoneChange } from "./tedLog";
 import { dayStats, monthEnd, shiftMonth, streak, type DayStat } from "./history";
@@ -23,7 +24,7 @@ import { autoKind, quarterMonths, quarterOf, type AutoKind, type Quarter } from 
 import { EVIU_STATUSES, eviuProgress, type EviuUnit } from "./eviu";
 import { grammarOn, n3WordsOn, needsDebtCheck, reviewParts, stageFor } from "./stages";
 import { pickPreviewPage, summarizePreview, type ChildPage, type SimpleBlock } from "./preview";
-import { date, getPage, hasNotion, multiSelect, notion, num, queryAll, relationIds, select, text, updatePage, w, type Page } from "./notion";
+import { date, files, getPage, hasNotion, multiSelect, notion, num, numOrNull, queryAll, relationIds, select, text, updatePage, w, type Page } from "./notion";
 import {
   firstUnlearnedGrammar,
   matchGrammar,
@@ -375,7 +376,29 @@ async function bankQuiz(s: Extract<ReviewSource, { src: "bank" }>): Promise<Quiz
   return items.sort((a, b) => rank(a) - rank(b)).slice(0, s.count);
 }
 
-const toVocab = (p: Page): VocabItem => ({
+const audioSource = (p: Page): AudioSource => ({
+  word: text(p, "單字"),
+  reading: text(p, "音標/假名"),
+  pitch: numOrNull(p, "聲調"),
+  ex1: text(p, "例句"),
+  ex2: text(p, "例句2"),
+});
+
+/** 日文單字還是最新的發音檔（內容改過的就不用，退回瀏覽器發音） */
+const vocabAudio = (p: Page) => (select(p, "語言") === "🇯🇵 日文" ? currentAudio(p.id, audioSource(p), files(p, AUDIO_PROPERTY)) : {});
+
+/** /api/vocab-audio/[id]/[kind]：發音檔當下有效的網址（頁面上的網址一小時後失效時才會走到這裡） */
+export async function vocabAudioUrl(id: string, kind: AudioKind): Promise<string | null> {
+  if (useMock()) return null;
+  const p = await getPage(id);
+  const source = p.parent.type === "data_source_id" ? p.parent.data_source_id.replace(/-/g, "") : "";
+  if (source !== DS.vocab.replace(/-/g, "")) return null;
+  return vocabAudio(p)[kind]?.url ?? null;
+}
+
+const toVocab = (p: Page): VocabItem => {
+  const audio = vocabAudio(p);
+  return {
   kind: "vocab",
   id: p.id,
   word: text(p, "單字"),
@@ -384,15 +407,17 @@ const toVocab = (p: Page): VocabItem => ({
   pos: select(p, "詞性"),
   usage: text(p, "搭配・用法"),
   examples: [
-    { ja: text(p, "例句"), zh: text(p, "例句翻譯") },
-    { ja: text(p, "例句2"), zh: text(p, "例句2翻譯") },
+    { ja: text(p, "例句"), zh: text(p, "例句翻譯"), audio: audio.e1 },
+    { ja: text(p, "例句2"), zh: text(p, "例句2翻譯"), audio: audio.e2 },
   ].filter((e) => e.ja),
+  audio: audio.w,
   lesson: select(p, "課次"),
   lang: select(p, "語言") === "🇬🇧 英文" ? "en" : "ja",
   status: select(p, "熟悉度"),
   right: num(p, "答對次數"),
   wrong: num(p, "答錯次數"),
-});
+  };
+};
 
 const VOCAB_RANK: Record<string, number> = { 忘記: 0, 學習中: 1, 未學: 2, 熟悉: 3, 精通: 4 };
 
