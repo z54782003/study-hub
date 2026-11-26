@@ -14,11 +14,11 @@ export type AudioSource = { word: string; reading: string; pitch: number | null;
 
 const sha1 = (s: string) => createHash("sha1").update(s).digest("hex");
 
-/** 這種音檔的文字；沒有就不產（例句2 空白、單字帶「〜」） */
+/** 這種音檔的文字；沒有就不產（例句2 空白、例句只有「—」這類符號、單字帶「〜」） */
 export function audioText(kind: AudioKind, src: AudioSource): string | null {
   if (kind === "w") return /[〜～~]/.test(src.word) || !src.word.trim() ? null : JSON.stringify([src.word, src.reading, src.pitch]);
   const t = (kind === "e1" ? src.ex1 : src.ex2).trim();
-  return t || null;
+  return /[\p{L}\p{N}]/u.test(t) ? t : null;
 }
 
 export const contentHash = (kind: AudioKind, text: string) => sha1(`${kind}\n${text}`).slice(0, 8);

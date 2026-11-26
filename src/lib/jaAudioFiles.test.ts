@@ -13,6 +13,8 @@ describe("audio file names", () => {
   });
   it("has no text for empty examples and 〜 words", () => {
     expect(audioText("e2", src)).toBeNull();
+    expect(audioText("e1", { ...src, ex1: "—" })).toBeNull();
+    expect(audioText("e1", { ...src, ex1: " … " })).toBeNull();
     expect(audioText("w", { ...src, word: "〜日" })).toBeNull();
   });
   it("only uses files whose content still matches Notion", () => {
