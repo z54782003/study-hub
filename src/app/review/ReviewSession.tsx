@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { gradeChoice, parseChoices } from "@/lib/grading";
 import { sourceLabel, sourceQuery } from "@/lib/reviewSource";
-import { Speak } from "@/components/Speak";
+import { Speak, VoiceCredit } from "@/components/Speak";
 import { Ruby } from "@/components/Ruby";
 import { masuRuby, parseUsage, splitMasu } from "@/lib/usage";
 import { speakableJa } from "@/lib/speech";
@@ -786,6 +786,7 @@ function VocabDetail({ item }: { item: VocabItem }) {
           )}
         </div>
       )}
+      <VoiceCredit show={!!item.audio} className="text-center" />
     </div>
   );
 }

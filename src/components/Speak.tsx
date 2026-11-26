@@ -4,6 +4,15 @@ import { canSpeak, speak, type SpeechLang } from "@/lib/speech";
 import type { AudioRef } from "@/lib/types";
 import { Icon } from "./Icon";
 
+/** 發音檔的語音 credit（VOICEVOX 角色規約要求標示）；gen-audio 換 --speaker 時這裡要跟著改 */
+export const VOICE_CREDIT = "VOICEVOX:春日部つむぎ";
+
+/** 這張卡有播放預先產生的發音檔時，在卡片底部標一行 credit */
+export function VoiceCredit({ show, className = "" }: { show: boolean; className?: string }) {
+  if (!show) return null;
+  return <p className={`text-[11px] text-muted ${className}`}>語音：{VOICE_CREDIT}</p>;
+}
+
 // 同時只播一個：按下一個喇叭就停掉上一個
 let current: HTMLAudioElement | null = null;
 
