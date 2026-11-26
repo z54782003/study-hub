@@ -14,6 +14,7 @@ export const DS = {
   goals: process.env.DS_GOALS ?? "52f097c5-7668-82f0-9186-07bf435b1b7a", // 🏔 Goals（Life Planner：年→季→月）
   tasks: process.env.DS_TASKS ?? "66220cad-19e4-4eae-9019-7c3708e8c599", // 📅 Tasks（Life Planner 的待辦）
   eviu: process.env.DS_EVIU ?? "26eff28f-4786-4617-bc65-7989cd6f5950", // 📚 EVIU Units（English Vocabulary in Use）
+  speaking: process.env.DS_SPEAKING ?? "424097c5-7668-811b-9fd9-000b2d316a0b", // 口說練習（言ってみよう）：「できる日本語 初中級」課程頁底下
 };
 
 // 「每日預習（W3）」父頁，底下一天一頁，標題「MM/DD（曜）預習｜L〇 ST〇」
