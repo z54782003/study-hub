@@ -98,7 +98,7 @@ export function SpeakingSetCard({ set }: { set: SpeakingSet }) {
             關閉
           </button>
           {/* eslint-disable-next-line @next/next/no-img-element -- Notion 簽章網址，不走 next/image */}
-          <img src={set.image.url} alt={`言ってみよう［${set.no}］課本頁（放大）`} className="mx-auto block h-auto w-full max-w-[880px] bg-white" />
+          <img src={set.image.url} alt={`言ってみよう［${set.no}］課本頁（放大）`} className="mx-auto block h-auto w-[880px] max-w-none bg-white" />
         </div>
       )}
     </article>
