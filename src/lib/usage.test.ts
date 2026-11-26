@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { glossParts, kanaOnly, markWord, masuRuby, splitMasu, parseUsage, usageSpeech, verbType } from "./usage";
+import { glossParts, kanaOnly, markWord, masuRuby, splitMasu, parseUsage, usageLineSpeech, usageSpeech, usageSpeechTexts, verbType } from "./usage";
 
 describe("parseUsage", () => {
   it("splits phrases and their meanings", () => {
@@ -131,5 +131,14 @@ describe("markWord", () => {
   });
   it("returns the sentence unchanged when nothing matches", () => {
     expect(markWord("頑張って", "諦める")).toEqual([{ text: "頑張って", hit: false }]);
+  });
+});
+
+describe("usageSpeechTexts", () => {
+  it("lists what the card speakers say, once each", () => {
+    const usage = "・搭配：家（いえ）に戻（もど）る：回家\nます形：戻（もど）ります\n・⚠️相關：戻（もど）す（他）\n・⚠️「戻る」是不及物\n・搭配：家（いえ）に戻（もど）る：返回家中\n・語源：英語 x";
+    expect(usageSpeechTexts(usage)).toEqual(["家（いえ）に戻（もど）る", "戻（もど）す"]);
+    expect(usageLineSpeech({ ja: "「戻る」是不及物", zh: "", note: true })).toBe("");
+    expect(usageSpeechTexts("")).toEqual([]);
   });
 });

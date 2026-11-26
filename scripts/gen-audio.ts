@@ -1,6 +1,6 @@
 /**
  * 日文發音音檔產生腳本（只在本機跑，不部署）。
- * 用 Mac 上的 VOICEVOX（http://localhost:50021）產生單字和例句的 mp3，上傳到 Notion 單字庫的「發音檔」欄，
+ * 用 Mac 上的 VOICEVOX（http://localhost:50021）產生單字、例句和搭配・用法（一行一個）的 mp3，上傳到 Notion 單字庫的「發音檔」欄，
  * 並產生比對報告（CSV）。
  *
  * 準備：
@@ -42,6 +42,7 @@ import {
   PITCH_SHAPE,
   planSentence,
   planWord,
+  SENTENCE_VERDICT,
   SAY_AS_JA,
   sentenceInput,
   shapePitch,
@@ -58,6 +59,7 @@ import {
   contentHash,
   genHash,
   parseAudioFileName,
+  usageAudioTexts,
   type AudioKind,
   type AudioSource,
 } from "../src/lib/jaAudioFiles";
@@ -66,7 +68,7 @@ const VOCAB_DS = "e4612b22-a490-4ba2-9ef5-11b2f07f8ccb";
 const VOICEVOX = process.env.VOICEVOX_URL ?? "http://localhost:50021";
 const OUT = "audio-out";
 const VOICE_TEST_SPEAKERS = ["春日部つむぎ", "冥鳴ひまり", "青山龍星"];
-const KIND_LABEL: Record<AudioKind, string> = { w: "單字", e1: "例句1", e2: "例句2" };
+const KIND_LABEL: Record<AudioKind, string> = { w: "單字", e1: "例句1", e2: "例句2", u: "搭配" };
 // 合成參數（改了會讓所有音檔重產）
 const SYNTH = { speedScale: 1, prePhonemeLength: 0.1, postPhonemeLength: 0.1, outputSamplingRate: 24000, outputStereo: false };
 
@@ -150,6 +152,8 @@ type Row = {
   word: string;
   pageId: string;
   kind: AudioKind;
+  /** 報告上的種類（搭配會編號：搭配1、搭配2…） */
+  label?: string;
   input: string;
   mine: string;
   engine: string;
@@ -205,6 +209,9 @@ async function makeWord(src: AudioSource, sp: Speaker, synth: boolean) {
   };
 }
 
+/** 改送讀音的詞前面緊接著數字（20歳（はたち）、3件（さんけん））：送「20ハタチ」會唸成にじゅうはたち */
+const digitOverride = (segs: Seg[], override: Set<number>) => [...override].some((i) => i > 0 && segs[i - 1].kind === "other" && /[0-9０-９]$/.test((segs[i - 1] as { text: string }).text));
+
 const segReading = (segs: Seg[]) => segs.map((s) => (s.kind === "ruby" ? s.reading : s.kind === "punct" ? "" : s.text)).join("");
 
 /** 例句：照「漢字（かな）」和讀音表比對引擎的讀音，不一致的詞改送讀音；語調用引擎預設 */
@@ -230,7 +237,7 @@ function writeCsv(path: string, header: string[], rows: string[][]) {
   writeFileSync(path, "﻿" + [header, ...rows].map((r) => r.map(csvCell).join(",")).join("\n") + "\n");
 }
 const REPORT_HEADER = ["課次", "單字", "page id", "種類", "送引擎的文字", "我的讀音", "引擎讀音", "聲調", "引擎重音", "AquesTalk 記法", "每拍高低（塑形後）", "判定", "說明", "mp3", "狀態"];
-const reportRow = (r: Row) => [r.lesson, r.word, r.pageId, KIND_LABEL[r.kind], r.input, r.mine, r.engine, r.pitch, r.engineAccent, r.notation, r.contour, r.verdict, r.note, r.file, r.status];
+const reportRow = (r: Row) => [r.lesson, r.word, r.pageId, r.label ?? KIND_LABEL[r.kind], r.input, r.mine, r.engine, r.pitch, r.engineAccent, r.notation, r.contour, r.verdict, r.note, r.file, r.status];
 const stamp = () => new Date().toISOString().replace(/[-:]/g, "").replace(/\..*/, "").replace("T", "-");
 const safeName = (s: string) => s.replace(/[\/\\:*?"<>|\s]/g, "_").slice(0, 40);
 
@@ -242,7 +249,7 @@ async function voiceTest(notion: Client | null) {
     const hit = (await notion.dataSources.query({ data_source_id: VOCAB_DS, filter: { property: "單字", title: { equals: "学生証" } }, page_size: 1 })).results.find(isFullPage);
     if (hit) gakusei = { reading: textProp(hit, "音標/假名") || gakusei.reading, pitch: numProp(hit, "聲調") };
   }
-  const words: (Omit<AudioSource, "ex1" | "ex2"> & { label: string })[] = [
+  const words: (Omit<AudioSource, "ex1" | "ex2" | "usage"> & { label: string })[] = [
     { label: "雨", word: "雨", reading: "あめ", pitch: 1 },
     { label: "飴", word: "飴", reading: "あめ", pitch: 0 },
     { label: "橋", word: "橋", reading: "はし", pitch: 2 },
@@ -261,7 +268,7 @@ async function voiceTest(notion: Client | null) {
     writeFileSync(join(dir, "利用規約.txt"), info.policy ?? "（引擎沒有回傳規約）");
     let n = 0;
     for (const w of words) {
-      const r = await makeWord({ ...w, ex1: "", ex2: "" }, sp, true);
+      const r = await makeWord({ ...w, ex1: "", ex2: "", usage: "" }, sp, true);
       const file = join(dir, `${String(++n).padStart(2, "0")}_${w.label}.mp3`);
       writeFileSync(file, toMp3(r.wav!));
       rows.push([name, w.label, r.input, r.plan.kana, r.plan.engineKana, String(w.pitch ?? ""), String(r.plan.engineAccent ?? ""), [r.nota, r.contour].filter(Boolean).join(" "), r.plan.verdict, r.plan.note, file]);
@@ -375,39 +382,50 @@ async function run(notion: Client, lessons: string[], speakerName: string) {
   let made = 0;
   for (const page of pages) {
     if (stop) break;
-    const src: AudioSource = { word: textProp(page, "單字"), reading: textProp(page, "音標/假名"), pitch: numProp(page, "聲調"), ex1: textProp(page, "例句"), ex2: textProp(page, "例句2") };
+    const src: AudioSource = { word: textProp(page, "單字"), reading: textProp(page, "音標/假名"), pitch: numProp(page, "聲調"), ex1: textProp(page, "例句"), ex2: textProp(page, "例句2"), usage: textProp(page, "搭配・用法") };
     const lesson = selectProp(page, "課次");
     const existing = filesProp(page, AUDIO_PROPERTY);
-    const wanted = new Map<AudioKind, string>();
+    // 這頁該有的音檔：單字、例句各一個，搭配一行一個（檔名＝種類＋內容雜湊＋設定雜湊）
+    const targets: { kind: AudioKind; label: string; text: string; name: string }[] = [];
     for (const kind of AUDIO_KINDS) {
       const t = audioText(kind, src);
-      if (t) wanted.set(kind, audioFileName(kind, contentHash(kind, t), kind === "w" && src.pitch !== null ? genShaped : gen));
+      if (t) targets.push({ kind, label: KIND_LABEL[kind], text: t, name: audioFileName(kind, contentHash(kind, t), kind === "w" && src.pitch !== null ? genShaped : gen) });
     }
+    usageAudioTexts(src).forEach((t, i) => targets.push({ kind: "u", label: `${KIND_LABEL.u}${i + 1}`, text: t, name: audioFileName("u", contentHash("u", t), gen) }));
+    const wanted = new Set(targets.map((t) => t.name));
     const base = { lesson, word: src.word, pageId: page.id, input: "", mine: "", engine: "", pitch: src.pitch === null ? "" : String(src.pitch), engineAccent: "", notation: "", contour: "", note: "", file: "" };
     if (/[〜～~]/.test(src.word)) rows.push({ ...base, kind: "w", verdict: WORD_VERDICT.skip, status: "跳過（App 用瀏覽器發音）" });
 
     const uploads: { kind: AudioKind; name: string; id: string }[] = [];
     try {
-      for (const [kind, name] of wanted) {
+      for (const { kind, label, text, name } of targets) {
         const have = existing.some((f) => f.name === name);
         if (have && !force) {
-          rows.push({ ...base, kind, verdict: "", status: "Notion 上已有、沒變（略過）", file: name });
+          rows.push({ ...base, kind, label, verdict: "", status: "Notion 上已有、沒變（略過）", file: name });
           continue;
         }
-        const listen = join(OUT, "files", safeName(lesson || "未分類"), `${safeName(src.word)}_${KIND_LABEL[kind]}.mp3`);
+        const listen = join(OUT, "files", safeName(lesson || "未分類"), `${safeName(src.word)}_${label}.mp3`);
         if (kind === "w") {
           const r = await makeWord(src, sp, !dry);
-          rows.push({ ...base, kind, input: r.input, mine: r.plan.kana, engine: r.plan.engineKana, engineAccent: String(r.plan.engineAccent ?? ""), notation: r.nota, contour: r.contour, verdict: r.plan.verdict, note: r.plan.note, file: dry ? "" : listen, status: dry ? "只比對" : "新產生" });
+          rows.push({ ...base, kind, label, input: r.input, mine: r.plan.kana, engine: r.plan.engineKana, engineAccent: String(r.plan.engineAccent ?? ""), notation: r.nota, contour: r.contour, verdict: r.plan.verdict, note: r.plan.note, file: dry ? "" : listen, status: dry ? "只比對" : "新產生" });
           if (r.wav) uploads.push({ kind, name, id: await save(notion, r.wav, name, listen) });
         } else {
-          const text = kind === "e1" ? src.ex1 : src.ex2;
+          // 搭配：讀音沒把握的（夾中文、沒標振假名、引擎還是唸不對、數字＋整串讀音）不產，App 照舊用瀏覽器發音
+          if (kind === "u") {
+            const c = await makeSentence(text, sp, false);
+            const why = c.done.verdict === SENTENCE_VERDICT.check ? c.done.note : /[＋+]/.test(text) ? "句型公式（V＋やすい）" : digitOverride(c.segs, c.done.override) ? "數字後面的振假名包含數字讀音（20歳（はたち））" : "";
+            if (why) {
+              rows.push({ ...base, kind, label, input: c.input, mine: segReading(c.segs), engine: c.engine, verdict: c.done.verdict, note: why, status: "跳過（讀音沒把握，App 用瀏覽器發音）" });
+              continue;
+            }
+          }
           const r = await makeSentence(text, sp, !dry);
-          rows.push({ ...base, kind, input: r.input, mine: segReading(r.segs), engine: r.engine, verdict: r.done.verdict, note: r.done.note, file: dry ? "" : listen, status: dry ? "只比對" : "新產生" });
-          for (const hit of keepOneHits(r.segs)) keepRows.push([lesson, src.word, KIND_LABEL[kind], hit, text, r.done.verdict, r.done.note, dry ? "" : listen]);
+          rows.push({ ...base, kind, label, input: r.input, mine: segReading(r.segs), engine: r.engine, verdict: r.done.verdict, note: r.done.note, file: dry ? "" : listen, status: dry ? "只比對" : "新產生" });
+          for (const hit of keepOneHits(r.segs)) keepRows.push([lesson, src.word, label, hit, text, r.done.verdict, r.done.note, dry ? "" : listen]);
           if (r.wav) uploads.push({ kind, name, id: await save(notion, r.wav, name, listen) });
         }
       }
-      if (uploads.length || (!dry && existing.some((f) => ![...wanted.values()].includes(f.name)))) await attach(notion, page.id, existing, wanted, uploads);
+      if (uploads.length || (!dry && existing.some((f) => !wanted.has(f.name)))) await attach(notion, page.id, existing, wanted, uploads);
       made += uploads.length;
     } catch (e) {
       rows.push({ ...base, kind: "w", verdict: "", note: e instanceof Error ? e.message : String(e), status: "錯誤（下次重跑會再試）" });
@@ -436,13 +454,10 @@ async function save(notion: Client, wav: Buffer, name: string, listen: string): 
   return uploadMp3(notion, mp3, name);
 }
 
-/** 寫回「發音檔」欄：保留沒變的、換掉有變的、拿掉不再需要的（例句刪掉了） */
-async function attach(notion: Client, pageId: string, existing: FileProp[], wanted: Map<AudioKind, string>, uploads: { kind: AudioKind; name: string; id: string }[]) {
-  const replaced = new Set(uploads.map((u) => u.kind));
-  const keep = existing.filter((f) => {
-    const p = parseAudioFileName(f.name);
-    return p && !replaced.has(p.kind) && wanted.get(p.kind) === f.name;
-  });
+/** 寫回「發音檔」欄：保留沒變的、換掉有變的、拿掉不再需要的（例句、搭配刪掉或改了） */
+async function attach(notion: Client, pageId: string, existing: FileProp[], wanted: Set<string>, uploads: { kind: AudioKind; name: string; id: string }[]) {
+  const uploaded = new Set(uploads.map((u) => u.name));
+  const keep = existing.filter((f) => wanted.has(f.name) && !uploaded.has(f.name));
   const files = [
     ...keep.map((f) => ({ type: "file" as const, file: { url: f.url }, name: f.name })),
     ...uploads.map((u) => ({ type: "file_upload" as const, file_upload: { id: u.id }, name: u.name })),

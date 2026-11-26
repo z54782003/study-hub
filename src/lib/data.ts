@@ -16,7 +16,7 @@ import { audioKey, lessonRows, lessonTitle, parseIndexPage, parseTranscript, typ
 import { parseNoteGrammar, type GrammarPoint, type NoteBlock, type Seg } from "./noteGrammar";
 import { EN_OTHER, EN_TOPICS } from "./reviewSource";
 import { findChildPages } from "./childPages";
-import { AUDIO_PROPERTY, currentAudio, type AudioKind, type AudioSource } from "./jaAudioFiles";
+import { AUDIO_PROPERTY, currentAudio, type AudioSource, type CurrentAudio } from "./jaAudioFiles";
 import { NOTE_REVIEW_OPTIONS } from "./noteReview";
 import { tedDoneChange } from "./tedLog";
 import { dayStats, monthEnd, shiftMonth, streak, type DayStat } from "./history";
@@ -382,18 +382,22 @@ const audioSource = (p: Page): AudioSource => ({
   pitch: numOrNull(p, "聲調"),
   ex1: text(p, "例句"),
   ex2: text(p, "例句2"),
+  usage: text(p, "搭配・用法"),
 });
 
 /** 日文單字還是最新的發音檔（內容改過的就不用，退回瀏覽器發音） */
-const vocabAudio = (p: Page) => (select(p, "語言") === "🇯🇵 日文" ? currentAudio(p.id, audioSource(p), files(p, AUDIO_PROPERTY)) : {});
+const vocabAudio = (p: Page): CurrentAudio => (select(p, "語言") === "🇯🇵 日文" ? currentAudio(p.id, audioSource(p), files(p, AUDIO_PROPERTY)) : {});
 
 /** /api/vocab-audio/[id]/[kind]：發音檔當下有效的網址（頁面上的網址一小時後失效時才會走到這裡） */
-export async function vocabAudioUrl(id: string, kind: AudioKind): Promise<string | null> {
+/** kind：w、e1、e2，或搭配的「u-內容雜湊」 */
+export async function vocabAudioUrl(id: string, kind: string): Promise<string | null> {
   if (useMock()) return null;
   const p = await getPage(id);
   const source = p.parent.type === "data_source_id" ? p.parent.data_source_id.replace(/-/g, "") : "";
   if (source !== DS.vocab.replace(/-/g, "")) return null;
-  return vocabAudio(p)[kind]?.url ?? null;
+  const audio = vocabAudio(p);
+  if (kind.startsWith("u-")) return Object.values(audio.u ?? {}).find((a) => a.fallback.endsWith(`/${kind}`))?.url ?? null;
+  return kind === "w" || kind === "e1" || kind === "e2" ? (audio[kind]?.url ?? null) : null;
 }
 
 const toVocab = (p: Page): VocabItem => {
@@ -411,6 +415,7 @@ const toVocab = (p: Page): VocabItem => {
     { ja: text(p, "例句2"), zh: text(p, "例句2翻譯"), audio: audio.e2 },
   ].filter((e) => e.ja),
   audio: audio.w,
+  usageAudio: audio.u,
   lesson: select(p, "課次"),
   lang: select(p, "語言") === "🇬🇧 英文" ? "en" : "ja",
   status: select(p, "熟悉度"),
