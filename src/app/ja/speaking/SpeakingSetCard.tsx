@@ -49,7 +49,7 @@ export function SpeakingSetCard({ set }: { set: SpeakingSet }) {
           aria-label={`放大［${set.no}］的課本圖`}
         >
           {/* eslint-disable-next-line @next/next/no-img-element -- Notion 簽章網址，不走 next/image */}
-          <img src={set.image.url} alt={`言ってみよう［${set.no}］課本頁`} className="mx-auto block h-auto max-h-[42vh] w-auto max-w-full md:max-h-none" loading="lazy" />
+          <img src={set.image.url} alt={`言ってみよう［${set.no}］課本頁`} className="mx-auto block h-auto w-full max-w-[400px]" loading="lazy" />
           <span className="block py-1 text-center text-xs text-muted">點圖放大</span>
         </button>
       ) : (
