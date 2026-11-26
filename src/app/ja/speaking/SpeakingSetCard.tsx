@@ -1,11 +1,18 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Speak } from "@/components/Speak";
 import { splitLine, type SpeakingSet } from "@/lib/speaking";
 
 /** 一個題組：課本那一題的圖，下面①②③…先自己說，再點開答え例 */
 export function SpeakingSetCard({ set }: { set: SpeakingSet }) {
   const [open, setOpen] = useState<Set<number>>(new Set());
+  const [zoom, setZoom] = useState(false);
+  useEffect(() => {
+    if (!zoom) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setZoom(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [zoom]);
   const all = open.size === set.items.length && set.items.length > 0;
   const toggle = (i: number) =>
     setOpen((s) => {
@@ -33,15 +40,21 @@ export function SpeakingSetCard({ set }: { set: SpeakingSet }) {
         )}
       </header>
 
+      <div className="md:grid md:grid-cols-[minmax(0,400px)_minmax(0,1fr)] md:items-start">
       {set.image ? (
-        <a href={set.image.url} target="_blank" rel="noreferrer" className="block border-y border-line bg-white" aria-label={`開啟［${set.no}］的課本圖`}>
+        <button
+          type="button"
+          onClick={() => setZoom(true)}
+          className="block w-full border-y border-line bg-white md:border-y-0 md:border-r"
+          aria-label={`放大［${set.no}］的課本圖`}
+        >
           {/* eslint-disable-next-line @next/next/no-img-element -- Notion 簽章網址，不走 next/image */}
-          <img src={set.image.url} alt={`言ってみよう［${set.no}］課本頁`} className="block h-auto w-full" loading="lazy" />
-        </a>
+          <img src={set.image.url} alt={`言ってみよう［${set.no}］課本頁`} className="mx-auto block h-auto max-h-[42vh] w-auto max-w-full md:max-h-none" loading="lazy" />
+          <span className="block py-1 text-center text-xs text-muted">點圖放大</span>
+        </button>
       ) : (
         <p className="border-y border-line px-4 py-3 text-sm text-muted">還沒有課本圖</p>
       )}
-
       <ol className="divide-y divide-line">
         {set.items.map((it, i) => {
           const shown = open.has(i);
@@ -77,7 +90,17 @@ export function SpeakingSetCard({ set }: { set: SpeakingSet }) {
           );
         })}
       </ol>
+      </div>
       {set.note && <p className="border-t border-line px-4 py-2 text-xs text-muted">{set.note}</p>}
+      {zoom && set.image && (
+        <div role="dialog" aria-modal="true" aria-label={`［${set.no}］課本圖`} className="fixed inset-0 z-50 overflow-auto bg-black/90" onClick={() => setZoom(false)}>
+          <button type="button" onClick={() => setZoom(false)} className="fixed top-3 right-3 z-10 rounded-full bg-white/90 px-3 py-1.5 text-sm font-bold text-ink">
+            關閉
+          </button>
+          {/* eslint-disable-next-line @next/next/no-img-element -- Notion 簽章網址，不走 next/image */}
+          <img src={set.image.url} alt={`言ってみよう［${set.no}］課本頁（放大）`} className="mx-auto block h-auto w-full max-w-[880px] bg-white" />
+        </div>
+      )}
     </article>
   );
 }
