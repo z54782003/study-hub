@@ -39,5 +39,12 @@ export function splitLine(line: string): { speaker: string; text: string; alt: b
   return m ? { speaker: m[1], text: m[2], alt } : { speaker: "", text: l, alt };
 }
 
+/** 兩本課本：課次欄的前綴（「初級 L3」「初中級 L9」） */
+export const BOOKS = ["初級", "初中級"] as const;
+export type Book = (typeof BOOKS)[number];
+export const isBook = (b: string | undefined): b is Book => (BOOKS as readonly string[]).includes(b ?? "");
+/** 「初中級 L9」→「初中級」；「初級 L3」→「初級」 */
+export const bookOf = (lesson: string): Book | null => BOOKS.find((b) => lesson.startsWith(`${b} L`)) ?? null;
+
 /** 課次排序：「初中級 L9」→ 9 */
 export const lessonNo = (lesson: string) => Number(lesson.match(/L(\d+)/)?.[1] ?? 0);

@@ -21,7 +21,7 @@ export default async function JapanesePage() {
         <EntryCard inGroup href="/ja/kanji" icon="kanji" title="漢字表" detail="HSJⅠ 0–9章・HSJⅡ 1–8章" />
         <EntryCard inGroup href="/ja/verbs" icon="table" title="動詞變化表" detail="11 種形・G1／G2／G3" />
         <EntryCard inGroup href="/ja/audio" icon="headphones" title="課文音檔" detail="できる日本語 初中級・全文課文＋各場面" />
-        <EntryCard inGroup href="/ja/speaking" icon="mic" title="口說練習" detail="できる日本語 初中級・言ってみよう＋答え例" />
+        <EntryCard inGroup href="/ja/speaking" icon="mic" title="口說練習" detail="できる日本語 初級・初中級・言ってみよう＋答え例" />
         <EntryCard inGroup href="/ja/tadoku" icon="book" title="多読書庫" detail="依級數的免費讀本，記錄讀過哪些" />
         <EntryCard inGroup href={NHK_EASY_URL} icon="news" title="NHK Easy" detail="NHK 網站・在新分頁開啟" external />
       </EntryGroup>

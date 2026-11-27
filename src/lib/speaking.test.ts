@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { lessonNo, parseAnswers, splitLine } from "./speaking";
+import { bookOf, isBook, lessonNo, parseAnswers, splitLine } from "./speaking";
 
 describe("parseAnswers", () => {
   it("splits items on blank lines and reads the label", () => {
@@ -23,5 +23,13 @@ describe("splitLine", () => {
   });
   it("orders lessons by number", () => {
     expect(lessonNo("初中級 L12")).toBe(12);
+    expect(lessonNo("初級 L3")).toBe(3);
+  });
+  it("tells the two books apart", () => {
+    expect(bookOf("初級 L3")).toBe("初級");
+    expect(bookOf("初中級 L3")).toBe("初中級");
+    expect(bookOf("中級 L1")).toBe(null);
+    expect(isBook("初級")).toBe(true);
+    expect(isBook(undefined)).toBe(false);
   });
 });
