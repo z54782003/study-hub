@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Fragment, useEffect, useState } from "react";
 import { Icon } from "@/components/Icon";
-import { Speak, VoiceCredit } from "@/components/Speak";
+import { Speak } from "@/components/Speak";
 import { keepWordJa, speakableJa } from "@/lib/speech";
 import { glossParts, kanaOnly, masuRuby, parseUsage, splitMasu, usageLineSpeech, verbType } from "@/lib/usage";
 import { Ruby } from "@/components/Ruby";
@@ -276,7 +276,6 @@ export function LessonCards({
           </section>
         )}
         <Familiarity w={w} />
-        <VoiceCredit show={!!w.audio || w.examples.some((e) => e.audio) || !!w.usageAudio} />
       </article>
 
       <div className="fixed inset-x-0 bottom-[calc(49px+env(safe-area-inset-bottom))] z-20 mx-auto grid max-w-xl grid-cols-[1fr_auto_1fr] items-center gap-2 border-t border-line bg-bg px-4 py-2.5 md:max-w-[760px]">

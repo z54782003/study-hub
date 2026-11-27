@@ -7,10 +7,9 @@ import { Icon } from "./Icon";
 /** 發音檔的語音 credit（VOICEVOX 角色規約要求標示）；gen-audio 換 --speaker 時這裡要跟著改 */
 export const VOICE_CREDIT = "VOICEVOX:春日部つむぎ";
 
-/** 這張卡有播放預先產生的發音檔時，在卡片底部標一行 credit */
-export function VoiceCredit({ show, className = "" }: { show: boolean; className?: string }) {
-  if (!show) return null;
-  return <p className={`text-[11px] text-muted ${className}`}>語音：{VOICE_CREDIT}</p>;
+/** 發音檔的 credit：角色規約允許標在「任意の場所」，只在日文首頁底部標一次 */
+export function VoiceCredit({ className = "" }: { className?: string }) {
+  return <p className={`text-[11px] text-muted ${className}`}>單字、例句、搭配的發音檔：{VOICE_CREDIT}</p>;
 }
 
 // 同時只播一個：按下一個喇叭就停掉上一個
