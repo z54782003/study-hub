@@ -58,6 +58,7 @@ describe("words", () => {
     expect(readingCount("ひ（訓讀み）・か（曜日）")).toBe(2);
     expect(readingCount("しょうしょうおまちください")).toBe(1);
     expect(readingCount("よみます（読む）")).toBe(1);
+    expect(readingCount("けんか・する")).toBe(1);
   });
   it("accepts the engine when reading and pitch agree", () => {
     const p = planWord({ word: "速い", reading: "はやい", pitch: 2 }, eng("ハヤ'イ"));
