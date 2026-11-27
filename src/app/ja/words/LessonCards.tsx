@@ -5,7 +5,7 @@ import { Fragment, useEffect, useState } from "react";
 import { Icon } from "@/components/Icon";
 import { Speak, VoiceCredit } from "@/components/Speak";
 import { keepWordJa, speakableJa } from "@/lib/speech";
-import { glossParts, kanaOnly, masuRuby, parseUsage, splitMasu, usageSpeech, verbType } from "@/lib/usage";
+import { glossParts, kanaOnly, masuRuby, parseUsage, splitMasu, usageLineSpeech, verbType } from "@/lib/usage";
 import { Ruby } from "@/components/Ruby";
 import type { VocabItem } from "@/lib/types";
 
@@ -232,7 +232,7 @@ export function LessonCards({
                       <Note text={u.ja} />
                     </span>
                     {lang === "ja" && /^相關[：:]/.test(u.ja) && (
-                      <Speak text={usageSpeech(u.ja.replace(/^相關[：:]\s*/, ""))} label={`播放相關${k + 1}`} className="-my-2" />
+                      <Speak text={usageLineSpeech(u)} audio={w.usageAudio?.[usageLineSpeech(u)]} label={`播放相關${k + 1}`} className="-my-2" />
                     )}
                   </dd>
                 ) : (
@@ -244,7 +244,14 @@ export function LessonCards({
                     <span>
                       <Ruby text={u.zh} />
                     </span>
-                    <Speak text={lang === "en" ? u.ja : usageSpeech(u.ja)} lang={lang} keep={lang === "ja" ? keepWordJa(w.word) : undefined} label={`播放搭配${k + 1}`} className="-my-2" />
+                    <Speak
+                      text={lang === "en" ? u.ja : usageLineSpeech(u)}
+                      lang={lang}
+                      keep={lang === "ja" ? keepWordJa(w.word) : undefined}
+                      audio={lang === "ja" ? w.usageAudio?.[usageLineSpeech(u)] : undefined}
+                      label={`播放搭配${k + 1}`}
+                      className="-my-2"
+                    />
                   </dd>
                 </Fragment>
                 ),
@@ -269,7 +276,7 @@ export function LessonCards({
           </section>
         )}
         <Familiarity w={w} />
-        <VoiceCredit show={!!w.audio || w.examples.some((e) => e.audio)} />
+        <VoiceCredit show={!!w.audio || w.examples.some((e) => e.audio) || !!w.usageAudio} />
       </article>
 
       <div className="fixed inset-x-0 bottom-[calc(49px+env(safe-area-inset-bottom))] z-20 mx-auto grid max-w-xl grid-cols-[1fr_auto_1fr] items-center gap-2 border-t border-line bg-bg px-4 py-2.5 md:max-w-[760px]">

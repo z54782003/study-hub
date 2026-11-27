@@ -82,6 +82,8 @@ export type VocabItem = {
   lang: "ja" | "en";
   /** 單字的發音檔；沒有（英文、帶「〜」、還沒產生、內容改過）就用瀏覽器發音 */
   audio?: AudioRef;
+  /** 搭配・用法每一行的發音檔，key 是那一行要念的日文（usageLineSpeech）；沒有就用瀏覽器發音 */
+  usageAudio?: Record<string, AudioRef>;
   status: string | null;
   right: number;
   wrong: number;

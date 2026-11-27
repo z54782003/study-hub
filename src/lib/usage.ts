@@ -50,6 +50,17 @@ export function usageSpeech(text: string): string {
     .trim();
 }
 
+/** 這一行搭配要念的日文（單字卡的喇叭和預先產生的發音檔共用）：搭配念日文部分；提醒只有「相關：」念；空字串＝不念 */
+export function usageLineSpeech(u: Usage): string {
+  if (!u.note) return usageSpeech(u.ja);
+  return /^相關[：:]/.test(u.ja) ? usageSpeech(u.ja.replace(/^相關[：:]\s*/, "")) : "";
+}
+
+/** 「搭配・用法」整欄要念的句子（去掉 ます形、不念的提醒；重複的只算一次）：gen-audio 照這個產「搭配」音檔 */
+export function usageSpeechTexts(usage: string): string[] {
+  return [...new Set(parseUsage(splitMasu(usage).rest).map(usageLineSpeech).filter(Boolean))];
+}
+
 /** 單字只有假名（やめる、パーティー、メジャー(な)、シュート・する）：讀音就是單字本身 */
 export function kanaOnly(word: string): boolean {
   const w = word.replace(/[（(][^）)]*[）)]/g, "").replace(/[・〜～~？?！!\s]/g, "");
