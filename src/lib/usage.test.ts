@@ -141,4 +141,15 @@ describe("usageSpeechTexts", () => {
     expect(usageLineSpeech({ ja: "「戻る」是不及物", zh: "", note: true })).toBe("");
     expect(usageSpeechTexts("")).toEqual([]);
   });
+
+  it("drops the Chinese after a second colon on 相關 lines", () => {
+    expect(usageSpeechTexts("・⚠️相關：歩道（ほどう）：人行道")).toEqual(["歩道（ほどう）"]);
+    expect(usageSpeechTexts("・⚠️相關：この間（あいだ）：前幾天（較正式）")).toEqual(["この間（あいだ）"]);
+    expect(usageSpeechTexts("・⚠️相關：コピー：影本")).toEqual(["コピー"]);
+  });
+
+  it("does not speak pattern formulas", () => {
+    expect(usageSpeech("V＋やすい")).toBe("");
+    expect(usageSpeechTexts("・搭配：V＋やすい：容易V")).toEqual([]);
+  });
 });

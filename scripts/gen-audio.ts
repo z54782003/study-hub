@@ -37,11 +37,13 @@ import {
   JA_AUDIO_RULES,
   contourText,
   keepOneHits,
+  misalignedSegments,
   notation,
   parseSentence,
   PITCH_SHAPE,
   planSentence,
   planWord,
+  rubyBeforeMisaligned,
   SENTENCE_VERDICT,
   SAY_AS_JA,
   sentenceInput,
@@ -210,7 +212,19 @@ async function makeWord(src: AudioSource, sp: Speaker, synth: boolean) {
 }
 
 /** 改送讀音的詞前面緊接著數字（20歳（はたち）、3件（さんけん））：送「20ハタチ」會唸成にじゅうはたち */
-const digitOverride = (segs: Seg[], override: Set<number>) => [...override].some((i) => i > 0 && segs[i - 1].kind === "other" && /[0-9０-９]$/.test((segs[i - 1] as { text: string }).text));
+/**
+ * 數字後面的漢字改送讀音時，讀音可能把數字一起念掉（20歳（はたち））：這種不產。
+ * 例外：讀音跟數字無關的量詞（3件（けん）、5枚（まい））照常產；尾數 1、6、8、0 會促音化（いっけん），不放行。
+ */
+const PLAIN_COUNTERS: Record<string, string> = { 件: "けん", 個: "こ", 回: "かい", 枚: "まい", 台: "だい", 歳: "さい" };
+const digitOverride = (segs: Seg[], override: Set<number>) =>
+  [...override].some((i) => {
+    const prev = segs[i - 1];
+    const s = segs[i];
+    if (i === 0 || prev.kind !== "other" || !/[0-9０-９]$/.test(prev.text)) return false;
+    const plain = s.kind === "ruby" && PLAIN_COUNTERS[s.base] === s.reading && /[2-57-9２-５７-９]$/.test(prev.text);
+    return !plain;
+  });
 
 const segReading = (segs: Seg[]) => segs.map((s) => (s.kind === "ruby" ? s.reading : s.kind === "punct" ? "" : s.text)).join("");
 
@@ -218,8 +232,19 @@ const segReading = (segs: Seg[]) => segs.map((s) => (s.kind === "ruby" ? s.readi
 async function makeSentence(text: string, sp: Speaker, synth: boolean) {
   const segs = parseSentence(text);
   const q = await audioQuery(sentenceInput(segs), sp);
-  const plan = planSentence(segs, q.accent_phrases);
-  const q2 = plan.override.size ? await audioQuery(sentenceInput(segs, plan.override), sp) : q;
+  let plan = planSentence(segs, q.accent_phrases);
+  let q2 = plan.override.size ? await audioQuery(sentenceInput(segs, plan.override), sp) : q;
+  // 還對不上的送り仮名：前面的漢字也改送讀音再試一次，真的比較對才採用
+  const still = misalignedSegments(segs, q2.accent_phrases);
+  const extra = rubyBeforeMisaligned(segs, still, plan.override);
+  if (extra.length) {
+    const override = new Set([...plan.override, ...extra]);
+    const q3 = await audioQuery(sentenceInput(segs, override), sp);
+    if (misalignedSegments(segs, q3.accent_phrases).size < still.size) {
+      plan = { ...plan, override, verdict: SENTENCE_VERDICT.override };
+      q2 = q3;
+    }
+  }
   const done = finishSentence(segs, plan, q2.accent_phrases);
   return {
     segs,
@@ -410,10 +435,10 @@ async function run(notion: Client, lessons: string[], speakerName: string) {
           rows.push({ ...base, kind, label, input: r.input, mine: r.plan.kana, engine: r.plan.engineKana, engineAccent: String(r.plan.engineAccent ?? ""), notation: r.nota, contour: r.contour, verdict: r.plan.verdict, note: r.plan.note, file: dry ? "" : listen, status: dry ? "只比對" : "新產生" });
           if (r.wav) uploads.push({ kind, name, id: await save(notion, r.wav, name, listen) });
         } else {
-          // 搭配：讀音沒把握的（夾中文、沒標振假名、引擎還是唸不對、數字＋整串讀音）不產，App 照舊用瀏覽器發音
+          // 搭配：讀音沒把握的（夾中文、沒標振假名、引擎還是唸不對、數字＋整串讀音；句型公式在 usageSpeech 就不念了）不產，App 照舊用瀏覽器發音
           if (kind === "u") {
             const c = await makeSentence(text, sp, false);
-            const why = c.done.verdict === SENTENCE_VERDICT.check ? c.done.note : /[＋+]/.test(text) ? "句型公式（V＋やすい）" : digitOverride(c.segs, c.done.override) ? "數字後面的振假名包含數字讀音（20歳（はたち））" : "";
+            const why = c.done.verdict === SENTENCE_VERDICT.check ? c.done.note : digitOverride(c.segs, c.done.override) ? "數字後面的振假名包含數字讀音（20歳（はたち））" : "";
             if (why) {
               rows.push({ ...base, kind, label, input: c.input, mine: segReading(c.segs), engine: c.engine, verdict: c.done.verdict, note: why, status: "跳過（讀音沒把握，App 用瀏覽器發音）" });
               continue;

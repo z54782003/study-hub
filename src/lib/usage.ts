@@ -41,6 +41,8 @@ export function usageSpeech(text: string): string {
     .join("");
   // 「〜」後面直接接詞尾的句型（ちょっと〜にくい、まだ〜ていない、必ず〜ます）念出來不自然（にくい 會變成「憎い」的高低音），不念（不顯示喇叭）
   if (/[〜～](?:にくい|やすい|づらい|すぎ|て|た|ない|ます|ところ|そう|られ|する)/.test(ja)) return "";
+  // 句型公式（V＋やすい、N＋の）也不念：念出來會變成「ブイ たす やすい」
+  if (/[＋+]/.test(ja)) return "";
   return ja
     // 「〜」連同後面的助詞不念（〜に驚く → 驚く、〜からいらっしゃる → いらっしゃる）
     .replace(/[〜～](?:というのは|という|について|への|から|まで|のが|[をがにのでとへは])?/g, "")
@@ -53,7 +55,8 @@ export function usageSpeech(text: string): string {
 /** 這一行搭配要念的日文（單字卡的喇叭和預先產生的發音檔共用）：搭配念日文部分；提醒只有「相關：」念；空字串＝不念 */
 export function usageLineSpeech(u: Usage): string {
   if (!u.note) return usageSpeech(u.ja);
-  return /^相關[：:]/.test(u.ja) ? usageSpeech(u.ja.replace(/^相關[：:]\s*/, "")) : "";
+  // 「相關：歩道（ほどう）：人行道」第二個「：」後面是中文翻譯，不念
+  return /^相關[：:]/.test(u.ja) ? usageSpeech(u.ja.replace(/^相關[：:]\s*/, "").replace(/\s*[：:].*$/, "")) : "";
 }
 
 /** 「搭配・用法」整欄要念的句子（去掉 ます形、不念的提醒；重複的只算一次）：gen-audio 照這個產「搭配」音檔 */
