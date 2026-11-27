@@ -13,6 +13,7 @@ import {
   PITCH_FALL,
   PITCH_RISE,
   planSentence,
+  rubyBeforeMisaligned,
   planWord,
   readingCount,
   sentenceInput,
@@ -117,6 +118,20 @@ describe("sentences", () => {
     expect(misalignedSegments(segs, engine).size).toBe(0);
     const wrong = eng("ジ'ショワ/タナノ/ウエデ/アリマ'ス");
     expect(finishSentence(segs, planSentence(segs, wrong), wrong).verdict).toBe("需抽查");
+  });
+  it("accepts いう pronounced ユー (どういう、という)", () => {
+    const segs = parseSentence("どういう意味（いみ）ですか");
+    expect(misalignedSegments(segs, eng("ドーユー/イ'ミデスカ")).size).toBe(0);
+    expect(misalignedSegments(segs, eng("ドーイウ/イ'ミデスカ")).size).toBe(0);
+    expect(misalignedSegments(parseSentence("田中（たなか）という人（ひと）"), eng("タナカト/イウ/ヒト'")).size).toBe(0);
+  });
+  it("points at the kanji when the engine swallows the okurigana", () => {
+    const segs = parseSentence("冷（ひ）やす");
+    const still = misalignedSegments(segs, eng("ヒエヤ'ス"));
+    expect(rubyBeforeMisaligned(segs, still, new Set())).toEqual([0]);
+    const quiet = parseSentence("静（しず）か");
+    expect(rubyBeforeMisaligned(quiet, misalignedSegments(quiet, eng("シズ'カカ")), new Set())).toEqual([0]);
+    expect(misalignedSegments(segs, eng("ヒヤ'ス")).size).toBe(0);
   });
   it("lists the old KEEP_ONE spots", () => {
     expect(keepOneHits(parseSentence("「明日（あした）は休（やす）みだ」と聞（き）いて、うれしくなりました。"))).toEqual(["と聞（き）いて"]);

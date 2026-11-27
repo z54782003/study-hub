@@ -273,10 +273,20 @@ type Tok = { seg: number; mora: string | null }; // mora null＝萬用字元
  * 回傳對不上的段落編號。插進來的拍算在後一段。
  */
 export function misalignedSegments(segs: Seg[], engine: EnginePhrase[]): Set<number> {
+  const plain = alignSegments(segs, engine, false);
+  if (!plain.size) return plain;
+  // 「という／どういう／そういう」的「いう」發音是「ユー」（デジタル大辞泉「言う」）：也照「ゆう」比一次，取對不上比較少的
+  const yuu = alignSegments(segs, engine, true);
+  return yuu.size < plain.size ? yuu : plain;
+}
+
+const IU = /(と|どう|こう|そう|ああ)いう/g;
+
+function alignSegments(segs: Seg[], engine: EnginePhrase[], iuAsYuu: boolean): Set<number> {
   const exp: Tok[] = [];
   const raw: { seg: number; moras: string[] | null }[] = [];
   segs.forEach((s, i) => {
-    if (s.kind === "kana") raw.push({ seg: i, moras: splitMoras(toKata(s.text)) });
+    if (s.kind === "kana") raw.push({ seg: i, moras: splitMoras(toKata(iuAsYuu ? s.text.replace(IU, "$1ゆう") : s.text)) });
     else if (s.kind === "ruby") raw.push({ seg: i, moras: splitMoras(toKata(s.reading)) });
     else if (s.kind === "other") raw.push({ seg: i, moras: null });
   });
@@ -345,6 +355,14 @@ export type SentencePlan = {
   override: Set<number>;
   note: string;
 };
+
+/**
+ * 改送讀音後，還對不上的假名如果緊接在標了讀音的漢字後面（冷（ひ）やす 唸成 ヒエヤス、静（しず）か 唸成 シズカカ），
+ * 多半是引擎把送り仮名吃進漢字的讀音：回傳可以再試著改送讀音的漢字段落。
+ */
+export function rubyBeforeMisaligned(segs: Seg[], still: Set<number>, override: Set<number>): number[] {
+  return [...still].filter((i) => segs[i].kind === "kana" && segs[i - 1]?.kind === "ruby" && !override.has(i - 1)).map((i) => i - 1);
+}
 
 /** 第一次比對：哪些標了讀音的詞要改送讀音 */
 export function planSentence(segs: Seg[], engine: EnginePhrase[]): SentencePlan {
