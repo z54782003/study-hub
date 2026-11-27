@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { EntryCard, EntryGroup } from "@/components/EntryCard";
+import { VoiceCredit } from "@/components/Speak";
 import { NHK_EASY_URL } from "@/lib/config";
 import { recentClassNotes } from "@/lib/data";
 import { formatJP } from "@/lib/dates";
@@ -48,6 +49,7 @@ export default async function JapanesePage() {
           ))}
         </ul>
       )}
+      <VoiceCredit className="mt-6 text-center" />
     </>
   );
 }
