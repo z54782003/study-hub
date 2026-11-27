@@ -142,7 +142,8 @@ export function wordInput(word: string): string | null {
 
 /** 「音標/假名」有幾個讀音（なん／なに、つち／ど、ひ（訓讀み）・か（曜日））；只看形式，不算括號 */
 export function readingCount(reading: string): number {
-  return reading.replace(/[（(［\[][^）)］\]]*[）)］\]]/g, "").split(/[／/・、,]/).filter((s) => s.replace(/[.\-\s]/g, "")).length;
+  // 「けんか・する」的「・する」不是第二個讀音
+  return reading.replace(/[（(［\[][^）)］\]]*[）)］\]]/g, "").replace(/・する$/, "").split(/[／/・、,]/).filter((s) => s.replace(/[.\-\s]/g, "")).length;
 }
 
 export type WordPlan = {
