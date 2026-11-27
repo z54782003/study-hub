@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Fragment, useEffect, useState } from "react";
 import { Icon } from "@/components/Icon";
-import { Speak } from "@/components/Speak";
+import { preloadAudio, Speak, vocabAudioRefs } from "@/components/Speak";
 import { keepWordJa, speakableJa } from "@/lib/speech";
 import { glossParts, kanaOnly, masuRuby, parseUsage, splitMasu, usageLineSpeech, verbType } from "@/lib/usage";
 import { Ruby } from "@/components/Ruby";
@@ -98,6 +98,10 @@ export function LessonCards({
   useEffect(() => {
     window.scrollTo({ top: 0 });
   }, [i]);
+  // 這張和下一張卡的發音檔先在背景下載，點喇叭就能馬上播
+  useEffect(() => {
+    preloadAudio([...vocabAudioRefs(words[i]), ...(words[i + 1] ? vocabAudioRefs(words[i + 1]) : [])]);
+  }, [words, i]);
   const { masu, rest: usageText } = splitMasu(w.usage);
   const usage = parseUsage(usageText);
   const verb = verbType(w.meaning);

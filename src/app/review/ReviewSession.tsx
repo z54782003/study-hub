@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { gradeChoice, parseChoices } from "@/lib/grading";
 import { sourceLabel, sourceQuery } from "@/lib/reviewSource";
-import { Speak } from "@/components/Speak";
+import { preloadAudio, Speak, vocabAudioRefs } from "@/components/Speak";
 import { Ruby } from "@/components/Ruby";
 import { masuRuby, parseUsage, splitMasu } from "@/lib/usage";
 import { speakableJa } from "@/lib/speech";
@@ -55,6 +55,11 @@ export function ReviewSession({ source }: { source: ReviewSource }) {
   const [sync, setSync] = useState<Sync>({ pending: 0, failed: [] });
   const [journal, setJournal] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const startedAt = useRef(Date.now());
+
+  // 這題和下一題單字的發音檔先在背景下載（答完看解說時點喇叭就能馬上播）
+  useEffect(() => {
+    for (const it of items?.slice(index, index + 2) ?? []) if (it.kind === "vocab") preloadAudio(vocabAudioRefs(it));
+  }, [items, index]);
 
   const saveKey = `review-progress:${query}`;
   const [restart, setRestart] = useState(0);
