@@ -438,8 +438,11 @@ async function vocabQuiz(s: Extract<ReviewSource, { src: "vocab" }>): Promise<Vo
     and.push({ or: lessons.map((n) => ({ property: "課次", select: { equals: `${s.level} L${n}` } })) });
   }
   if (s.lang === "en") and.push(...englishFilter(s.cefr, s.topic), { property: "熟悉度", status: { does_not_equal: "精通" } });
-  const pages = await queryAll(DS.vocab, { and } as never, undefined, 1000);
-  let items = pages.map(toVocab);
+  // 指定一到三課：用單字頁同一份快取（看完單字按「練習這課」不用再等 Notion）；全部課或英文照舊即時查
+  const fromLessons = s.lang === "ja" && s.level && s.lessons.length >= 1 && s.lessons.length <= 3;
+  let items = fromLessons
+    ? (await Promise.all(s.lessons.map((n) => lessonVocab(s.level!, n)))).flat()
+    : (await queryAll(DS.vocab, { and } as never, undefined, 1000)).map(toVocab);
   // 只練課本的某一小節（ST1／ST2／補…）
   if (s.section && s.level && s.lessons.length === 1) {
     const groups = groupBySection(items, await cachedLessonSections(s.level, s.lessons[0]).catch(() => [] as IndexSection[]));
@@ -729,18 +732,32 @@ const cachedLessonSections = unstable_cache(
 );
 
 /** 一課的單字，照課本索引的順序分段（ST1／ST2／補…；表裡沒有的放最後） */
+/**
+ * 一課的日文單字快取 30 分鐘（單字頁和「練習這課」共用；每次即時查 Notion 要 2 秒左右）。
+ * key 帶「第幾個 30 分鐘」：過了就重查，不會拿到快過期的 Notion 音檔網址（網址一小時後失效）。
+ * 答題、新增單字後 revalidateTag("vocab") 馬上清掉；在 Notion 直接改的，最多 30 分鐘後才看得到。
+ */
+const VOCAB_CACHE_SECONDS = 1800;
+const vocabSlot = () => Math.floor(Date.now() / (VOCAB_CACHE_SECONDS * 1000));
+const cachedLessonVocab = unstable_cache(
+  async (level: string, lesson: number, _slot: number): Promise<VocabItem[]> =>
+    (
+      await queryAll(
+        DS.vocab,
+        { and: [{ property: "語言", select: { equals: "🇯🇵 日文" } }, { property: "課次", select: { equals: `${level} L${lesson}` } }] } as never,
+        [{ timestamp: "created_time", direction: "ascending" }],
+        500,
+      )
+    ).map(toVocab),
+  ["lesson-vocab-v1"],
+  { revalidate: VOCAB_CACHE_SECONDS, tags: ["vocab"] },
+);
+const lessonVocab = (level: string, lesson: number) => cachedLessonVocab(level, lesson, vocabSlot());
+
 export async function getLessonVocab(level: string, lesson: number): Promise<{ title: string; words: VocabItem[] }[]> {
   if (useMock()) return groupBySection(mockVocab(), mockVocab().map((w, i) => ({ title: i ? "1-2 新しい友達" : "1-1 アルバイトを探す", words: [w.word] })));
-  const [pages, sections] = await Promise.all([
-    queryAll(
-      DS.vocab,
-      { and: [{ property: "語言", select: { equals: "🇯🇵 日文" } }, { property: "課次", select: { equals: `${level} L${lesson}` } }] } as never,
-      [{ timestamp: "created_time", direction: "ascending" }],
-      500,
-    ),
-    cachedLessonSections(level, lesson).catch(() => [] as IndexSection[]),
-  ]);
-  return groupBySection(pages.map(toVocab), sections);
+  const [words, sections] = await Promise.all([lessonVocab(level, lesson), cachedLessonSections(level, lesson).catch(() => [] as IndexSection[])]);
+  return groupBySection(words, sections);
 }
 
 
@@ -1092,6 +1109,7 @@ export async function submitAnswer(payload: AnswerPayload): Promise<void> {
         答錯次數: w.number(vu.wrongCount),
         上次測驗: w.date(day),
       });
+      revalidateTag("vocab");
     }
   } else if (kind === "kanji") {
     const vu = vocabUpdate(select(page, "熟悉度"), num(page, "答對次數"), num(page, "答錯次數"), correct);
@@ -1110,6 +1128,7 @@ export async function submitAnswer(payload: AnswerPayload): Promise<void> {
       答錯次數: w.number(vu.wrongCount),
       上次測驗: w.date(day),
     });
+    revalidateTag("vocab"); // 單字頁的熟悉度馬上更新
   } else if (kind === "n3") {
     await updatePage(id, {
       熟悉度_K: w.status(n3NextLevel(select(page, "熟悉度_K"), correct)),
