@@ -20,10 +20,12 @@ const STATUS_TAG: Record<string, string> = {
 function Note({ text }: { text: string }) {
   const rel = text.match(/^(相關|語源)[：:]\s*(.+)$/);
   if (!rel) return <>⚠️ <Ruby text={text} /></>;
+  // 「相關：歩道（ほどう）：人行道」第二個「：」後面是中文翻譯，跟括號裡的中文一樣用淡色（發音也不念這段）
+  const zh = rel[1] === "相關" ? rel[2].match(/^(.+?)\s*[：:]\s*(.+)$/) : null;
   return (
     <>
       <span className="tag mr-2 bg-card-2 text-ink-2">{rel[1]}</span>
-      {glossParts(rel[2]).map((p, i) =>
+      {glossParts(zh ? zh[1] : rel[2]).map((p, i) =>
         p.zh ? (
           <span key={i} className="text-sm text-muted">
             {p.text}
@@ -34,6 +36,7 @@ function Note({ text }: { text: string }) {
           </span>
         ),
       )}
+      {zh && <span className="ml-2 text-sm text-muted">{zh[2]}</span>}
     </>
   );
 }
