@@ -147,4 +147,9 @@ describe("usageSpeechTexts", () => {
     expect(usageSpeechTexts("・⚠️相關：この間（あいだ）：前幾天（較正式）")).toEqual(["この間（あいだ）"]);
     expect(usageSpeechTexts("・⚠️相關：コピー：影本")).toEqual(["コピー"]);
   });
+
+  it("does not speak pattern formulas", () => {
+    expect(usageSpeech("V＋やすい")).toBe("");
+    expect(usageSpeechTexts("・搭配：V＋やすい：容易V")).toEqual([]);
+  });
 });

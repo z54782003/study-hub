@@ -435,10 +435,10 @@ async function run(notion: Client, lessons: string[], speakerName: string) {
           rows.push({ ...base, kind, label, input: r.input, mine: r.plan.kana, engine: r.plan.engineKana, engineAccent: String(r.plan.engineAccent ?? ""), notation: r.nota, contour: r.contour, verdict: r.plan.verdict, note: r.plan.note, file: dry ? "" : listen, status: dry ? "只比對" : "新產生" });
           if (r.wav) uploads.push({ kind, name, id: await save(notion, r.wav, name, listen) });
         } else {
-          // 搭配：讀音沒把握的（夾中文、沒標振假名、引擎還是唸不對、數字＋整串讀音）不產，App 照舊用瀏覽器發音
+          // 搭配：讀音沒把握的（夾中文、沒標振假名、引擎還是唸不對、數字＋整串讀音；句型公式在 usageSpeech 就不念了）不產，App 照舊用瀏覽器發音
           if (kind === "u") {
             const c = await makeSentence(text, sp, false);
-            const why = c.done.verdict === SENTENCE_VERDICT.check ? c.done.note : /[＋+]/.test(text) ? "句型公式（V＋やすい）" : digitOverride(c.segs, c.done.override) ? "數字後面的振假名包含數字讀音（20歳（はたち））" : "";
+            const why = c.done.verdict === SENTENCE_VERDICT.check ? c.done.note : digitOverride(c.segs, c.done.override) ? "數字後面的振假名包含數字讀音（20歳（はたち））" : "";
             if (why) {
               rows.push({ ...base, kind, label, input: c.input, mine: segReading(c.segs), engine: c.engine, verdict: c.done.verdict, note: why, status: "跳過（讀音沒把握，App 用瀏覽器發音）" });
               continue;
