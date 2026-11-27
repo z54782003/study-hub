@@ -126,6 +126,23 @@ describe("sentences", () => {
     expect(misalignedSegments(segs, eng("ドーイウ/イ'ミデスカ")).size).toBe(0);
     expect(misalignedSegments(parseSentence("田中（たなか）という人（ひと）"), eng("タナカト/イウ/ヒト'")).size).toBe(0);
   });
+  it("treats dialogue dashes as punctuation", () => {
+    const segs = parseSentence("学生（がくせい）ですか。——はい、そうです。");
+    expect(segs.filter((s) => s.kind === "other")).toEqual([]);
+    expect(misalignedSegments(segs, eng("ガクセエデスカ/ハ'イ/ソ'オデス")).size).toBe(0);
+    expect(misalignedSegments(parseSentence("ここは？―ひじです。"), eng("ココワ/ヒジデ'ス")).size).toBe(0);
+  });
+  it("lets a number be silent when the furigana already covers it", () => {
+    expect(misalignedSegments(parseSentence("1人（ひとり）で行（い）きます"), eng("ヒトリデ/イキマ'ス")).size).toBe(0);
+    expect(misalignedSegments(parseSentence("メールを5件（ごけん）送（おく）りました"), eng("メ'エルオ/ゴケン/オクリマ'シタ")).size).toBe(0);
+    expect(misalignedSegments(parseSentence("4人分（よにんぶん）で"), eng("ヨニンブンデ")).size).toBe(0);
+    // 「3時（じ）」的讀音沒包含數字：引擎漏念「3」要抓得到
+    expect(misalignedSegments(parseSentence("3時（じ）に来ます"), eng("ジニ/キマ'ス")).size).toBeGreaterThan(0);
+    expect(misalignedSegments(parseSentence("3時（じ）に来ます"), eng("サ'ンジニ/キマ'ス")).size).toBe(0);
+  });
+  it("keeps the お of お送（おく）りします in the reading", () => {
+    expect(misalignedSegments(parseSentence("メールでお送（おく）りします"), eng("メ'エルデ/オオクリ/シマ'ス")).size).toBe(0);
+  });
   it("points at the kanji when the engine swallows the okurigana", () => {
     const segs = parseSentence("冷（ひ）やす");
     const still = misalignedSegments(segs, eng("ヒエヤ'ス"));

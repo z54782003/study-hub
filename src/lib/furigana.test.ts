@@ -43,4 +43,12 @@ describe("prefix readings", () => {
       { text: "湯", rt: "ゆ", hit: false },
     ]);
   });
+  it("keeps the reading of お＋verb forms (お送（おく）りします)", () => {
+    expect(rubyParts("お送（おく）りします")).toEqual([
+      { text: "お", hit: false },
+      { text: "送", rt: "おく", hit: false },
+      { text: "りします", hit: false },
+    ]);
+    expect(rubyParts("お湯（おゆ）を沸（わ）かします")[1]).toEqual({ text: "湯", rt: "ゆ", hit: false });
+  });
 });
