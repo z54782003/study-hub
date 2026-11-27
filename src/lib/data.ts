@@ -16,7 +16,7 @@ import { audioKey, lessonRows, lessonTitle, parseIndexPage, parseTranscript, typ
 import { parseNoteGrammar, type GrammarPoint, type NoteBlock, type Seg } from "./noteGrammar";
 import { EN_OTHER, EN_TOPICS } from "./reviewSource";
 import { findChildPages } from "./childPages";
-import { lessonNo, parseAnswers, type SpeakingSet } from "./speaking";
+import { bookOf, lessonNo, parseAnswers, type Book, type SpeakingSet } from "./speaking";
 import { AUDIO_PROPERTY, currentAudio, type AudioSource, type CurrentAudio } from "./jaAudioFiles";
 import { NOTE_REVIEW_OPTIONS } from "./noteReview";
 import { tedDoneChange } from "./tedLog";
@@ -1788,12 +1788,12 @@ export async function getLessonAudio(n: number): Promise<LessonAudio> {
 
 // ── 口說練習（言ってみよう）────────────────────────────
 
-/** 口說練習：有資料的課次，和指定課次的題組（照「順序」排）。題目圖的 Notion 網址一小時後失效，頁面每次重新讀 */
-export async function getSpeaking(lesson: string | null): Promise<{ lessons: string[]; lesson: string | null; sets: SpeakingSet[] }> {
+/** 口說練習：這本課本有資料的課次，和指定課次的題組（照「順序」排）。沒指定課次時初中級看最新一課、初級從 L1 開始。題目圖的 Notion 網址一小時後失效，頁面每次重新讀 */
+export async function getSpeaking(book: Book, lesson: string | null): Promise<{ lessons: string[]; lesson: string | null; sets: SpeakingSet[] }> {
   if (useMock()) return { lessons: [], lesson: null, sets: [] };
   const pages = await queryAll(DS.speaking, undefined, [{ property: "順序", direction: "ascending" }]);
-  const lessons = [...new Set(pages.map((p) => select(p, "課次")).filter((l): l is string => !!l))].sort((a, b) => lessonNo(a) - lessonNo(b));
-  const pick = lesson && lessons.includes(lesson) ? lesson : (lessons[lessons.length - 1] ?? null);
+  const lessons = [...new Set(pages.map((p) => select(p, "課次")).filter((l): l is string => !!l && bookOf(l) === book))].sort((a, b) => lessonNo(a) - lessonNo(b));
+  const pick = lesson && lessons.includes(lesson) ? lesson : ((book === "初級" ? lessons[0] : lessons[lessons.length - 1]) ?? null);
   const sets = pages
     .filter((p) => select(p, "課次") === pick)
     .map((p): SpeakingSet => {
