@@ -57,9 +57,15 @@ export type Choice = { key: string; text: string };
 export function parseChoices(prompt: string): { stem: string; hint: string; options: Choice[] } | null {
   const split = splitCircled(prompt) ?? splitLetters(prompt);
   if (!split) return null;
-  const { stem, options } = split;
+  let { stem } = split;
+  const { options } = split;
   let hint = "";
   const last = options[options.length - 1];
+  // 選項整串包在括號裡：「…尊敬語？（①行く ②来る ③いる ④する）」→ 拿掉題幹最後的「（」和最後一個選項的「）」
+  if (/[（(]\s*$/u.test(stem) && /[）)]\s*$/u.test(last.text)) {
+    stem = stem.replace(/\s*[（(]\s*$/u, "");
+    last.text = last.text.replace(/\s*[）)]\s*$/u, "");
+  }
   const m = last.text.match(/^(.*?)\s*[（(]([^）)]*)[）)]\s*$/u);
   if (m && m[1]) {
     last.text = m[1];
@@ -81,7 +87,7 @@ function splitCircled(prompt: string): { stem: string; options: Choice[] } | nul
  * 字母前面要有空白（或在開頭）、後面接空白或 . ) :，而且要從 a 開始依序 b、c、d，至少兩個。
  */
 function splitLetters(prompt: string): { stem: string; options: Choice[] } | null {
-  const marks = [...prompt.matchAll(/(?<=^|[\s　])([a-dA-D])(?:[.．)）:：][\s　]*|[\s　]+)(?=\S)/gu)].map((m) => ({
+  const marks = [...prompt.matchAll(/(?<=^|[\s　（(])([a-dA-D])(?:[.．)）:：][\s　]*|[\s　]+)(?=\S)/gu)].map((m) => ({
     letter: m[1].toLowerCase(),
     start: m.index!,
     end: m.index! + m[0].length,

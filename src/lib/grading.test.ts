@@ -75,6 +75,32 @@ describe("parseChoices", () => {
   });
 });
 
+describe("parseChoices with options wrapped in brackets", () => {
+  it("drops the outer brackets", () => {
+    expect(parseChoices("「いらっしゃる」不是下列哪個動詞的尊敬語？（①行く ②来る ③いる ④する）")).toEqual({
+      stem: "「いらっしゃる」不是下列哪個動詞的尊敬語？",
+      hint: "",
+      options: [
+        { key: "①", text: "行く" },
+        { key: "②", text: "来る" },
+        { key: "③", text: "いる" },
+        { key: "④", text: "する" },
+      ],
+    });
+  });
+  it("still finds a trailing hint inside the brackets", () => {
+    const q = parseChoices("顔色が（　）ですね。（①いい ②悪い ③高い（心配するとき））")!;
+    expect(q.stem).toBe("顔色が（　）ですね。");
+    expect(q.options[2]).toEqual({ key: "③", text: "高い" });
+    expect(q.hint).toBe("心配するとき");
+  });
+  it("works for letter options too", () => {
+    const q = parseChoices("どれですか。(a 行く b 来る c いる)")!;
+    expect(q.stem).toBe("どれですか。");
+    expect(q.options.map((o) => o.text)).toEqual(["行く", "来る", "いる"]);
+  });
+});
+
 describe("parseChoices with letter options", () => {
   const q = parseChoices("もう少し辛くしたかったら、（　）を入れてください。　a はちみつ　b 唐辛子　c クリーム　d 砂糖")!;
   it("splits a–d options", () => {
