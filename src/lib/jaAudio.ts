@@ -244,7 +244,8 @@ export function parseSentence(raw: string): Seg[] {
     } else if (new RegExp(`[${KANA}]`).test(c)) {
       push({ kind: "kana", text: c });
       i++;
-    } else if (/[\s、。，,．.！!？?「」『』（）()／/…・：:〜～]/.test(c)) {
+    } else if (/[\s、。，,．.！!？?「」『』（）()／/…・：:〜～—―─]/.test(c)) {
+      // 「——」「―」是對話的破折號，不念
       push({ kind: "punct", text: c });
       i++;
     } else {
@@ -267,7 +268,7 @@ export function sentenceInput(segs: Seg[], override: Set<number> = new Set()): s
   );
 }
 
-type Tok = { seg: number; mora: string | null }; // mora null＝萬用字元
+type Tok = { seg: number; mora: string | null; zeroOk?: true }; // mora null＝萬用字元；zeroOk＝可以一拍都不吃
 
 /**
  * 我的讀音和引擎的讀音逐拍對齊（動態規劃，萬用字元可以吃掉一拍以上），
@@ -291,12 +292,19 @@ function alignSegments(segs: Seg[], engine: EnginePhrase[], iuAsYuu: boolean): S
     else if (s.kind === "ruby") raw.push({ seg: i, moras: splitMoras(toKata(s.reading)) });
     else if (s.kind === "other") raw.push({ seg: i, moras: null });
   });
+  // 數字、英文後面緊接的振假名常把它們一起標進去（1人（ひとり）、4人分（よにんぶん）、X線（えっくすせん））：這種萬用字元可以一拍都不吃。
+  // 只限讀音明顯比漢字長的（拍數 ≥ 字數×2＋1）；「3時（じ）」「1日（にち）」的讀音沒包含數字，數字還是要念到
+  const zeroOk = (i: number) => {
+    const s = segs[i];
+    const next = segs[i + 1];
+    return s.kind === "other" && !s.unknownKanji && next?.kind === "ruby" && splitMoras(toKata(next.reading)).length >= [...next.base].length * 2 + 1;
+  };
   // 長音要跨段落一起轉（先生（せんせい）い → 不會；但「ちょう」跨段時要看前一拍）
   const flat = canonMoras(raw.flatMap((r) => r.moras ?? ["＊"]));
   let k = 0;
   for (const r of raw) {
     if (r.moras === null) {
-      exp.push({ seg: r.seg, mora: null });
+      exp.push(zeroOk(r.seg) ? { seg: r.seg, mora: null, zeroOk: true } : { seg: r.seg, mora: null });
       k++;
     } else for (let j = 0; j < r.moras.length; j++) exp.push({ seg: r.seg, mora: flat[k++] });
   }
@@ -323,6 +331,7 @@ function alignSegments(segs: Seg[], engine: EnginePhrase[], iuAsYuu: boolean): S
         else relax(i + 1, j + 1, cur + (moraEq(e.mora, got[j]) ? 0 : 1), moraEq(e.mora, got[j]) ? "m" : "s");
       }
       if (i > 0 && j < m && exp[i - 1].mora === null && (how[i][j] === "w" || how[i][j] === "W")) relax(i, j + 1, cur, "W"); // 萬用字元繼續吃
+      if (i < n && exp[i].zeroOk) relax(i + 1, j, cur, "z"); // 讀音已經包含這個數字
       if (i < n) relax(i + 1, j, cur + 1, "d");
       if (j < m) relax(i, j + 1, cur + 1, "i");
     }
@@ -333,6 +342,7 @@ function alignSegments(segs: Seg[], engine: EnginePhrase[], iuAsYuu: boolean): S
     const h = how[i][j];
     if (h === "m" || h === "w") (i--, j--);
     else if (h === "W") j--;
+    else if (h === "z") i--;
     else if (h === "s") (bad.add(exp[i - 1].seg), i--, j--);
     else if (h === "d") (bad.add(exp[i - 1].seg), i--);
     else if (h === "i") (bad.add(exp[Math.min(i, n - 1)]?.seg ?? -1), j--);

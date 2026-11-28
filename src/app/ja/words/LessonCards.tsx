@@ -5,8 +5,9 @@ import { Fragment, useEffect, useState } from "react";
 import { Icon } from "@/components/Icon";
 import { preloadAudio, Speak, vocabAudioRefs } from "@/components/Speak";
 import { keepWordJa, speakableJa } from "@/lib/speech";
-import { glossParts, kanaOnly, masuRuby, parseUsage, splitMasu, usageLineSpeech, verbType } from "@/lib/usage";
+import { kanaOnly, masuRuby, parseUsage, splitMasu, usageLineSpeech, verbType } from "@/lib/usage";
 import { Ruby } from "@/components/Ruby";
+import { UsageNote } from "@/components/UsageNote";
 import type { VocabItem } from "@/lib/types";
 
 const STATUS_TAG: Record<string, string> = {
@@ -15,31 +16,6 @@ const STATUS_TAG: Record<string, string> = {
   熟悉: "bg-accent-soft text-accent",
   精通: "bg-accent text-on-accent",
 };
-
-/** 「・⚠️」提醒：「相關：」那種把日文和括號裡的中文補充分開顏色，其他（多半是中文說明）照原樣 */
-function Note({ text }: { text: string }) {
-  const rel = text.match(/^(相關|語源)[：:]\s*(.+)$/);
-  if (!rel) return <>⚠️ <Ruby text={text} /></>;
-  // 「相關：歩道（ほどう）：人行道」第二個「：」後面是中文翻譯，跟括號裡的中文一樣用淡色（發音也不念這段）
-  const zh = rel[1] === "相關" ? rel[2].match(/^(.+?)\s*[：:]\s*(.+)$/) : null;
-  return (
-    <>
-      <span className="tag mr-2 bg-card-2 text-ink-2">{rel[1]}</span>
-      {glossParts(zh ? zh[1] : rel[2]).map((p, i) =>
-        p.zh ? (
-          <span key={i} className="text-sm text-muted">
-            {p.text}
-          </span>
-        ) : (
-          <span key={i} className="text-[15px] font-semibold text-ink" lang="ja">
-            <Ruby text={p.text} />
-          </span>
-        ),
-      )}
-      {zh && <span className="ml-2 text-sm text-muted">{zh[2]}</span>}
-    </>
-  );
-}
 
 /** 熟悉度只看不改：「練習這課」答題時自動更新（錯→忘記；答對累計 3 次→熟悉、6 次→精通） */
 function Familiarity({ w }: { w: VocabItem }) {
@@ -236,7 +212,7 @@ export function LessonCards({
                 u.note ? (
                   <dd key={k} className="col-span-2 flex items-start justify-between gap-1 text-sm leading-loose text-ink-2">
                     <span>
-                      <Note text={u.ja} />
+                      <UsageNote text={u.ja} />
                     </span>
                     {lang === "ja" && /^相關[：:]/.test(u.ja) && (
                       <Speak text={usageLineSpeech(u)} audio={w.usageAudio?.[usageLineSpeech(u)]} label={`播放相關${k + 1}`} className="-my-2" />

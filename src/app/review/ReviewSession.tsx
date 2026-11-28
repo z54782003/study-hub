@@ -5,6 +5,7 @@ import { gradeChoice, parseChoices } from "@/lib/grading";
 import { sourceLabel, sourceQuery } from "@/lib/reviewSource";
 import { preloadAudio, Speak, vocabAudioRefs } from "@/components/Speak";
 import { Ruby } from "@/components/Ruby";
+import { UsageNote } from "@/components/UsageNote";
 import { masuRuby, parseUsage, splitMasu } from "@/lib/usage";
 import { speakableJa } from "@/lib/speech";
 import { FORM_LABEL, FORM_RULE, GROUP_OF, checkConjugation, specialNote, type VerbForm } from "@/lib/conjugate";
@@ -777,8 +778,8 @@ function VocabDetail({ item }: { item: VocabItem }) {
           <div className="text-xs text-muted">搭配與用法</div>
           {usage.map((u, k) =>
             u.note ? (
-              <p key={k} className="text-ink-2" lang={lang}>
-                <Ruby text={u.ja} />
+              <p key={k} className="text-ink-2">
+                <UsageNote text={u.ja} />
               </p>
             ) : (
               <p key={k}>
