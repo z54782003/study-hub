@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { hasReadings, rubyParts } from "./furigana";
+import { flipReadings, hasReadings, rubyParts } from "./furigana";
 
 describe("rubyParts", () => {
   it("turns bracketed readings into ruby", () => {
@@ -42,5 +42,22 @@ describe("prefix readings", () => {
       { text: "とお", hit: false },
       { text: "湯", rt: "ゆ", hit: false },
     ]);
+  });
+});
+
+describe("flipReadings", () => {
+  it("turns kana（漢字） answers into 漢字（かな）", () => {
+    expect(flipReadings("② しゅうでん（終電）")).toBe("② 終電（しゅうでん）");
+    expect(flipReadings("b) ひょうしょうじょう（表彰状）")).toBe("b) 表彰状（ひょうしょうじょう）");
+    expect(flipReadings("② だいすき（大好き）")).toBe("② 大好（だいす）き");
+    expect(flipReadings("① びんぼう（貧乏）")).toBe("① 貧乏（びんぼう）");
+  });
+  it("keeps prefixes outside the brackets", () => {
+    expect(flipReadings("おかねもち（お金持ち）")).toBe("お金持（かねも）ち");
+  });
+  it("leaves normal 漢字（かな） and explanations alone", () => {
+    expect(flipReadings("b 唐辛子（とうがらし）")).toBe("b 唐辛子（とうがらし）");
+    expect(flipReadings("②（狀態的継続）")).toBe("②（狀態的継続）");
+    expect(flipReadings("だし（無料だし）")).toBe("だし（無料だし）");
   });
 });

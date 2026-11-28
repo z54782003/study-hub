@@ -6,7 +6,7 @@ import { sourceLabel, sourceQuery } from "@/lib/reviewSource";
 import { playVoice, preloadAudio, Speak, vocabAudioRefs } from "@/components/Speak";
 import { checkListen, listenQuestion } from "@/lib/listen";
 import { Ruby } from "@/components/Ruby";
-import { hasReadings } from "@/lib/furigana";
+import { flipReadings, hasReadings } from "@/lib/furigana";
 import { masuRuby, parseUsage, splitMasu } from "@/lib/usage";
 import { speakableJa } from "@/lib/speech";
 import { FORM_LABEL, FORM_RULE, GROUP_OF, checkConjugation, specialNote, type VerbForm } from "@/lib/conjugate";
@@ -456,14 +456,14 @@ function QuizCard({ item, onDone, onSkip }: { item: QuizItem; onDone: (p: Pendin
         <section className="card mt-3 space-y-2 rounded-[20px] px-[18px] py-4">
           <div className="label">正確答案</div>
           {/* 「漢字（かな）」顯示成漢字上方的小字讀音 */}
-          <p className={`text-lg font-bold ${hasReadings(item.answer) ? "leading-[2.2]" : "leading-relaxed"}`} lang="ja">
-            <Ruby text={item.answer} />
+          <p className={`text-lg font-bold ${hasReadings(flipReadings(item.answer)) ? "leading-[2.2]" : "leading-relaxed"}`} lang="ja">
+            <Ruby text={flipReadings(item.answer)} />
           </p>
           {item.explanation && (
             <>
               <div className="label pt-1">解析</div>
-              <p className={`text-[15px] whitespace-pre-wrap text-ink-2 ${hasReadings(item.explanation) ? "pt-1.5 leading-[2.3]" : "leading-relaxed"}`}>
-                <Ruby text={item.explanation} />
+              <p className={`text-[15px] whitespace-pre-wrap text-ink-2 ${hasReadings(flipReadings(item.explanation)) ? "pt-1.5 leading-[2.3]" : "leading-relaxed"}`}>
+                <Ruby text={flipReadings(item.explanation)} />
               </p>
             </>
           )}

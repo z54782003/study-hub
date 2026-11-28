@@ -6,6 +6,24 @@ export type RubyPart = { text: string; rt?: string; hit: boolean };
 
 const RUBY = /([一-鿿々〆ヶ]+)[（(]([぀-ヿー・]+)[）)]/g;
 
+/**
+ * 「かな（漢字）」反過來寫的答案（② しゅうでん（終電）、だいすき（大好き））改成「漢字（かな）」，好顯示成上方小字讀音。
+ * 前後相同的假名（送假名、お）留在括號外：だいすき（大好き）→ 大好（だいす）き、おかねもち（お金持ち）→ お金持（かねも）ち。
+ * 拆不開（中間不是純漢字）就照原樣。
+ */
+export function flipReadings(text: string): string {
+  return text.replace(/(^|[^\u3040-\u30ff])([\u3040-\u309fー]+)[（(]([^（()）]*[一-鿿々〆ヶ][^（()）]*)[）)]/g, (all, pre: string, kana: string, form: string) => {
+    let head = 0;
+    while (head < form.length && head < kana.length && form[head] === kana[head] && /[\u3040-\u309f]/.test(form[head])) head++;
+    let tail = 0;
+    while (tail < form.length - head && tail < kana.length - head && form[form.length - 1 - tail] === kana[kana.length - 1 - tail] && /[\u3040-\u309f]/.test(form[form.length - 1 - tail])) tail++;
+    const core = form.slice(head, form.length - tail);
+    const rt = kana.slice(head, kana.length - tail);
+    if (!core || !rt || !/^[一-鿿々〆ヶ]+$/.test(core)) return all;
+    return `${pre}${form.slice(0, head)}${core}（${rt}）${form.slice(form.length - tail)}`;
+  });
+}
+
 /** 句子裡有沒有「漢字（かな）」形式的讀音 */
 export const hasReadings = (text: string) => new RegExp(RUBY.source).test(text);
 
