@@ -2,6 +2,7 @@
 // 1. 單字聽寫：聽單字 → 寫假名（讀音）
 // 2. 例句填空：例句挖掉這個單字 → 聽整句 → 填假名
 import { rubyParts, type RubyPart } from "./furigana";
+import { readingKana } from "./speech";
 import type { AudioRef, VocabItem } from "./types";
 
 export type ListenQuestion =
@@ -14,23 +15,38 @@ const KANA = /^[぀-ヿー・]+$/;
 /** 比對前的正規化：全形半形、空白、標點拿掉（平假名／片假名不互換） */
 export const normalizeKana = (s: string) => s.normalize("NFKC").replace(/[\s　。、，,.・「」！？!?〜~]/g, "");
 
-/** 單字可接受的寫法：每個讀音（「ひと／にん」「あう（会う）」）、假名詞本身，漢字照原字寫也算對 */
+/**
+ * 課本記法展開成可接受的寫法：
+ * 「(お)しょうがつ」→ しょうがつ／おしょうがつ；「いや(な)」→ いや／いやな；「ヒット・する」→ ヒットする／ヒット；
+ * 「しち・なな」→ しち／なな；括號裡是說明（「ひ（訓讀み）」）就拿掉
+ */
+function variants(s: string): string[] {
+  const out: string[] = [];
+  const opt = s.match(/[（(]([\u3040-\u30ffー]{1,2})[）)]/);
+  const forms = [s.replace(/[（(].*?[）)]/g, "")];
+  if (opt) forms.push(s.replace(opt[0], opt[1]).replace(/[（(].*?[）)]/g, ""));
+  for (const f of forms) {
+    const parts = f.split("・").map((x) => x.trim()).filter(Boolean);
+    if (parts.length === 2 && parts[1] === "する") out.push(parts.join(""), parts[0]);
+    else out.push(...parts);
+  }
+  return out;
+}
+
+/** 單字可接受的寫法：每個讀音（「ひと／にん」）、假名詞本身，漢字照原字寫也算對 */
 export function wordAnswers(item: Pick<VocabItem, "word" | "reading">): string[] {
   const out = new Set<string>();
   const add = (s: string) => {
-    const n = normalizeKana(s.replace(/[（(].*?[）)]/g, ""));
+    const n = normalizeKana(s);
     if (n && !n.includes("〜")) out.add(n);
   };
-  for (const r of item.reading.split(/[／/、,，;；]|\s+/)) if (KANA.test(normalizeKana(r.replace(/[（(].*?[）)]/g, "")))) add(r);
-  add(item.word);
+  for (const r of item.reading.split(/[／/、,，;；]|\s+/)) for (const v of variants(r)) if (KANA.test(normalizeKana(v))) add(v);
+  for (const v of variants(item.word)) add(v);
   return [...out];
 }
 
 /** 卡片上顯示的正確答案：第一個讀音（假名詞就是單字本身） */
-const mainReading = (item: Pick<VocabItem, "word" | "reading">) => {
-  const r = item.reading.split(/[／/、,，;；]|\s+/).map((x) => x.replace(/[（(].*?[）)]/g, "").trim()).find((x) => KANA.test(normalizeKana(x)));
-  return r || item.word;
-};
+const mainReading = (item: Pick<VocabItem, "word" | "reading">) => readingKana(item.reading, item.word) || item.word;
 
 /** 例句裡找到「完全一樣」的單字（動詞變化過的不算）就挖空；答案是那一段的讀音 */
 export function blankExample(item: VocabItem): Extract<ListenQuestion, { type: "blank" }> | null {

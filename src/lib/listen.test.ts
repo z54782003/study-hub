@@ -25,6 +25,13 @@ describe("wordAnswers", () => {
     expect(wordAnswers({ word: "人", reading: "ひと／にん" })).toEqual(["ひと", "にん", "人"]);
     expect(wordAnswers({ word: "スピード", reading: "" })).toEqual(["スピード"]);
   });
+  it("expands textbook notation", () => {
+    expect(wordAnswers({ word: "(お)正月", reading: "(お)しょうがつ" })).toEqual(expect.arrayContaining(["しょうがつ", "おしょうがつ"]));
+    expect(wordAnswers({ word: "ヒット・する", reading: "ヒット・する" })).toEqual(expect.arrayContaining(["ヒットする", "ヒット"]));
+    expect(wordAnswers({ word: "嫌(な)", reading: "いや(な)" })).toEqual(expect.arrayContaining(["いや", "いやな"]));
+    expect(wordAnswers({ word: "七", reading: "しち・なな" })).toEqual(expect.arrayContaining(["しち", "なな"]));
+    expect(wordAnswers({ word: "火", reading: "ひ（訓讀み）・か（曜日）" })).toEqual(expect.arrayContaining(["ひ", "か"]));
+  });
 });
 
 describe("blankExample", () => {
