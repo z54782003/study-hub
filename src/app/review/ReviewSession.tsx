@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { gradeChoice, parseChoices } from "@/lib/grading";
+import { blankAnswers, gradeChoice, parseChoices } from "@/lib/grading";
 import { sourceLabel, sourceQuery } from "@/lib/reviewSource";
 import { preloadAudio, Speak, vocabAudioRefs } from "@/components/Speak";
 import { Ruby } from "@/components/Ruby";
@@ -303,6 +303,25 @@ function QuizCard({ item, onDone, onSkip }: { item: QuizItem; onDone: (p: Pendin
     } else void grade(`${o.key} ${o.text}`, key);
   };
 
+  // 多個空格共用一組選項（本を（①）…消しゴムを（②）… a 貸します b 借ります）：每格各選一個，全選完才批改
+  const blanks = choices?.blanks ?? [];
+  const blankKey = choices && blanks.length ? blankAnswers(blanks, choices.options, item.answer) : null;
+  const [blankPicks, setBlankPicks] = useState<Record<string, string>>({});
+  const pickBlank = (b: string, key: string) => {
+    const next = { ...blankPicks, [b]: key };
+    setBlankPicks(next);
+    if (!blanks.every((x) => next[x])) return;
+    const text = blanks
+      .map((x) => {
+        const o = choices!.options.find((y) => y.key === next[x])!;
+        return `${x} ${o.key} ${o.text}`;
+      })
+      .join("　");
+    setDraft(text);
+    if (blankKey) setResult({ correct: blanks.every((x) => next[x] === blankKey[x]), method: "自動比對", feedback: "", suggestion: "" });
+    else void grade(text);
+  };
+
   const grade = async (answer = draft, choice?: string) => {
     setGrading(true);
     try {
@@ -356,7 +375,40 @@ function QuizCard({ item, onDone, onSkip }: { item: QuizItem; onDone: (p: Pendin
           {choices ? choices.stem : item.prompt}
         </p>
         {choices?.hint && <p className="mt-1 text-sm text-muted" lang="ja">（{choices.hint}）</p>}
-        {choices && (
+        {choices && blanks.length > 0 && (
+          <div className="mt-4 space-y-3">
+            {blanks.map((b) => (
+              <div key={b} className="flex items-center gap-3">
+                <span className="w-6 text-lg text-muted">{b}</span>
+                <div className="grid flex-1 grid-cols-2 gap-2">
+                  {choices.options.map((o) => {
+                    const chosen = blankPicks[b] === o.key;
+                    const isCorrect = result && blankKey?.[b] === o.key;
+                    const isWrongPick = result && chosen && !isCorrect;
+                    return (
+                      <button
+                        key={o.key}
+                        type="button"
+                        disabled={Boolean(result) || grading}
+                        onClick={() => pickBlank(b, o.key)}
+                        className={`flex items-center gap-1.5 rounded-2xl border-2 px-3 py-3 text-left text-base ${
+                          isCorrect ? "border-ok bg-ok-soft" : isWrongPick ? "border-bad bg-bad-soft" : chosen ? "border-accent" : "border-line"
+                        }`}
+                        lang="ja"
+                      >
+                        <span className="text-muted">{o.key}</span>
+                        <span className="flex-1 whitespace-nowrap">{o.text}</span>
+                        {isCorrect && <span className="text-ok">✓</span>}
+                        {isWrongPick && <span className="text-bad">✗</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        {choices && blanks.length === 0 && (
           <div className="mt-4 grid gap-2">
             {choices.options.map((o) => {
               const isCorrect = result && correctKeys?.includes(o.key);

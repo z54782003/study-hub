@@ -54,25 +54,68 @@ export type Choice = { key: string; text: string };
  * 從題目拆出選項：「顔色が（　）ですね。 ①いい ②悪い ③高い（心配するとき）」
  * → 題幹＋[①いい, ②悪い, ③高い]，最後一個選項後面的括號提示移回題幹。少於 2 個選項回傳 null（改用打字）。
  */
-export function parseChoices(prompt: string): { stem: string; hint: string; options: Choice[] } | null {
-  const split = splitCircled(prompt) ?? splitLetters(prompt);
+export function parseChoices(prompt: string): { stem: string; hint: string; options: Choice[]; blanks: string[] } | null {
+  // 題目裡「（　①　）」這種是空格編號，不是選項
+  const blanks = [...prompt.matchAll(/[（(][\s　]*([①-⑩])[\s　]*[）)]/gu)].map((m) => m[1]);
+  const split = (blanks.length ? null : splitCircled(prompt)) ?? splitLetters(prompt);
   if (!split) return null;
   let { stem } = split;
   const { options } = split;
   let hint = "";
   const last = options[options.length - 1];
-  // 選項整串包在括號裡：「…尊敬語？（①行く ②来る ③いる ④する）」→ 拿掉題幹最後的「（」和最後一個選項的「）」
-  if (/[（(]\s*$/u.test(stem) && /[）)]\s*$/u.test(last.text)) {
-    stem = stem.replace(/\s*[（(]\s*$/u, "");
-    last.text = last.text.replace(/\s*[）)]\s*$/u, "");
+  // 選項整串包在括號裡：「…尊敬語？（①行く ②来る ③いる ④する）」→ 拿掉題幹最後的「（」和對應的「）」，
+  // 「）」後面還有東西（「（自編）」）就當提示
+  if (/[（(]\s*$/u.test(stem)) {
+    const close = unmatchedClose(last.text);
+    if (close >= 0) {
+      stem = stem.replace(/\s*[（(]\s*$/u, "");
+      const rest = last.text.slice(close + 1).trim();
+      last.text = last.text.slice(0, close).trim();
+      hint = rest.replace(/^[（(](.*)[）)]$/u, "$1");
+    }
   }
   const m = last.text.match(/^(.*?)\s*[（(]([^）)]*)[）)]\s*$/u);
   if (m && m[1]) {
     last.text = m[1];
-    hint = m[2];
+    hint = hint ? `${m[2]}；${hint}` : m[2];
   }
   if (options.some((o) => !o.text)) return null;
-  return { stem, hint, options };
+  return { stem, hint, options, blanks: blanks.length >= 2 ? blanks : [] };
+}
+
+/** 第一個沒有對應「（」的「）」位置，沒有回傳 -1 */
+function unmatchedClose(s: string): number {
+  let depth = 0;
+  for (let i = 0; i < s.length; i++) {
+    if (s[i] === "（" || s[i] === "(") depth++;
+    else if (s[i] === "）" || s[i] === ")") {
+      if (depth === 0) return i;
+      depth--;
+    }
+  }
+  return -1;
+}
+
+/**
+ * 多個空格共用一組選項（「本を（①）。消しゴムを（②）。 a 貸します b 借ります」，答案「① a 貸します ② b 借ります」）：
+ * 每個空格的正確選項 key；有任何一格對不到就回傳 null（交給 AI）。
+ */
+export function blankAnswers(blanks: string[], options: Choice[], correct: string): Record<string, string> | null {
+  const segs = correct.split(/(?=[①-⑩])/u);
+  const out: Record<string, string> = {};
+  for (const b of blanks) {
+    const seg = segs.find((x) => x.startsWith(b));
+    if (!seg) return null;
+    const rest = normalizeAnswer(seg.slice(1));
+    const hit = options.filter((o) => {
+      const k = normalizeAnswer(o.key);
+      const t = normalizeAnswer(o.text);
+      return rest === k || rest === t || rest === k + t;
+    });
+    if (hit.length !== 1) return null;
+    out[b] = hit[0].key;
+  }
+  return out;
 }
 
 /** ①②③ 選項 */

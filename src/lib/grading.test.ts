@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { acceptableAnswers, autoGrade, gradeChoice, normalizeAnswer, parseChoices } from "./grading";
+import { acceptableAnswers, autoGrade, blankAnswers, gradeChoice, normalizeAnswer, parseChoices } from "./grading";
 
 // 正確答案都取自 2026-10-26 日文題庫的實際資料
 describe("autoGrade", () => {
@@ -55,6 +55,7 @@ describe("parseChoices", () => {
     expect(parseChoices("顔色が（　）ですね。大丈夫ですか。 ①いい ②悪い ③高い（心配するとき）")).toEqual({
       stem: "顔色が（　）ですね。大丈夫ですか。",
       hint: "心配するとき",
+      blanks: [],
       options: [
         { key: "①", text: "いい" },
         { key: "②", text: "悪い" },
@@ -80,6 +81,7 @@ describe("parseChoices with options wrapped in brackets", () => {
     expect(parseChoices("「いらっしゃる」不是下列哪個動詞的尊敬語？（①行く ②来る ③いる ④する）")).toEqual({
       stem: "「いらっしゃる」不是下列哪個動詞的尊敬語？",
       hint: "",
+      blanks: [],
       options: [
         { key: "①", text: "行く" },
         { key: "②", text: "来る" },
@@ -98,6 +100,36 @@ describe("parseChoices with options wrapped in brackets", () => {
     const q = parseChoices("どれですか。(a 行く b 来る c いる)")!;
     expect(q.stem).toBe("どれですか。");
     expect(q.options.map((o) => o.text)).toEqual(["行く", "来る", "いる"]);
+  });
+});
+
+describe("parseChoices with a note after the brackets", () => {
+  it("keeps （自編） out of the last option", () => {
+    const q = parseChoices("被問到時怎麼回答？（①はい、召し上がります ②はい、食べます ③はい、いただきますよ ④はい、お食べになります）（自編）")!;
+    expect(q.stem).toBe("被問到時怎麼回答？");
+    expect(q.options[3]).toEqual({ key: "④", text: "はい、お食べになります" });
+    expect(q.hint).toBe("自編");
+  });
+  it("handles ③職業・習慣）", () => {
+    const q = parseChoices("第幾種用法？（①動作進行中　②狀態的継続　③職業・習慣）")!;
+    expect(q.options.map((o) => o.text)).toEqual(["動作進行中", "狀態的継続", "職業・習慣"]);
+  });
+});
+
+describe("numbered blanks sharing letter options", () => {
+  const q = parseChoices("図書館の人は本を（　①　）。友達は消しゴムを（　②　）。 a 貸します　b 借ります")!;
+  it("keeps ①② in the stem as blanks", () => {
+    expect(q.stem).toBe("図書館の人は本を（　①　）。友達は消しゴムを（　②　）。");
+    expect(q.blanks).toEqual(["①", "②"]);
+    expect(q.options).toEqual([
+      { key: "a", text: "貸します" },
+      { key: "b", text: "借ります" },
+    ]);
+  });
+  it("reads each blank's answer", () => {
+    expect(blankAnswers(q.blanks, q.options, "① a 貸します　② b 借ります")).toEqual({ "①": "a", "②": "b" });
+    expect(blankAnswers(q.blanks, q.options, "① a　② b")).toEqual({ "①": "a", "②": "b" });
+    expect(blankAnswers(q.blanks, q.options, "貸します、借ります")).toBeNull();
   });
 });
 
