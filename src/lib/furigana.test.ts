@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { flipReadings, hasReadings, rubyParts } from "./furigana";
+import { explanationSegments, fixOkurigana, flipReadings, hasReadings, rubyParts } from "./furigana";
 
 describe("rubyParts", () => {
   it("turns bracketed readings into ruby", () => {
@@ -59,5 +59,27 @@ describe("flipReadings", () => {
     expect(flipReadings("b 唐辛子（とうがらし）")).toBe("b 唐辛子（とうがらし）");
     expect(flipReadings("②（狀態的継続）")).toBe("②（狀態的継続）");
     expect(flipReadings("だし（無料だし）")).toBe("だし（無料だし）");
+  });
+});
+
+describe("fixOkurigana", () => {
+  it("moves okurigana out of the reading", () => {
+    expect(fixOkurigana("「読む（よむ）」")).toBe("「読（よ）む」");
+    expect(fixOkurigana("入れる（いれる）")).toBe("入（い）れる");
+    expect(fixOkurigana("召（め）し上（あ）がる")).toBe("召（め）し上（あ）がる");
+  });
+});
+
+describe("explanationSegments", () => {
+  it("keeps readings only inside 「」 and drops them from Chinese text", () => {
+    expect(explanationSegments("②考點：對對方用尊敬語（そんけいご）「いらっしゃる」；例：「先生（せんせい）は読む（よむ）。」")).toEqual([
+      { text: "②考點：對對方用尊敬語", ruby: false },
+      { text: "「いらっしゃる」", ruby: true },
+      { text: "；例：", ruby: false },
+      { text: "「先生（せんせい）は読（よ）む。」", ruby: true },
+    ]);
+  });
+  it("hides a wrong reading glued to a Chinese word", () => {
+    expect(explanationSegments("別人的丈夫（おっと）")).toEqual([{ text: "別人的丈夫", ruby: false }]);
   });
 });

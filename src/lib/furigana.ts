@@ -24,6 +24,34 @@ export function flipReadings(text: string): string {
   });
 }
 
+/** 讀音連送假名一起寫的（読む（よむ）、入れる（いれる））改成 読（よ）む，好顯示成上方小字讀音 */
+export function fixOkurigana(text: string): string {
+  return text.replace(/([一-鿿々〆ヶ]+)([\u3040-\u309f]+)[（(]([\u3040-\u309fー]+)[）)]/g, (all, kanji: string, tail: string, kana: string) =>
+    kana.length > tail.length && kana.endsWith(tail) ? `${kanji}（${kana.slice(0, -tail.length)}）${tail}` : all,
+  );
+}
+
+/** 答案、解析裡的讀音寫法統一成「漢字（かな）」 */
+export const normalizeReadings = (text: string) => fixOkurigana(flipReadings(text));
+
+/**
+ * 題庫解析：只有「」『』括起來的日文才顯示振假名；括號外是中文說明，讀音括號拿掉
+ * （中文字緊貼日文漢字時分不出哪幾個字是日文：「對對方用尊敬語（そんけいご）」）
+ */
+export function explanationSegments(text: string): { text: string; ruby: boolean }[] {
+  const out: { text: string; ruby: boolean }[] = [];
+  let last = 0;
+  for (const m of text.matchAll(/[「『][^「」『』]*[」』]/g)) {
+    if (m.index > last) out.push({ text: stripReadings(text.slice(last, m.index)), ruby: false });
+    out.push({ text: normalizeReadings(m[0]), ruby: true });
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) out.push({ text: stripReadings(text.slice(last)), ruby: false });
+  return out;
+}
+
+const stripReadings = (s: string) => s.replace(/([一-鿿々〆ヶ])[（(][\u3040-\u30ffー・]+[）)]/g, "$1");
+
 /** 句子裡有沒有「漢字（かな）」形式的讀音 */
 export const hasReadings = (text: string) => new RegExp(RUBY.source).test(text);
 

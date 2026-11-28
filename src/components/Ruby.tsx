@@ -1,4 +1,4 @@
-import { rubyParts } from "@/lib/furigana";
+import { explanationSegments, rubyParts } from "@/lib/furigana";
 
 /** 「漢字（かな）」顯示成漢字上方的小字讀音；word 有給就把單字標成強調色 */
 export function Ruby({ text, word }: { text: string; word?: string }) {
@@ -24,4 +24,9 @@ export function Ruby({ text, word }: { text: string; word?: string }) {
       <span key={i}>{body}</span>
     );
   });
+}
+
+/** 題庫解析：「」裡的日文顯示振假名，其他是中文說明照原樣 */
+export function ExplanationText({ text }: { text: string }) {
+  return explanationSegments(text).map((seg, i) => (seg.ruby ? <Ruby key={i} text={seg.text} /> : <span key={i}>{seg.text}</span>));
 }

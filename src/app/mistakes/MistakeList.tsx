@@ -3,8 +3,8 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { QuizItem } from "@/lib/types";
 import { StatusMessage } from "@/components/StatusMessage";
-import { Ruby } from "@/components/Ruby";
-import { flipReadings, hasReadings } from "@/lib/furigana";
+import { ExplanationText, Ruby } from "@/components/Ruby";
+import { hasReadings, normalizeReadings } from "@/lib/furigana";
 
 export function MistakeList({ items }: { items: QuizItem[] }) {
   const types = useMemo(() => [...new Set(items.map((i) => i.qtype ?? "其他"))].sort(), [items]);
@@ -43,14 +43,14 @@ export function MistakeList({ items }: { items: QuizItem[] }) {
                 ✗ {i.myAnswer}
               </p>
             )}
-            <p className={`mt-0.5 text-sm font-medium text-ok ${hasReadings(flipReadings(i.answer)) ? "pt-1 leading-[2.2]" : ""}`} lang="ja">
-              ✓ <Ruby text={flipReadings(i.answer)} />
+            <p className={`mt-0.5 text-sm font-medium text-ok ${hasReadings(normalizeReadings(i.answer)) ? "pt-1 leading-[2.2]" : ""}`} lang="ja">
+              ✓ <Ruby text={normalizeReadings(i.answer)} />
             </p>
             {i.explanation && (
               <details className="mt-1 text-sm text-muted">
                 <summary className="cursor-pointer">解析</summary>
-                <p className={`mt-1 whitespace-pre-wrap ${hasReadings(flipReadings(i.explanation)) ? "pt-1.5 leading-[2.3]" : ""}`}>
-                  <Ruby text={flipReadings(i.explanation)} />
+                <p className={`mt-1 whitespace-pre-wrap ${hasReadings(i.explanation) ? "pt-1.5 leading-[2.3]" : ""}`}>
+                  <ExplanationText text={i.explanation} />
                 </p>
               </details>
             )}
