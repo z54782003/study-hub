@@ -45,7 +45,7 @@ describe("kanjiChoices", () => {
   const k = (id: string, kanji: string, meaning: string, examples: { word: string; reading: string; zh: string }[] = []) =>
     ({ kind: "kanji", id, kanji, on: "", kun: "", meaning, examples, hint: "", confusable: "", chapter: null, status: null }) as const;
   const pool = [k("a", "休", "休息"), k("b", "歌", "歌；唱"), k("c", "山", "山")];
-  it("asks the reading of every example word, then the meaning", () => {
+  it("asks the reading of every example word, but skips a meaning written with the same kanji", () => {
     const item = k("t", "体", "身體", [
       { word: "体", reading: "からだ", zh: "身體" },
       { word: "体重", reading: "たいじゅう", zh: "體重" },
@@ -54,7 +54,14 @@ describe("kanjiChoices", () => {
     expect(steps.map((s) => [s.prompt, s.answer])).toEqual([
       ["体", "からだ"],
       ["体重", "たいじゅう"],
-      ["体", "身體"],
+    ]);
+  });
+  it("asks the meaning when it differs from the Chinese character", () => {
+    const item = k("t", "当", "命中；抽中", [{ word: "本当", reading: "ほんとう", zh: "真的" }]);
+    const steps = kanjiChoices(item, [item, ...pool]);
+    expect(steps.map((s) => [s.prompt, s.answer])).toEqual([
+      ["本当", "ほんとう"],
+      ["当", "命中"],
     ]);
     for (const s of steps) {
       expect(s.options).toHaveLength(4);

@@ -1,7 +1,7 @@
 // 單字練習的選擇題回合：日文漢字詞選讀音（干擾選項是長得很像的假名：しゃしん／しやしん／じゃしん），
 // 英文和純假名的字選中文意思（干擾選項拿同一回合其他字的意思）。不用 AI，直接比對。
 import { readingKana } from "./speech";
-import type { RecallItem } from "./recall";
+import { sameAsChinese, type RecallItem } from "./recall";
 import type { KanjiItem } from "./types";
 
 export type Choice = { ask: string; options: string[]; answer: string; lang: "ja" | "zh" };
@@ -112,7 +112,7 @@ export function choiceQuestion(item: RecallItem, pool: RecallItem[]): Choice | n
   return { ask: "選出正確的中文意思", options: shuffle([answer, ...shuffle(others, rand).slice(0, 3)], rand), answer, lang: "zh" };
 }
 
-/** 漢字的一串選擇題：每個例詞考讀音（涵蓋音読み・訓読み的用法），最後考中文意思；全部答對才算對 */
+/** 漢字的一串選擇題：每個例詞考讀音（涵蓋音読み・訓読み的用法），最後考中文意思（意思和中文同字的不考）；全部答對才算對 */
 export type KanjiStep = Choice & { prompt: string };
 
 export function kanjiChoices(item: KanjiItem, pool: KanjiItem[]): KanjiStep[] {
@@ -127,6 +127,8 @@ export function kanjiChoices(item: KanjiItem, pool: KanjiItem[]): KanjiStep[] {
     seen.add(ex.word);
     steps.push({ prompt: ex.word, ask: "選出正確的讀音", options: shuffle([reading, ...wrong], rand), answer: reading, lang: "ja" });
   }
+  // 中文意思就是同一個字（歌→歌、体→身體）：考意思等於送分，只在意思和中文不同時才考（貝→貝類 照樣算同字）
+  if (sameAsChinese(item.kanji, item.meaning)) return steps;
   const answer = shortMeaning(item.meaning);
   const others = [...new Set(pool.filter((p) => p.id !== item.id).map((p) => shortMeaning(p.meaning)))].filter((m) => m && m !== answer);
   if (answer && others.length >= 3)
