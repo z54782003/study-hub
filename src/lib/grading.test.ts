@@ -116,6 +116,21 @@ describe("parseChoices with a note after the brackets", () => {
   });
 });
 
+describe("parseChoices with (1)(2) options", () => {
+  const q = parseChoices("「組み合わせ」の読み方は？ (1) くみあわせ (2) くみあわせる (3) くみあわせい (4) くみわけ")!;
+  it("splits bracketed numbers", () => {
+    expect(q.stem).toBe("「組み合わせ」の読み方は？");
+    expect(q.options.map((o) => o.text)).toEqual(["くみあわせ", "くみあわせる", "くみあわせい", "くみわけ"]);
+  });
+  it("grades against '(1) くみあわせ'", () => {
+    expect(q.options.map((o) => gradeChoice(o, q.options, "(1) くみあわせ"))).toEqual([true, false, false, false]);
+  });
+  it("handles answers with text after the number", () => {
+    const r = parseChoices("「定食」の意味は?(1)套餐 (2)甜點 (3)烤魚 (4)定休日")!;
+    expect(r.options.map((o) => gradeChoice(o, r.options, "(1)套餐"))).toEqual([true, false, false, false]);
+  });
+});
+
 describe("numbered blanks sharing letter options", () => {
   const q = parseChoices("図書館の人は本を（　①　）。友達は消しゴムを（　②　）。 a 貸します　b 借ります")!;
   it("keeps ①② in the stem as blanks", () => {

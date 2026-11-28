@@ -57,7 +57,7 @@ export type Choice = { key: string; text: string };
 export function parseChoices(prompt: string): { stem: string; hint: string; options: Choice[]; blanks: string[] } | null {
   // 題目裡「（　①　）」這種是空格編號，不是選項
   const blanks = [...prompt.matchAll(/[（(][\s　]*([①-⑩])[\s　]*[）)]/gu)].map((m) => m[1]);
-  const split = (blanks.length ? null : splitCircled(prompt)) ?? splitLetters(prompt);
+  const split = (blanks.length ? null : splitCircled(prompt)) ?? splitLetters(prompt) ?? splitNumbered(prompt);
   if (!split) return null;
   let { stem } = split;
   const { options } = split;
@@ -118,6 +118,20 @@ export function blankAnswers(blanks: string[], options: Choice[], correct: strin
   return out;
 }
 
+/** 「(1) くみあわせ (2) くみあわせる …」：括號數字選項，從 (1) 開始依序，至少兩個 */
+function splitNumbered(prompt: string): { stem: string; options: Choice[] } | null {
+  const marks = [...prompt.matchAll(/[（(]([1-9])[）)][\s　]*/gu)].map((m) => ({ n: Number(m[1]), start: m.index!, end: m.index! + m[0].length }));
+  const first = marks.findIndex((m) => m.n === 1);
+  if (first < 0) return null;
+  const run = [marks[first]];
+  for (const m of marks.slice(first + 1)) if (m.n === run[run.length - 1].n + 1) run.push(m);
+  if (run.length < 2) return null;
+  return {
+    stem: prompt.slice(0, run[0].start).trim(),
+    options: run.map((m, i) => ({ key: `(${m.n})`, text: prompt.slice(m.end, run[i + 1]?.start ?? prompt.length).trim() })),
+  };
+}
+
 /** ①②③ 選項 */
 function splitCircled(prompt: string): { stem: string; options: Choice[] } | null {
   const parts = prompt.split(/(?=[①-⑩])/u);
@@ -151,7 +165,10 @@ function splitLetters(prompt: string): { stem: string; options: Choice[] } | nul
 /** 選擇題：只要正確答案能對到某個選項就直接判定；對不到任何選項（資料寫法特殊）回傳 null 交給 AI。 */
 export function gradeChoice(choice: Choice, options: Choice[], correct: string): boolean | null {
   const ok = acceptableAnswers(correct);
-  const matches = (o: Choice) => [o.key, o.text, `${o.key}${o.text}`].some((s) => ok.includes(normalizeAnswer(s)));
+  const matches = (o: Choice) => {
+    const bare = o.key.replace(/[（()）]/g, ""); // 「(1)」也接受答案寫「1」
+    return [o.key, bare, o.text, `${o.key}${o.text}`, `${bare}${o.text}`].some((s) => ok.includes(normalizeAnswer(s)));
+  };
   if (!options.some(matches)) return null;
   return matches(choice);
 }
