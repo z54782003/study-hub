@@ -25,6 +25,7 @@ import { autoKind, quarterMonths, quarterOf, type AutoKind, type Quarter } from 
 import { EVIU_STATUSES, eviuProgress, type EviuUnit } from "./eviu";
 import { grammarOn, n3WordsOn, needsDebtCheck, reviewParts, stageFor } from "./stages";
 import { pickPreviewPage, summarizePreview, type ChildPage, type SimpleBlock } from "./preview";
+import { blankExample } from "./listen";
 import { date, files, getPage, hasNotion, multiSelect, notion, num, numOrNull, queryAll, relationIds, select, text, updatePage, w, type Page } from "./notion";
 import {
   firstUnlearnedGrammar,
@@ -448,6 +449,8 @@ async function vocabQuiz(s: Extract<ReviewSource, { src: "vocab" }>): Promise<Vo
     const groups = groupBySection(items, await cachedLessonSections(s.level, s.lessons[0]).catch(() => [] as IndexSection[]));
     items = groups.find((g) => g.title === s.section)?.words ?? [];
   }
+  // 聽寫只出有發音檔的字（單字音檔，或能挖空的例句音檔）；沒產生音檔的字等 gen-audio 補上
+  if (s.qmode === "listen") items = items.filter((i) => i.audio || blankExample(i));
   // 忘記 → 學習中 → 未學 → 熟悉 → 精通，同一級隨機
   return shuffle(items)
     .sort((a, b) => (VOCAB_RANK[a.status ?? "未學"] ?? 2) - (VOCAB_RANK[b.status ?? "未學"] ?? 2))
@@ -460,7 +463,15 @@ export async function getReviewItems(s: ReviewSource): Promise<ReviewItem[]> {
   if (s.src === "mistakes") return (await getMistakes()).slice(0, 30);
   if (s.src === "verb") return verbQuiz(s);
   if (s.src === "kanji") return kanjiQuiz(s);
-  if (useMock()) return s.src === "vocab" ? mockVocab() : mockReview().filter((i) => i.kind === "quiz");
+  if (useMock()) {
+    if (s.src !== "vocab") return mockReview().filter((i) => i.kind === "quiz");
+    // 預覽的聽寫：假的音檔網址（播不了就退回瀏覽器發音）
+    if (s.qmode !== "listen") return mockVocab();
+    const fake = (k: string) => ({ url: `/mock-${k}.mp3`, expires: null, fallback: `/mock-${k}.mp3` });
+    return mockVocab()
+      .filter((v) => v.lang === "ja")
+      .map((v) => ({ ...v, audio: fake(v.id), examples: v.examples.map((e, i) => ({ ...e, audio: fake(`${v.id}-${i}`) })) }));
+  }
   return s.src === "bank" ? bankQuiz(s) : vocabQuiz(s);
 }
 

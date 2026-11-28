@@ -17,6 +17,11 @@ describe("parseSource / sourceQuery", () => {
     expect(parseSource(new URLSearchParams(sourceQuery(s)))).toEqual(s);
     expect(parseSource(new URLSearchParams("src=vocab&lang=en&cefr=Z9&topic=x"))).toEqual({ src: "vocab", lang: "en", level: null, lessons: [], count: 20, qmode: "choice" });
   });
+  it("allows listening mode for Japanese only", () => {
+    const s: ReviewSource = { src: "vocab", lang: "ja", level: "初中級", lessons: [2], count: 20, qmode: "listen" };
+    expect(parseSource(new URLSearchParams(sourceQuery(s)))).toEqual(s);
+    expect(parseSource(new URLSearchParams("src=vocab&lang=en&qmode=listen"))).toMatchObject({ qmode: "choice" });
+  });
   it("keeps the old mode=mistakes link working", () => expect(parseSource(new URLSearchParams("mode=mistakes"))).toEqual({ src: "mistakes" }));
   it("defaults to due and rejects unknown values", () => {
     expect(parseSource(new URLSearchParams(""))).toEqual({ src: "due" });

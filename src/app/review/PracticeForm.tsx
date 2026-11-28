@@ -27,7 +27,7 @@ export type PracticePreset = {
 
 // 各分頁記住上次的條件（只存在這台裝置）；漢字章不記，固定預設下一場漢字テスト的範圍
 const MEMORY_KEY = "practice-conditions:v1";
-type Saved = Partial<{ level: string; picked: number[]; count: number; qtype: string | null; scope: "weak" | "all"; verbForms: string[]; groups: string[]; judge: boolean; qmode: "choice" | "fill" }>;
+type Saved = Partial<{ level: string; picked: number[]; count: number; qtype: string | null; scope: "weak" | "all"; verbForms: string[]; groups: string[]; judge: boolean; qmode: "choice" | "fill" | "listen" }>;
 function loadSaved(): Record<string, Saved> {
   try {
     return JSON.parse(localStorage.getItem(MEMORY_KEY) ?? "{}");
@@ -73,7 +73,9 @@ export function PracticeForm({
   const [qtype, setQtype] = useState<string | null>(null);
   const [scope, setScope] = useState<"weak" | "all">("weak");
   const [count, setCount] = useState<number>(20);
-  const [qmode, setQmode] = useState<"choice" | "fill">("choice");
+  const [qmodeRaw, setQmode] = useState<"choice" | "fill" | "listen">("choice");
+  // 聽寫只有日文：切到英文時當選擇題
+  const qmode = lang === "en" && qmodeRaw === "listen" ? "choice" : qmodeRaw;
 
   // 換分頁時套上那一頁上次的條件；條件一改就記下來
   const restore = (t: PracticeType) => {
@@ -245,13 +247,20 @@ export function PracticeForm({
             <p className="mb-5 text-sm text-muted">英文單字庫還沒精通的字 {englishCount} 個（大多是從 TED 播放器加進來的）。</p>
           )}
           <Field title="題型">
-            <Chips options={["choice", "fill"] as const} value={[qmode]} onToggle={setQmode} label={(v) => (v === "choice" ? "選擇題" : "填空")} />
+            <Chips
+              options={lang === "ja" ? (["choice", "fill", "listen"] as const) : (["choice", "fill"] as const)}
+              value={[qmode]}
+              onToggle={setQmode}
+              label={(v) => (v === "choice" ? "選擇題" : v === "fill" ? "填空" : "聽寫")}
+            />
           </Field>
           {countField([10, 20, 30, 50], "個")}
           <p className="mb-24 text-xs text-muted">
             {qmode === "choice"
               ? "選擇題：有漢字的字選讀音（假名很像的選項），假名或英文的字選中文意思；直接對答案，不用 AI。"
-              : "填空：看字寫讀音和中文意思，AI 批改。"}
+              : qmode === "listen"
+                ? "聽寫：聽發音檔寫假名，單字和例句填空輪流出；直接對答案，不用 AI。只出已經產生發音檔的字。"
+                : "填空：看字寫讀音和中文意思，AI 批改。"}
             忘記的、學習中的先出；結果寫回單字庫熟悉度。
           </p>
         </>

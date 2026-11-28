@@ -42,7 +42,9 @@ export function parseSource(q: URLSearchParams): ReviewSource {
   }
   if (src === "vocab") {
     // 一回合只考一種：選擇（預設，不用 AI）或填空（AI 批改）
-    const qmode = q.get("qmode") === "fill" ? ("fill" as const) : ("choice" as const);
+    // listen＝聽寫（只有日文，用單字庫的發音檔）
+    const raw = q.get("qmode");
+    const qmode = raw === "fill" ? ("fill" as const) : raw === "listen" && q.get("lang") !== "en" ? ("listen" as const) : ("choice" as const);
     // section＝課本索引的小節（「1-1 アルバイトを探す」）；只在單一課時有意義
     const section = lessons.length === 1 ? q.get("section")?.slice(0, 60) || undefined : undefined;
     if (q.get("lang") === "en") {
@@ -102,7 +104,7 @@ export function sourceLabel(s: ReviewSource): string {
   if (s.src === "kanji") return `漢字・${s.chapters.length ? s.chapters.join("、") : "全部"}`;
   if (s.src === "verb") return `動詞の形・${s.forms.map((f) => FORM_LABEL[f as keyof typeof FORM_LABEL] ?? f).join("・")}`;
   const lessons = s.lessons.length ? `L${s.lessons.join("・")}` : "全部課";
-  const qm = s.src === "vocab" ? (s.qmode === "fill" ? "（填空）" : "（選擇）") : "";
+  const qm = s.src === "vocab" ? (s.qmode === "fill" ? "（填空）" : s.qmode === "listen" ? "（聽寫）" : "（選擇）") : "";
   if (s.src === "vocab") return (s.lang === "en" ? ["英文單字", s.cefr, s.topic].filter(Boolean).join("・") : `單字測驗・${s.level ?? ""} ${lessons}${s.section ? `・${s.section}` : ""}`) + qm;
   return `題庫・${s.level ?? "全部"} ${lessons}${s.qtype ? `・${s.qtype}` : ""}`;
 }

@@ -51,14 +51,21 @@ export function preloadAudio(refs: (AudioRef | null | undefined)[]) {
 export const vocabAudioRefs = (w: VocabItem): (AudioRef | null | undefined)[] => [w.audio, ...w.examples.map((e) => e.audio), ...Object.values(w.usageAudio ?? {})];
 
 /** 預先產生的發音檔（VOICEVOX）：先用預載好的；沒有就從網路播，Notion 的網址快過期就走 App 的轉址路徑。播不了才退回瀏覽器發音 */
-function playAudio(a: AudioRef, fallback: () => void) {
+function playAudio(a: AudioRef, fallback: () => void, rate = 1) {
   if (canSpeak()) window.speechSynthesis.cancel();
   current?.pause();
   const el = new Audio(ready.get(a.fallback) ?? (isFresh(a) ? a.url : a.fallback));
+  el.playbackRate = rate;
   current = el;
   el.play().catch(() => {
     if (current === el) fallback();
   });
+}
+
+/** 聽寫用：播發音檔（rate＜1＝慢速），播不了才用瀏覽器念 text */
+/** fallback＝false：播不了就算了（自動播放被瀏覽器擋下時，不要改用可能念錯的瀏覽器發音） */
+export function playVoice(a: AudioRef, text: string, rate = 1, fallback = true) {
+  playAudio(a, () => fallback && speak(text, "ja"), rate);
 }
 
 /** 喇叭按鈕：點了念出 text（不會觸發外層的翻卡、展開） */

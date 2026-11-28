@@ -3,7 +3,8 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { blankAnswers, gradeChoice, parseChoices } from "@/lib/grading";
 import { sourceLabel, sourceQuery } from "@/lib/reviewSource";
-import { preloadAudio, Speak, vocabAudioRefs } from "@/components/Speak";
+import { playVoice, preloadAudio, Speak, vocabAudioRefs } from "@/components/Speak";
+import { checkListen, listenQuestion } from "@/lib/listen";
 import { Ruby } from "@/components/Ruby";
 import { masuRuby, parseUsage, splitMasu } from "@/lib/usage";
 import { speakableJa } from "@/lib/speech";
@@ -270,6 +271,8 @@ export function ReviewSession({ source }: { source: ReviewSource }) {
         <VerbCard key={item.id} item={item} onDone={next} />
       ) : item.kind === "kanji" && kanjiSteps.length > 0 ? (
         <KanjiChoiceCard key={item.id} item={item} steps={kanjiSteps} onDone={next} />
+      ) : source.src === "vocab" && source.qmode === "listen" && item.kind === "vocab" ? (
+        <ListenCard key={item.id} item={item} index={index} onDone={next} onSkip={skip} />
       ) : (
         <RecallCard key={item.id} item={item} asChoice={source.src === "vocab" && source.qmode !== "fill"} pool={items.filter((i): i is RecallItem => i.kind === "vocab" || i.kind === "n3")} onDone={next} onSkip={skip} />
       )}
@@ -513,6 +516,122 @@ function QuizCard({ item, onDone, onSkip }: { item: QuizItem; onDone: (p: Pendin
           </button>
         )}
         {result && finalCorrect === null && <AiFailed error={result.error} onSkip={onSkip} />}
+      </div>
+    </>
+  );
+}
+
+// ── 聽寫：聽發音檔寫假名（單字／例句填空輪流）→ 直接比對 → 結果寫回單字庫 ─────
+
+function ListenCard({ item, index, onDone, onSkip }: { item: VocabItem; index: number; onDone: (p: Pending) => void; onSkip: () => void }) {
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const q = useMemo(() => listenQuestion(item, index), [item.id]);
+  const [draft, setDraft] = useState("");
+  const [result, setResult] = useState<GradeResult | null>(null);
+  const [override, setOverride] = useState<boolean | null>(null);
+  const play = (rate = 1, fallback = true) => q && playVoice(q.audio, q.say, rate, fallback);
+  // 一出題就播一次（瀏覽器擋自動播放就等使用者按）
+  useEffect(() => {
+    preloadAudio([q?.audio]);
+    play(1, false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [item.id]);
+
+  if (!q)
+    return (
+      <article className="card mt-2 rounded-3xl p-5 text-center">
+        <p className="text-muted">這個字的發音檔失效了，沒辦法出聽寫。</p>
+        <button type="button" onClick={onSkip} className="mt-4 w-full rounded-2xl border border-line py-3 font-semibold text-muted">
+          跳過
+        </button>
+      </article>
+    );
+
+  const submit = () => draft.trim() && setResult({ correct: checkListen(q, draft), method: "自動比對", feedback: "", suggestion: q.answer });
+  const giveUp = () => setResult({ correct: false, method: "自評", feedback: "", suggestion: q.answer });
+  const finalCorrect = override ?? result?.correct ?? null;
+  const finish = (correct: boolean) =>
+    onDone({
+      item,
+      correct,
+      answer: draft.trim() || undefined,
+      method: override !== null ? "自評" : (result?.method ?? "自動比對"),
+      feedback: q.type === "word" ? "聽寫：單字" : "聽寫：例句填空",
+    });
+  const ex = q.type === "blank" ? item.examples.find((e) => e.audio === q.audio) : undefined;
+
+  return (
+    <>
+      <article className="card mt-2 flex-1 rounded-3xl p-5">
+        <p className="text-center text-sm text-muted">{q.type === "word" ? "聽單字，寫出假名" : "聽例句，填入空格的假名"}</p>
+        <div className="mt-4 flex justify-center gap-3">
+          <button type="button" onClick={() => play()} className="btn-primary flex items-center gap-2 px-6" aria-label="播放">
+            <Icon name="speaker" stroke={2} />
+            播放
+          </button>
+          <button type="button" onClick={() => play(0.7)} className="rounded-2xl border border-line px-5 font-semibold text-muted">
+            慢速
+          </button>
+        </div>
+        {q.type === "blank" &&
+          (result && ex ? (
+            <p className="mt-6 text-xl leading-[2.2]" lang="ja">
+              <Ruby text={ex.ja} word={item.word} />
+            </p>
+          ) : (
+            <p className="mt-6 text-xl leading-[2.2]" lang="ja">
+              <Ruby text={q.before.map((p) => (p.rt ? `${p.text}（${p.rt}）` : p.text)).join("")} />
+              <span className="mx-1 inline-block min-w-[4em] border-b-2 border-accent text-center text-accent">（　）</span>
+              <Ruby text={q.after.map((p) => (p.rt ? `${p.text}（${p.rt}）` : p.text)).join("")} />
+            </p>
+          ))}
+        {!result ? (
+          <input
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.nativeEvent.isComposing) submit();
+            }}
+            placeholder="用假名寫"
+            lang="ja"
+            autoComplete="off"
+            autoCorrect="off"
+            spellCheck={false}
+            className="mt-6 w-full rounded-xl border border-line bg-bg p-3 text-center text-2xl outline-none focus:border-accent"
+          />
+        ) : (
+          <>
+            <GradeResultView result={result} answer={draft.trim()} finalCorrect={finalCorrect} overridden={override !== null} />
+            <div className="mt-4 border-t border-line pt-3 text-center">
+              <p className="text-3xl font-bold" lang="ja">
+                {item.word}
+              </p>
+              <p className="mt-1 text-muted" lang="ja">
+                {item.reading}
+              </p>
+              <p className="mt-1">{item.meaning}</p>
+              {ex?.zh && <p className="mt-2 text-sm text-muted">{ex.zh}</p>}
+            </div>
+          </>
+        )}
+      </article>
+      {result && result.method !== "自評" && <Overrule key={item.id} aiSays={result.correct!} onChange={setOverride} />}
+
+      <div className={`mt-4 ${result ? "" : "sticky bottom-24"}`}>
+        {!result ? (
+          <div className="grid grid-cols-[1fr_2fr] gap-3">
+            <button type="button" onClick={giveUp} className="rounded-2xl border border-line py-4 font-semibold text-muted">
+              不會
+            </button>
+            <button type="button" onClick={submit} disabled={!draft.trim()} className="btn-primary disabled:opacity-40">
+              對答案
+            </button>
+          </div>
+        ) : (
+          <button type="button" onClick={() => finish(finalCorrect ?? false)} className="btn-primary w-full">
+            下一題
+          </button>
+        )}
       </div>
     </>
   );
