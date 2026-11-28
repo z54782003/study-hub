@@ -75,6 +75,27 @@ describe("parseChoices", () => {
   });
 });
 
+describe("parseChoices with letter options", () => {
+  const q = parseChoices("もう少し辛くしたかったら、（　）を入れてください。　a はちみつ　b 唐辛子　c クリーム　d 砂糖")!;
+  it("splits a–d options", () => {
+    expect(q.stem).toBe("もう少し辛くしたかったら、（　）を入れてください。");
+    expect(q.options).toEqual([
+      { key: "a", text: "はちみつ" },
+      { key: "b", text: "唐辛子" },
+      { key: "c", text: "クリーム" },
+      { key: "d", text: "砂糖" },
+    ]);
+  });
+  it("grades against 'b 唐辛子（とうがらし）'", () => {
+    expect(gradeChoice(q.options[1], q.options, "b 唐辛子（とうがらし）")).toBe(true);
+    expect(gradeChoice(q.options[0], q.options, "b 唐辛子（とうがらし）")).toBe(false);
+  });
+  it("ignores stray letters in normal sentences", () => {
+    expect(parseChoices("This is a book.")).toBeNull();
+    expect(parseChoices("Plan a trip")).toBeNull();
+  });
+});
+
 describe("gradeChoice", () => {
   const q = parseChoices("「今日中」の読み方は？ ①きょうなか ②きょうじゅう ③こんにちちゅう")!;
   it("grades by option number or option text in the reference", () => {

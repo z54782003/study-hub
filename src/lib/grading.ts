@@ -55,9 +55,9 @@ export type Choice = { key: string; text: string };
  * → 題幹＋[①いい, ②悪い, ③高い]，最後一個選項後面的括號提示移回題幹。少於 2 個選項回傳 null（改用打字）。
  */
 export function parseChoices(prompt: string): { stem: string; hint: string; options: Choice[] } | null {
-  const parts = prompt.split(/(?=[①-⑩])/u);
-  if (parts.length < 3) return null;
-  const options: Choice[] = parts.slice(1).map((p) => ({ key: p[0], text: p.slice(1).trim() }));
+  const split = splitCircled(prompt) ?? splitLetters(prompt);
+  if (!split) return null;
+  const { stem, options } = split;
   let hint = "";
   const last = options[options.length - 1];
   const m = last.text.match(/^(.*?)\s*[（(]([^）)]*)[）)]\s*$/u);
@@ -66,7 +66,37 @@ export function parseChoices(prompt: string): { stem: string; hint: string; opti
     hint = m[2];
   }
   if (options.some((o) => !o.text)) return null;
-  return { stem: parts[0].trim(), hint, options };
+  return { stem, hint, options };
+}
+
+/** ①②③ 選項 */
+function splitCircled(prompt: string): { stem: string; options: Choice[] } | null {
+  const parts = prompt.split(/(?=[①-⑩])/u);
+  if (parts.length < 3) return null;
+  return { stem: parts[0].trim(), options: parts.slice(1).map((p) => ({ key: p[0], text: p.slice(1).trim() })) };
+}
+
+/**
+ * 「… a はちみつ b 唐辛子 c クリーム d 砂糖」這種英文字母選項：
+ * 字母前面要有空白（或在開頭）、後面接空白或 . ) :，而且要從 a 開始依序 b、c、d，至少兩個。
+ */
+function splitLetters(prompt: string): { stem: string; options: Choice[] } | null {
+  const marks = [...prompt.matchAll(/(?<=^|[\s　])([a-dA-D])(?:[.．)）:：][\s　]*|[\s　]+)(?=\S)/gu)].map((m) => ({
+    letter: m[1].toLowerCase(),
+    start: m.index!,
+    end: m.index! + m[0].length,
+  }));
+  const first = marks.findIndex((m) => m.letter === "a");
+  if (first < 0) return null;
+  const run = [marks[first]];
+  for (const m of marks.slice(first + 1)) {
+    if (m.letter.charCodeAt(0) === run[run.length - 1].letter.charCodeAt(0) + 1) run.push(m);
+  }
+  if (run.length < 2) return null;
+  return {
+    stem: prompt.slice(0, run[0].start).trim(),
+    options: run.map((m, i) => ({ key: m.letter, text: prompt.slice(m.end, run[i + 1]?.start ?? prompt.length).trim() })),
+  };
 }
 
 /** 選擇題：只要正確答案能對到某個選項就直接判定；對不到任何選項（資料寫法特殊）回傳 null 交給 AI。 */
