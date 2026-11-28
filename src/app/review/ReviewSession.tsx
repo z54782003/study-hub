@@ -418,7 +418,8 @@ function QuizCard({ item, onDone, onSkip }: { item: QuizItem; onDone: (p: Pendin
         />
       )}
 
-      <div className="sticky bottom-24 mt-4">
+      {/* 答完後按鈕排在解析下面，不再浮在上面蓋住內容 */}
+      <div className={`mt-4 ${result ? "" : "sticky bottom-24"}`}>
         {!result && choices ? (
           <button type="button" onClick={giveUp} className="w-full rounded-2xl border border-line py-4 font-semibold text-muted">
             {grading ? "批改中…" : "不會"}
@@ -591,7 +592,7 @@ function RecallCard({ item, asChoice, pool, onDone, onSkip }: { item: RecallItem
       </article>
       {result && result.correct !== null && !choice && <Overrule key={item.id} aiSays={result.correct} onChange={setOverride} />}
 
-      <div className="sticky bottom-24 mt-4">
+      <div className={`mt-4 ${result ? "" : "sticky bottom-24"}`}>
         {choice && !result ? (
           <button type="button" onClick={giveUp} className="w-full rounded-2xl border border-line py-4 font-semibold text-muted">
             不會
@@ -679,7 +680,7 @@ function KanjiChoiceCard({ item, steps, onDone }: { item: KanjiItem; steps: Kanj
         )}
       </article>
 
-      <div className="sticky bottom-24 mt-4">
+      <div className={`mt-4 ${answered ? "" : "sticky bottom-24"}`}>
         {!answered ? (
           <button type="button" onClick={() => pick("")} className="w-full rounded-2xl border border-line py-4 font-semibold text-muted">
             不會
@@ -886,7 +887,7 @@ function VerbCard({ item, onDone }: { item: VerbItem; onDone: (p: Pending) => vo
         )}
       </article>
 
-      <div className="sticky bottom-24 mt-4">
+      <div className={`mt-4 ${result !== null ? "" : "sticky bottom-24"}`}>
         {result === null ? (
           item.mode === "conj" ? (
             <div className="grid grid-cols-[1fr_2fr] gap-3">
