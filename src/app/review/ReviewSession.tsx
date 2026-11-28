@@ -331,8 +331,8 @@ function QuizCard({ item, onDone, onSkip }: { item: QuizItem; onDone: (p: Pendin
       feedback: result?.feedback || undefined,
     });
 
-  // 自動比對判對（寫的和正解一樣）：0.6 秒後自動下一題，不用再按
-  const autoNext = result?.method === "自動比對" && result.correct === true && !choices && override === null;
+  // 自動比對判對（寫的和正解一樣）：0.6 秒後自動下一題，不用再按；有解析的題目要留時間看，等按「下一題」
+  const autoNext = result?.method === "自動比對" && result.correct === true && !choices && override === null && !item.explanation;
   const finishRef = useRef(finish);
   finishRef.current = finish;
   useEffect(() => {
